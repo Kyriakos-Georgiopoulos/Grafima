@@ -294,7 +294,7 @@ class TooltipSelectionRenderer(
 // ==========================================
 
 @Stable
-class ChartAnimationEngine {
+internal class ChartAnimationEngine {
     val heightAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     val selectionAlphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedIds = mutableSetOf<String>()

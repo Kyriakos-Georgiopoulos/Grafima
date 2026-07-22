@@ -457,7 +457,7 @@ private fun Path.buildArea(
  *   Old coroutines cancel automatically when data changes.
  */
 @Stable
-class LineChartAnimationEngine {
+internal class LineChartAnimationEngine {
     internal val yAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()
 

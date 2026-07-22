@@ -388,7 +388,7 @@ private fun resolveRadarRadius(
  * - [launchSelectionAnimations]: async alpha animations, called in [LaunchedEffect] scope.
  */
 @Stable
-class RadarChartAnimationEngine {
+internal class RadarChartAnimationEngine {
     internal val valueAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     internal val alphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()

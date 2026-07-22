@@ -578,7 +578,7 @@ private inline fun computeNormalizedSweep(
  *   when keys change.
  */
 @Stable
-class PieChartAnimationEngine {
+internal class PieChartAnimationEngine {
     internal val valueAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     internal val scaleAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     internal val alphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()

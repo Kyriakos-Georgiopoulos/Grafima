@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.LineAxisConfig
@@ -292,4 +293,9 @@ fun LineChartDemoScreen() {
             ) { Text("Randomize", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
         }
     }
+}
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun LineChartDemoScreenPreview() {
+    LineChartDemoScreen()
 }

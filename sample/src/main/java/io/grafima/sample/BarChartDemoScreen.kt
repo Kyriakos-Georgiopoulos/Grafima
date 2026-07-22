@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.A11yConfig
@@ -240,4 +241,9 @@ fun BarChartDemoScreen() {
             Text("Update Data", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
+}
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun BarChartDemoScreenPreview() {
+    BarChartDemoScreen()
 }
