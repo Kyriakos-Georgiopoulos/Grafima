@@ -12,7 +12,7 @@
 
 - Maven coordinates: `io.grafima:grafima:1.0.0` (artifactId stays `grafima` even though the module path is `:library`).
 - Kotlin package root: `io.grafima.*` (charts → `io.grafima.charts`, app → `io.grafima.sample`, theme → `io.grafima.sample.ui.theme`). No `com.grafima.*` may remain.
-- `minSdk = 24`, `compileSdk = 36`, `targetSdk = 36` (sample only). Java 11 source/target. Kotlin code style `official`.
+- `minSdk = 24`, `compileSdk = 37`, `targetSdk = 37` (sample only). Java 11 source/target. Kotlin code style `official`. (compileSdk/targetSdk were bumped 36→37 in a preliminary baseline fix — `androidx.core:core:1.19.0` and `androidx.lifecycle:…:2.11.0` require API 37.)
 - Library depends on Compose `foundation`, `ui`, `ui-graphics`, `ui-text`, `animation`, `runtime` only — **never `material3` or `activity-compose`**. Compose types in public signatures use `api(...)`.
 - `kotlin { explicitApi() }` on the library.
 - No chart feature/visual/behavior changes. No new chart types.
@@ -295,9 +295,7 @@ plugins {
 android {
     namespace = "io.grafima.charts"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
