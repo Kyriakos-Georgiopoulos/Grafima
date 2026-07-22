@@ -1,23 +1,12 @@
 package io.grafima.sample
 
-import io.grafima.charts.*
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,55 +17,27 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.floor
-import kotlin.math.log10
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.math.sqrt
+import io.grafima.charts.LineAxisConfig
+import io.grafima.charts.LineChart
+import io.grafima.charts.LineChartStyle
+import io.grafima.charts.LineCurveType
+import io.grafima.charts.LineDataPoint
+import io.grafima.charts.LineDataSet
+import io.grafima.charts.LineSeries
 
 // ==========================================
 // 5. DEMO
@@ -106,9 +67,9 @@ fun LineChartDemoScreen() {
             strokeGradientColors = listOf(c1, c2),
             points = months.mapIndexed { i, m ->
                 LineDataPoint(
-                    i.toFloat(),
-                    (base + (-variance..variance).random()).toFloat(),
-                    m
+                    x = i.toFloat(),
+                    y = (base + (-variance..variance).random()).toFloat(),
+                    label = m
                 )
             }
         )
@@ -122,7 +83,7 @@ fun LineChartDemoScreen() {
             LineDataSet(
                 series = listOf(
                     LineSeries(
-                        "rev", "Revenue", color = Color(0xFF6366F1), fillAlpha = 0.10f,
+                        id = "rev", label = "Revenue", color = Color(0xFF6366F1), fillAlpha = 0.10f,
                         strokeGradientColors = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
                         points = listOf(
                             42f,
@@ -138,12 +99,27 @@ fun LineChartDemoScreen() {
                             105f,
                             120f
                         )
-                            .mapIndexed { i, v -> LineDataPoint(i.toFloat(), v, months[i]) }),
+                            .mapIndexed { i, v ->
+                                LineDataPoint(
+                                    x = i.toFloat(),
+                                    y = v,
+                                    label = months[i]
+                                )
+                            }),
                     LineSeries(
-                        "exp", "Expenses", color = Color(0xFFF59E0B), fillAlpha = 0.08f,
+                        id = "exp",
+                        label = "Expenses",
+                        color = Color(0xFFF59E0B),
+                        fillAlpha = 0.08f,
                         strokeGradientColors = listOf(Color(0xFFFBBF24), Color(0xFFD97706)),
                         points = listOf(38f, 42f, 50f, 45f, 55f, 52f, 60f, 58f, 62f, 65f, 70f, 68f)
-                            .mapIndexed { i, v -> LineDataPoint(i.toFloat(), v, months[i]) })
+                            .mapIndexed { i, v ->
+                                LineDataPoint(
+                                    x = i.toFloat(),
+                                    y = v,
+                                    label = months[i]
+                                )
+                            })
                 ),
                 contentDescription = "Monthly Revenue vs Expenses"
             )
@@ -204,17 +180,17 @@ fun LineChartDemoScreen() {
                                     val cy = size.height / 2f
                                     if (s.strokeGradientColors.size >= 2) {
                                         drawLine(
-                                            Brush.horizontalGradient(s.strokeGradientColors),
-                                            Offset(0f, cy),
-                                            Offset(size.width, cy),
+                                            brush = Brush.horizontalGradient(s.strokeGradientColors),
+                                            start = Offset(x = 0f, y = cy),
+                                            end = Offset(x = size.width, y = cy),
                                             strokeWidth = size.height,
                                             cap = StrokeCap.Round
                                         )
                                     } else {
                                         drawLine(
-                                            s.color,
-                                            Offset(0f, cy),
-                                            Offset(size.width, cy),
+                                            color = s.color,
+                                            start = Offset(x = 0f, y = cy),
+                                            end = Offset(x = size.width, y = cy),
                                             strokeWidth = size.height,
                                             cap = StrokeCap.Round
                                         )
@@ -224,9 +200,11 @@ fun LineChartDemoScreen() {
                         }
                     }
                 }
-                Box(Modifier
-                    .fillMaxSize()
-                    .weight(1f)) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                ) {
                     LineChart(
                         dataSet = if (showFill) dataSet else dataSet.copy(series = dataSet.series.map {
                             it.copy(
@@ -288,8 +266,20 @@ fun LineChartDemoScreen() {
                 onClick = {
                     dataSet = LineDataSet(
                         series = listOf(
-                            randomSeries("rev", "Revenue", 80, 40, showFill),
-                            randomSeries("exp", "Expenses", 55, 25, showFill)
+                            randomSeries(
+                                id = "rev",
+                                label = "Revenue",
+                                base = 80,
+                                variance = 40,
+                                showFill = showFill
+                            ),
+                            randomSeries(
+                                id = "exp",
+                                label = "Expenses",
+                                base = 55,
+                                variance = 25,
+                                showFill = showFill
+                            )
                         ),
                         contentDescription = "Monthly Revenue vs Expenses"
                     )

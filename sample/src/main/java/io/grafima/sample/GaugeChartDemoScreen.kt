@@ -1,11 +1,7 @@
 package io.grafima.sample
 
-import io.grafima.charts.*
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,9 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -33,35 +26,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.progressBarRangeInfo
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.GaugeAnimationConfig
+import io.grafima.charts.GaugeChart
+import io.grafima.charts.GaugeChartStyle
+import io.grafima.charts.GaugeNeedleConfig
+import io.grafima.charts.GaugeNeedleStyle
+import io.grafima.charts.GaugeTickConfig
+import io.grafima.charts.GaugeZone
 import kotlinx.coroutines.delay
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sin
 import kotlin.random.Random
 
 // ==========================================
@@ -71,20 +48,25 @@ import kotlin.random.Random
 private data class GaugePreset(val label: String, val value: Float, val color: Long)
 
 private val GaugePresets = listOf(
-    GaugePreset("Low", 18f, 0xFF22C55E),
-    GaugePreset("Normal", 48f, 0xFF3B82F6),
-    GaugePreset("High", 73f, 0xFFFBBF24),
-    GaugePreset("Critical", 92f, 0xFFEF4444)
+    GaugePreset(label = "Low", value = 18f, color = 0xFF22C55E),
+    GaugePreset(label = "Normal", value = 48f, color = 0xFF3B82F6),
+    GaugePreset(label = "High", value = 73f, color = 0xFFFBBF24),
+    GaugePreset(label = "Critical", value = 92f, color = 0xFFEF4444)
 )
 
 @Composable
 fun GaugeChartDemoScreen() {
     val zones = remember {
         listOf(
-            GaugeZone("low", "Low", 0f..30f, Color(0xFF22C55E)),
-            GaugeZone("normal", "Normal", 30f..60f, Color(0xFF3B82F6)),
-            GaugeZone("high", "High", 60f..80f, Color(0xFFFBBF24)),
-            GaugeZone("critical", "Critical", 80f..100f, Color(0xFFEF4444))
+            GaugeZone(id = "low", label = "Low", range = 0f..30f, color = Color(0xFF22C55E)),
+            GaugeZone(id = "normal", label = "Normal", range = 30f..60f, color = Color(0xFF3B82F6)),
+            GaugeZone(id = "high", label = "High", range = 60f..80f, color = Color(0xFFFBBF24)),
+            GaugeZone(
+                id = "critical",
+                label = "Critical",
+                range = 80f..100f,
+                color = Color(0xFFEF4444)
+            )
         )
     }
 

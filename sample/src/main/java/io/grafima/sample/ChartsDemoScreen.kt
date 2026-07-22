@@ -47,10 +47,12 @@ fun ChartsDemoScreen() {
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .background(Color(0xFFF3F4F6))
-        .statusBarsPadding()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF3F4F6))
+            .statusBarsPadding()
+    ) {
         ChartTabBar(
             pages = pages,
             pagerState = pagerState,
@@ -95,8 +97,8 @@ private fun ChartTabBar(
                 val scrollPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
                 drawRoundRect(
                     color = Color(0xFF111827),
-                    topLeft = Offset(tabWidth * scrollPosition, 0f),
-                    size = Size(tabWidth, size.height),
+                    topLeft = Offset(x = tabWidth * scrollPosition, y = 0f),
+                    size = Size(width = tabWidth, height = size.height),
                     cornerRadius = CornerRadius(12.dp.toPx())
                 )
             },
@@ -119,7 +121,11 @@ private fun ChartTabBar(
             ) {
                 Text(
                     text = page.title,
-                    color = lerp(Color.White, Color(0xFF6B7280), distance),
+                    color = lerp(
+                        start = Color.White,
+                        stop = Color(0xFF6B7280),
+                        fraction = distance
+                    ),
                     fontWeight = if (distance < 0.5f) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 14.sp
                 )

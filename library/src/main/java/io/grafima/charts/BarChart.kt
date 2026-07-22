@@ -25,32 +25,16 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -81,7 +65,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
-import kotlin.random.Random
 
 // ==========================================
 // 1. DATA MODELS & CONFIG
@@ -281,6 +264,7 @@ class TooltipSelectionRenderer(
                     .coerceIn(0f, size.width - tooltipWidth)
                 tooltipTop = barTopLeft.y - tooltipHeight - bottomMargin.toPx()
             }
+
             BarOrientation.Horizontal -> {
                 tooltipLeft = (barTopLeft.x + barSize.width + bottomMargin.toPx())
                     .coerceAtMost(size.width - tooltipWidth)
@@ -291,9 +275,9 @@ class TooltipSelectionRenderer(
 
         drawRoundRect(
             color = backgroundColor,
-            topLeft = Offset(tooltipLeft, tooltipTop),
-            size = Size(tooltipWidth, tooltipHeight),
-            cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx())
+            topLeft = Offset(x = tooltipLeft, y = tooltipTop),
+            size = Size(width = tooltipWidth, height = tooltipHeight),
+            cornerRadius = CornerRadius(x = cornerRadius.toPx(), y = cornerRadius.toPx())
         )
         drawText(
             textLayoutResult = tooltipLayout,
@@ -411,7 +395,10 @@ fun BarChart(
     }
 
     val maxLabelResult = remember(maxBarValue, axisConfig.axisLabelTextStyle) {
-        textMeasurer.measure(maxBarValue.toInt().toString(), axisConfig.axisLabelTextStyle)
+        textMeasurer.measure(
+            text = maxBarValue.toInt().toString(),
+            style = axisConfig.axisLabelTextStyle
+        )
     }
 
     val yAxisWidthPx =
@@ -423,12 +410,20 @@ fun BarChart(
         remember(maxBarValue, axisConfig.yAxisSteps, axisConfig.axisLabelTextStyle) {
             (0..axisConfig.yAxisSteps).associateWith { i ->
                 val stepValue = (maxBarValue / axisConfig.yAxisSteps) * i
-                textMeasurer.measure(stepValue.toInt().toString(), axisConfig.axisLabelTextStyle)
+                textMeasurer.measure(
+                    text = stepValue.toInt().toString(),
+                    style = axisConfig.axisLabelTextStyle
+                )
             }
         }
 
     val xLabelLayouts = remember(entries, style.labelTextStyle) {
-        entries.associate { it.id to textMeasurer.measure(it.xLabel, style.labelTextStyle) }
+        entries.associate {
+            it.id to textMeasurer.measure(
+                text = it.xLabel,
+                style = style.labelTextStyle
+            )
+        }
     }
 
     val valueTextCache = remember(style.valueTextStyle) { mutableMapOf<Int, TextLayoutResult>() }
@@ -500,14 +495,22 @@ fun BarChart(
             .semantics(mergeDescendants = true) {
                 contentDescription = chartDescription
             }
-            .pointerInput(entries, yAxisWidthPx, style.barSpacingFactor, isRtl, orientation, horizontalCatLabelSpacePx) {
+            .pointerInput(
+                entries,
+                yAxisWidthPx,
+                style.barSpacingFactor,
+                isRtl,
+                orientation,
+                horizontalCatLabelSpacePx
+            ) {
                 fun processTouch(touchPos: Offset, isInitialDown: Boolean) {
                     val canvasWidth = size.width.toFloat()
                     val canvasHeight = size.height.toFloat()
 
                     if (isHorizontal) {
                         val hChartLeft = if (isRtl) topSpacePx else horizontalCatLabelSpacePx
-                        val hChartRight = if (isRtl) canvasWidth - horizontalCatLabelSpacePx else canvasWidth - topSpacePx
+                        val hChartRight =
+                            if (isRtl) canvasWidth - horizontalCatLabelSpacePx else canvasWidth - topSpacePx
                         val hChartTop = horizontalTopPadPx
                         val hChartBottom = canvasHeight - bottomSpacePx
                         val hChartWidth = hChartRight - hChartLeft
@@ -521,7 +524,8 @@ fun BarChart(
                         var foundEntry: BarEntry? = null
                         for (i in entries.indices) {
                             val yOff = hChartTop + barGap + i * (barThickness + barGap)
-                            val animVal = animationEngine.heightAnimatables[entries[i].id]?.value ?: 0f
+                            val animVal =
+                                animationEngine.heightAnimatables[entries[i].id]?.value ?: 0f
                             val barLen = (animVal / maxBarValue) * hChartWidth
                             val xOff = if (isRtl) hChartRight - barLen else hChartLeft
 
@@ -616,8 +620,8 @@ fun BarChart(
                     if (axisConfig.showGridLines) {
                         drawLine(
                             color = axisConfig.axisColor,
-                            start = Offset(gridX, hChartTop),
-                            end = Offset(gridX, hChartBottom),
+                            start = Offset(x = gridX, y = hChartTop),
+                            end = Offset(x = gridX, y = hChartBottom),
                             strokeWidth = 1.dp.toPx(),
                             pathEffect = axisConfig.dashEffect
                         )
@@ -640,8 +644,8 @@ fun BarChart(
             val zeroX = if (isRtl) hChartRight else hChartLeft
             drawLine(
                 color = axisConfig.axisColor,
-                start = Offset(zeroX, hChartTop),
-                end = Offset(zeroX, hChartBottom),
+                start = Offset(x = zeroX, y = hChartTop),
+                end = Offset(x = zeroX, y = hChartBottom),
                 strokeWidth = 2.dp.toPx()
             )
 
@@ -660,7 +664,7 @@ fun BarChart(
 
                 if (barLen > 0f) {
                     barPath.rewind()
-                    val cr = CornerRadius(cornerRadiusPx, cornerRadiusPx)
+                    val cr = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
                     barPath.addRoundRect(
                         RoundRect(
                             left = xOff,
@@ -681,7 +685,11 @@ fun BarChart(
                     val brush = if (stops != null) {
                         Brush.horizontalGradient(*stops, startX = brushStart, endX = brushEnd)
                     } else {
-                        Brush.horizontalGradient(colors, startX = brushStart, endX = brushEnd)
+                        Brush.horizontalGradient(
+                            colors = colors,
+                            startX = brushStart,
+                            endX = brushEnd
+                        )
                     }
 
                     drawPath(path = barPath, brush = brush, alpha = selAlpha)
@@ -692,7 +700,10 @@ fun BarChart(
                     else hChartLeft - layout.size.width - 8.dp.toPx()
                     drawText(
                         textLayoutResult = layout,
-                        topLeft = Offset(lx, yOff + (barThickness - layout.size.height) / 2),
+                        topLeft = Offset(
+                            x = lx,
+                            y = yOff + (barThickness - layout.size.height) / 2
+                        ),
                         alpha = selAlpha
                     )
                 }
@@ -700,14 +711,14 @@ fun BarChart(
                 if (style.showFloatingValues && animVal > 1f && selectedEntry == null) {
                     val vi = animVal.toInt()
                     val vl = valueTextCache.getOrPut(vi) {
-                        textMeasurer.measure(vi.toString(), centeredValueTextStyle)
+                        textMeasurer.measure(text = vi.toString(), style = centeredValueTextStyle)
                     }
                     val prog = if (entry.y > 0f) (animVal / entry.y).coerceIn(0f, 1f) else 0f
                     val vx = if (isRtl) xOff - vl.size.width - 6.dp.toPx()
                     else xOff + barLen + 6.dp.toPx()
                     drawText(
                         textLayoutResult = vl,
-                        topLeft = Offset(vx, yOff + (barThickness - vl.size.height) / 2),
+                        topLeft = Offset(x = vx, y = yOff + (barThickness - vl.size.height) / 2),
                         alpha = prog
                     )
                 }
@@ -724,8 +735,8 @@ fun BarChart(
                     with(selectionRenderer) {
                         drawSelection(
                             entry = entry,
-                            barTopLeft = Offset(xOff, yOff),
-                            barSize = Size(targetLen, barThickness),
+                            barTopLeft = Offset(x = xOff, y = yOff),
+                            barSize = Size(width = targetLen, height = barThickness),
                             orientation = orientation,
                             textMeasurer = textMeasurer,
                             tooltipCache = selectionCache
@@ -805,8 +816,8 @@ fun BarChart(
                         top = yOffset,
                         right = xOffset + barWidth,
                         bottom = yOffset + targetHeight,
-                        topLeftCornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
-                        topRightCornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                        topLeftCornerRadius = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx),
+                        topRightCornerRadius = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx),
                         bottomLeftCornerRadius = CornerRadius.Zero,
                         bottomRightCornerRadius = CornerRadius.Zero
                     )
@@ -830,7 +841,7 @@ fun BarChart(
             if (style.showFloatingValues && currentAnimatedValue > 1f && selectedEntry == null) {
                 val valueInt = currentAnimatedValue.toInt()
                 val valueLayout = valueTextCache.getOrPut(valueInt) {
-                    textMeasurer.measure(valueInt.toString(), centeredValueTextStyle)
+                    textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
                 }
                 val animationProgress =
                     if (entry.y > 0f) (currentAnimatedValue / entry.y).coerceIn(0f, 1f) else 0f
@@ -868,8 +879,8 @@ fun BarChart(
                 with(selectionRenderer) {
                     drawSelection(
                         entry = entry,
-                        barTopLeft = Offset(xOffset, yOffset),
-                        barSize = Size(barWidth, targetHeight),
+                        barTopLeft = Offset(x = xOffset, y = yOffset),
+                        barSize = Size(width = barWidth, height = targetHeight),
                         orientation = orientation,
                         textMeasurer = textMeasurer,
                         tooltipCache = selectionCache

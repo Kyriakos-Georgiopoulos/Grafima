@@ -21,28 +21,15 @@ import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -63,18 +50,15 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
-import kotlin.random.Random
 
 // ==========================================
 // 1. DATA MODELS & CONFIG
@@ -384,7 +368,14 @@ fun GaugeChart(
     // ── Needle animation ──
     val targetAngle =
         remember(value, minValue, maxValue, style.startAngle, style.sweepAngle, isRtl) {
-            valueToAngle(value, minValue, maxValue, style.startAngle, style.sweepAngle, isRtl)
+            valueToAngle(
+                value = value,
+                minValue = minValue,
+                maxValue = maxValue,
+                startAngle = style.startAngle,
+                sweepAngle = style.sweepAngle,
+                isRtl = isRtl
+            )
         }
     val needleAnimatable = remember { Animatable(style.startAngle) }
     LaunchedEffect(targetAngle) {
@@ -451,7 +442,11 @@ fun GaugeChart(
     // ── Pre-computed gradient stops (zero allocation in draw for the stops) ──
     val globalGradientStops =
         remember(style.arcGradientColors, style.startAngle, style.sweepAngle) {
-            computeArcGradientStops(style.arcGradientColors, style.startAngle, style.sweepAngle)
+            computeArcGradientStops(
+                colors = style.arcGradientColors,
+                startAngle = style.startAngle,
+                sweepAngle = style.sweepAngle
+            )
         }
 
     val zoneGradientStops: Map<String, Array<Pair<Float, Color>>> = remember(
@@ -465,8 +460,11 @@ fun GaugeChart(
             val (startF, endF) = if (isRtl) (1f - ef) to (1f - sf) else sf to ef
             val zoneStartAngle = style.startAngle + style.sweepAngle * startF
             val zoneSweep = style.sweepAngle * (endF - startF)
-            zone.id to (computeArcGradientStops(zone.gradientColors, zoneStartAngle, zoneSweep)
-                ?: emptyArray())
+            zone.id to (computeArcGradientStops(
+                colors = zone.gradientColors,
+                startAngle = zoneStartAngle,
+                sweepAngle = zoneSweep
+            ) ?: emptyArray())
         }.filterValues { it.isNotEmpty() }
     }
 
@@ -496,18 +494,24 @@ fun GaugeChart(
         ) {
             val cx = size.width / 2f
             val cy = size.height / 2f
-            val center = Offset(cx, cy)
+            val center = Offset(x = cx, y = cy)
 
             val tickLabelSpace = if (tickConfig.showLabels) {
                 tickConfig.labelPadding.toPx() + maxTickLabelDim / 2f
             } else 0f
 
             val gaugeRadius =
-                resolveGaugeRadius(style, size.width, size.height, tickLabelSpace, density)
+                resolveGaugeRadius(
+                    style = style,
+                    canvasWidth = size.width,
+                    canvasHeight = size.height,
+                    tickLabelSpace = tickLabelSpace,
+                    density = density
+                )
             val arcWidthPx = style.arcWidth.toPx()
             val arcCenterRadius = gaugeRadius - arcWidthPx / 2f
-            val arcRect = Size(arcCenterRadius * 2, arcCenterRadius * 2)
-            val arcTopLeft = Offset(cx - arcCenterRadius, cy - arcCenterRadius)
+            val arcRect = Size(width = arcCenterRadius * 2, height = arcCenterRadius * 2)
+            val arcTopLeft = Offset(x = cx - arcCenterRadius, y = cy - arcCenterRadius)
 
             // ── 1. Background track ──
             drawArc(
@@ -587,8 +591,8 @@ fun GaugeChart(
                     startAngle = style.startAngle,
                     sweepAngle = valueSweep,
                     useCenter = false,
-                    topLeft = Offset(cx - valueArcCR, cy - valueArcCR),
-                    size = Size(valueArcCR * 2, valueArcCR * 2),
+                    topLeft = Offset(x = cx - valueArcCR, y = cy - valueArcCR),
+                    size = Size(width = valueArcCR * 2, height = valueArcCR * 2),
                     style = Stroke(width = valueArcW, cap = StrokeCap.Round)
                 )
             }
@@ -605,12 +609,12 @@ fun GaugeChart(
                 drawLine(
                     color = tickConfig.minorTickColor,
                     start = Offset(
-                        cx + gaugeRadius * tickTrig.minorCos[i],
-                        cy + gaugeRadius * tickTrig.minorSin[i]
+                        x = cx + gaugeRadius * tickTrig.minorCos[i],
+                        y = cy + gaugeRadius * tickTrig.minorSin[i]
                     ),
                     end = Offset(
-                        cx + minorInnerR * tickTrig.minorCos[i],
-                        cy + minorInnerR * tickTrig.minorSin[i]
+                        x = cx + minorInnerR * tickTrig.minorCos[i],
+                        y = cy + minorInnerR * tickTrig.minorSin[i]
                     ),
                     strokeWidth = minorTickWidthPx
                 )
@@ -619,12 +623,12 @@ fun GaugeChart(
                 drawLine(
                     color = tickConfig.majorTickColor,
                     start = Offset(
-                        cx + gaugeRadius * tickTrig.majorCos[i],
-                        cy + gaugeRadius * tickTrig.majorSin[i]
+                        x = cx + gaugeRadius * tickTrig.majorCos[i],
+                        y = cy + gaugeRadius * tickTrig.majorSin[i]
                     ),
                     end = Offset(
-                        cx + majorInnerR * tickTrig.majorCos[i],
-                        cy + majorInnerR * tickTrig.majorSin[i]
+                        x = cx + majorInnerR * tickTrig.majorCos[i],
+                        y = cy + majorInnerR * tickTrig.majorSin[i]
                     ),
                     strokeWidth = majorTickWidthPx
                 )
@@ -672,10 +676,10 @@ fun GaugeChart(
                     val tailY = cy - tailLength * sinN
                     needlePath.apply {
                         rewind()
-                        moveTo(tipX, tipY)
-                        lineTo(cx + perpX, cy + perpY)
-                        lineTo(tailX, tailY)
-                        lineTo(cx - perpX, cy - perpY)
+                        moveTo(x = tipX, y = tipY)
+                        lineTo(x = cx + perpX, y = cy + perpY)
+                        lineTo(x = tailX, y = tailY)
+                        lineTo(x = cx - perpX, y = cy - perpY)
                         close()
                     }
                     drawPath(path = needlePath, color = Color.Black.copy(alpha = 0.08f))
@@ -685,8 +689,8 @@ fun GaugeChart(
                 GaugeNeedleStyle.Line -> {
                     drawLine(
                         color = needleConfig.color,
-                        start = Offset(cx - tailLength * cosN, cy - tailLength * sinN),
-                        end = Offset(tipX, tipY),
+                        start = Offset(x = cx - tailLength * cosN, y = cy - tailLength * sinN),
+                        end = Offset(x = tipX, y = tipY),
                         strokeWidth = needleWidthPx,
                         cap = StrokeCap.Round
                     )

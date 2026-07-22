@@ -15,6 +15,7 @@
  */
 
 package io.grafima.charts
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
@@ -24,20 +25,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,11 +36,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -73,7 +61,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -87,7 +74,6 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
-import kotlin.random.Random
 
 // ==========================================
 // 1. DATA MODELS & CONFIG
@@ -352,9 +338,9 @@ class TooltipPieSelectionRenderer(
 
         drawRoundRect(
             color = backgroundColor,
-            topLeft = Offset(safeLeft, safeTop),
-            size = Size(tooltipWidth, tooltipHeight),
-            cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx())
+            topLeft = Offset(x = safeLeft, y = safeTop),
+            size = Size(width = tooltipWidth, height = tooltipHeight),
+            cornerRadius = CornerRadius(x = cornerRadius.toPx(), y = cornerRadius.toPx())
         )
         drawText(
             textLayoutResult = tooltipLayout,
@@ -457,9 +443,9 @@ class ElbowCalloutPieSelectionRenderer(
 
         reusablePath.apply {
             reset()
-            moveTo(dotAnchorPoint.x, dotAnchorPoint.y)
-            lineTo(kneeX, kneeY)
-            lineTo(endX, kneeY)
+            moveTo(x = dotAnchorPoint.x, y = dotAnchorPoint.y)
+            lineTo(x = kneeX, y = kneeY)
+            lineTo(x = endX, y = kneeY)
         }
 
         drawPath(path = reusablePath, color = sliceColor, style = Stroke(width = lineWidth.toPx()))
@@ -467,21 +453,24 @@ class ElbowCalloutPieSelectionRenderer(
 
         drawRoundRect(
             color = pillBackgroundColor,
-            topLeft = Offset(safeBoxLeft, safeBoxTop),
-            size = Size(bgWidth, bgHeight),
-            cornerRadius = CornerRadius(pillRadius.toPx(), pillRadius.toPx())
+            topLeft = Offset(x = safeBoxLeft, y = safeBoxTop),
+            size = Size(width = bgWidth, height = bgHeight),
+            cornerRadius = CornerRadius(x = pillRadius.toPx(), y = pillRadius.toPx())
         )
         drawRoundRect(
             color = sliceColor,
-            topLeft = Offset(safeBoxLeft, safeBoxTop),
-            size = Size(bgWidth, bgHeight),
-            cornerRadius = CornerRadius(pillRadius.toPx(), pillRadius.toPx()),
+            topLeft = Offset(x = safeBoxLeft, y = safeBoxTop),
+            size = Size(width = bgWidth, height = bgHeight),
+            cornerRadius = CornerRadius(x = pillRadius.toPx(), y = pillRadius.toPx()),
             style = Stroke(width = lineWidth.toPx())
         )
         drawText(
             textLayoutResult = layout,
             color = textStyle.color,
-            topLeft = Offset(safeBoxLeft + pillPaddingX.toPx(), safeBoxTop + pillPaddingY.toPx())
+            topLeft = Offset(
+                x = safeBoxLeft + pillPaddingX.toPx(),
+                y = safeBoxTop + pillPaddingY.toPx()
+            )
         )
     }
 }
@@ -506,18 +495,20 @@ private fun resolveBrush(
         val dy = sin(rad).toFloat() * radius
         Brush.linearGradient(
             colors = sliceBrush.colors,
-            start = Offset(cx - dx, cy - dy),
-            end = Offset(cx + dx, cy + dy)
+            start = Offset(x = cx - dx, y = cy - dy),
+            end = Offset(x = cx + dx, y = cy + dy)
         )
     }
+
     is SliceBrush.Radial -> Brush.radialGradient(
         colors = sliceBrush.colors,
-        center = Offset(cx, cy),
+        center = Offset(x = cx, y = cy),
         radius = radius
     )
+
     is SliceBrush.Sweep -> Brush.sweepGradient(
         colors = sliceBrush.colors,
-        center = Offset(cx, cy)
+        center = Offset(x = cx, y = cy)
     )
 }
 
@@ -663,7 +654,8 @@ class PieChartAnimationEngine {
 
             val isSelected = selectedEntry?.id == entry.id
             val targetScale = if (isSelected) style.selectedScale else 1f
-            val targetAlpha = if (selectedEntry != null && !isSelected) style.unselectedAlpha else 1f
+            val targetAlpha =
+                if (selectedEntry != null && !isSelected) style.unselectedAlpha else 1f
 
             if (scaleAnim.targetValue != targetScale) {
                 scope.launch { scaleAnim.animateTo(targetScale, config.selectionSpec) }
@@ -800,7 +792,12 @@ fun PieChart(
 
             ents.forEach { entry ->
                 val v = animationEngine.valueAnimatables[entry.id]?.value ?: 0f
-                val sweep = computeNormalizedSweep(v, total, minAngle, normalizer)
+                val sweep = computeNormalizedSweep(
+                    animatedValue = v,
+                    totalValue = total,
+                    minSliceAngle = minAngle,
+                    normalizer = normalizer
+                )
 
                 val normStart = (logicalStart - startAngle) % 360f
                 val normEnd = normStart + sweep
@@ -872,13 +869,17 @@ fun PieChart(
                         val cx = size.width.toFloat() / 2f
                         val cy = size.height.toFloat() / 2f
 
-                        val effectiveX = if (activeIsRtl) size.width.toFloat() - touchPos.x else touchPos.x
+                        val effectiveX =
+                            if (activeIsRtl) size.width.toFloat() - touchPos.x else touchPos.x
                         val dx = effectiveX - cx
                         val dy = touchPos.y - cy
 
                         val touchRadius = hypot(dx.toDouble(), dy.toDouble()).toFloat()
                         val maxRadius = resolveOuterRadius(
-                            activeStyle, size.width.toFloat(), size.height.toFloat(), activeDensity
+                            style = activeStyle,
+                            canvasWidth = size.width.toFloat(),
+                            canvasHeight = size.height.toFloat(),
+                            density = activeDensity
                         )
                         val minRadius = maxRadius * activeStyle.donutRatio.coerceIn(0f, 0.9f)
 
@@ -913,7 +914,12 @@ fun PieChart(
             // ── Pure draw lambda: no state mutations ──
             if (entries.isEmpty() || targetTotalValue <= 0f) return@Canvas
 
-            val canvasRadius = resolveOuterRadius(style, size.width, size.height, density)
+            val canvasRadius = resolveOuterRadius(
+                style = style,
+                canvasWidth = size.width,
+                canvasHeight = size.height,
+                density = density
+            )
             val cx = size.width / 2f
             val cy = size.height / 2f
 
@@ -944,7 +950,10 @@ fun PieChart(
             entries.forEach { entry ->
                 val animatedValue = animationEngine.valueAnimatables[entry.id]?.value ?: 0f
                 val sweepAngle = computeNormalizedSweep(
-                    animatedValue, targetTotalValue, minAngle, normalizer
+                    animatedValue = animatedValue,
+                    totalValue = targetTotalValue,
+                    minSliceAngle = minAngle,
+                    normalizer = normalizer
                 )
 
                 val currentScale = animationEngine.scaleAnimatables[entry.id]?.value ?: 1f
@@ -970,8 +979,8 @@ fun PieChart(
                         startAngle = drawnStartAngle,
                         sweepAngle = finalSweepAngle * directionMultiplier,
                         useCenter = false,
-                        topLeft = Offset(cx - scaledDrawRadius, cy - scaledDrawRadius),
-                        size = Size(scaledDrawRadius * 2, scaledDrawRadius * 2),
+                        topLeft = Offset(x = cx - scaledDrawRadius, y = cy - scaledDrawRadius),
+                        size = Size(width = scaledDrawRadius * 2, height = scaledDrawRadius * 2),
                         style = Stroke(width = scaledStrokeWidth),
                         alpha = currentAlpha
                     )
@@ -1002,9 +1011,9 @@ fun PieChart(
                     with(selectionRenderer) {
                         drawSelection(
                             entry = entry,
-                            pieCenter = Offset(cx, cy),
+                            pieCenter = Offset(x = cx, y = cy),
                             pieRadius = canvasRadius,
-                            sliceCentroid = Offset(centroidX, centroidY),
+                            sliceCentroid = Offset(x = centroidX, y = centroidY),
                             midAngleDegrees = midAngle,
                             textMeasurer = textMeasurer,
                             tooltipCache = selectionCache,

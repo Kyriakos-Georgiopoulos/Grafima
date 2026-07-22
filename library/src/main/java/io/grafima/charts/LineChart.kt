@@ -24,32 +24,17 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -72,7 +57,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
@@ -453,7 +437,7 @@ private fun Path.buildArea(
     chartBottom: Float, curveType: LineCurveType
 ) {
     if (n < 1) return
-    buildCurve(xs, ys, tangents, n, curveType)
+    buildCurve(xs = xs, ys = ys, tangents = tangents, n = n, curveType = curveType)
     lineTo(xs[n - 1], chartBottom)
     lineTo(xs[0], chartBottom)
     close()
@@ -610,7 +594,11 @@ fun LineChart(
         if (axisConfig.includeZeroInYRange) min(0f, raw) else raw
     }
     val yTickValues = remember(yDataMin, yDataMax, axisConfig.yTickCount) {
-        computeNiceAxisTicks(yDataMin, yDataMax, axisConfig.yTickCount)
+        computeNiceAxisTicks(
+            dataMin = yDataMin,
+            dataMax = yDataMax,
+            tickCount = axisConfig.yTickCount
+        )
     }
     val yMin = yTickValues.firstOrNull() ?: 0f
     val yMax = yTickValues.lastOrNull() ?: 1f
@@ -625,7 +613,11 @@ fun LineChart(
     }
     val yLabelLayouts = remember(yTickValues, labelStyle, axisConfig.yLabelFormatter) {
         yTickValues.map { v ->
-            textMeasurer.measure(axisConfig.yLabelFormatter(v), style = labelStyle, maxLines = 1)
+            textMeasurer.measure(
+                text = axisConfig.yLabelFormatter(v),
+                style = labelStyle,
+                maxLines = 1
+            )
         }
     }
     val maxYLabelWidth = remember(yLabelLayouts) {
@@ -647,7 +639,7 @@ fun LineChart(
         if (!axisConfig.showXLabels) emptyList()
         else firstPoints.filterIndexed { i, _ -> i % xLabelInterval == 0 }.map { p ->
             textMeasurer.measure(
-                p.label.ifEmpty { axisConfig.xLabelFormatter(p.x) },
+                text = p.label.ifEmpty { axisConfig.xLabelFormatter(p.x) },
                 style = labelStyle.copy(textAlign = TextAlign.Center),
                 maxLines = 1
             )
@@ -791,9 +783,9 @@ fun LineChart(
             yTickValues.forEach { v ->
                 val y = mapY(v)
                 drawLine(
-                    axisConfig.gridColor,
-                    Offset(chartLeft, y),
-                    Offset(chartRight, y),
+                    color = axisConfig.gridColor,
+                    start = Offset(x = chartLeft, y = y),
+                    end = Offset(x = chartRight, y = y),
                     strokeWidth = gridPx,
                     pathEffect = dashEffect
                 )
@@ -804,9 +796,9 @@ fun LineChart(
             firstPoints.forEach { p ->
                 val x = mapX(p.x)
                 drawLine(
-                    axisConfig.gridColor,
-                    Offset(x, chartTop),
-                    Offset(x, chartBottom),
+                    color = axisConfig.gridColor,
+                    start = Offset(x = x, y = chartTop),
+                    end = Offset(x = x, y = chartBottom),
                     strokeWidth = gridPx,
                     pathEffect = dashEffect
                 )
@@ -816,16 +808,16 @@ fun LineChart(
         // ── 2. Axes ──
         val axisPx = axisConfig.axisStrokeWidth.toPx()
         drawLine(
-            axisConfig.axisColor,
-            Offset(yAxisX, chartTop),
-            Offset(yAxisX, chartBottom),
-            axisPx
+            color = axisConfig.axisColor,
+            start = Offset(x = yAxisX, y = chartTop),
+            end = Offset(x = yAxisX, y = chartBottom),
+            strokeWidth = axisPx
         )
         drawLine(
-            axisConfig.axisColor,
-            Offset(chartLeft, chartBottom),
-            Offset(chartRight, chartBottom),
-            axisPx
+            color = axisConfig.axisColor,
+            start = Offset(x = chartLeft, y = chartBottom),
+            end = Offset(x = chartRight, y = chartBottom),
+            strokeWidth = axisPx
         )
 
         // ── 3. Y labels (RTL: drawn on the right side) ──
@@ -836,7 +828,10 @@ fun LineChart(
                     val y = mapY(v)
                     val lx =
                         if (isRtl) chartRight + labelGapPx else chartLeft - labelGapPx - layout.size.width
-                    drawText(layout, topLeft = Offset(lx, y - layout.size.height / 2f))
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(x = lx, y = y - layout.size.height / 2f)
+                    )
                 }
             }
         }
@@ -858,51 +853,68 @@ fun LineChart(
                 ys[i] = mapY(animY)
             }
             if (style.curveType == LineCurveType.MonotoneCubic && n >= 2) {
-                computeMonotoneTangents(xs, ys, tans, delts, n)
+                computeMonotoneTangents(xs = xs, ys = ys, tangents = tans, deltas = delts, n = n)
             }
 
             // Area fill (one Brush creation per gradient series per frame, acceptable)
             if (s.fillAlpha > 0f || s.fillGradientColors.isNotEmpty()) {
                 areaPath.reset()
-                areaPath.buildArea(xs, ys, tans, n, chartBottom, style.curveType)
+                areaPath.buildArea(
+                    xs = xs,
+                    ys = ys,
+                    tangents = tans,
+                    n = n,
+                    chartBottom = chartBottom,
+                    curveType = style.curveType
+                )
                 val brush = if (s.fillGradientColors.size >= 2) {
                     Brush.verticalGradient(
-                        s.fillGradientColors,
+                        colors = s.fillGradientColors,
                         startY = chartTop,
                         endY = chartBottom
                     )
                 } else {
                     Brush.verticalGradient(
-                        listOf(
+                        colors = listOf(
                             s.color.copy(alpha = s.fillAlpha),
                             Color.Transparent
                         ), startY = chartTop, endY = chartBottom
                     )
                 }
-                drawPath(areaPath, brush)
+                drawPath(path = areaPath, brush = brush)
             }
 
             // Line stroke: gradient or solid
             linePath.reset()
-            linePath.buildCurve(xs, ys, tans, n, style.curveType)
+            linePath.buildCurve(
+                xs = xs,
+                ys = ys,
+                tangents = tans,
+                n = n,
+                curveType = style.curveType
+            )
             val strokeStyle = Stroke(width = s.strokeWidth.toPx(), cap = StrokeCap.Round)
             if (s.strokeGradientColors.size >= 2) {
                 drawPath(
-                    linePath,
-                    Brush.horizontalGradient(
-                        s.strokeGradientColors,
+                    path = linePath,
+                    brush = Brush.horizontalGradient(
+                        colors = s.strokeGradientColors,
                         startX = xs[0],
                         endX = xs[n - 1]
                     ),
                     style = strokeStyle
                 )
             } else {
-                drawPath(linePath, s.color, style = strokeStyle)
+                drawPath(path = linePath, color = s.color, style = strokeStyle)
             }
 
             if (style.showDots) {
                 val dotR = style.dotRadius.toPx()
-                for (i in 0 until n) drawCircle(s.color, dotR, Offset(xs[i], ys[i]))
+                for (i in 0 until n) drawCircle(
+                    color = s.color,
+                    radius = dotR,
+                    center = Offset(x = xs[i], y = ys[i])
+                )
             }
         }
 
@@ -913,10 +925,10 @@ fun LineChart(
                 if (i % xLabelInterval == 0 && layoutIdx < xLabelLayouts.size) {
                     val layout = xLabelLayouts[layoutIdx++]
                     drawText(
-                        layout,
+                        textLayoutResult = layout,
                         topLeft = Offset(
-                            mapX(p.x) - layout.size.width / 2f,
-                            chartBottom + labelGapPx
+                            x = mapX(p.x) - layout.size.width / 2f,
+                            y = chartBottom + labelGapPx
                         )
                     )
                 }
@@ -930,10 +942,10 @@ fun LineChart(
             val crossX = mapX(fp.points[idx].x)
 
             drawLine(
-                crosshairConfig.lineColor,
-                Offset(crossX, chartTop),
-                Offset(crossX, chartBottom),
-                crosshairConfig.lineWidth.toPx()
+                color = crosshairConfig.lineColor,
+                start = Offset(x = crossX, y = chartTop),
+                end = Offset(x = crossX, y = chartBottom),
+                strokeWidth = crosshairConfig.lineWidth.toPx()
             )
 
             val dotR = crosshairConfig.dotRadius.toPx()
@@ -943,8 +955,12 @@ fun LineChart(
                     val key = keyMatrix[s.id]?.getOrNull(idx) ?: return@forEach
                     val animY = animationEngine.yAnimatables[key]?.value ?: s.points[idx].y
                     val cy = mapY(animY)
-                    drawCircle(crosshairConfig.dotBorderColor, dotR + borderW, Offset(crossX, cy))
-                    drawCircle(s.color, dotR, Offset(crossX, cy))
+                    drawCircle(
+                        color = crosshairConfig.dotBorderColor,
+                        radius = dotR + borderW,
+                        center = Offset(x = crossX, y = cy)
+                    )
+                    drawCircle(color = s.color, radius = dotR, center = Offset(x = crossX, y = cy))
                 }
             }
 
@@ -960,7 +976,7 @@ fun LineChart(
                 val cacheKey = "${idx}_${tooltipText.hashCode()}"
                 val layout = tooltipCache.getOrPut(cacheKey) {
                     textMeasurer.measure(
-                        tooltipText,
+                        text = tooltipText,
                         style = tooltipStyle
                     )
                 }
@@ -980,12 +996,15 @@ fun LineChart(
                 val ty = chartTop + margin
 
                 drawRoundRect(
-                    crosshairConfig.tooltipBackground,
-                    Offset(tx, ty),
-                    Size(tw, th),
-                    CornerRadius(crosshairConfig.tooltipCornerRadius.toPx())
+                    color = crosshairConfig.tooltipBackground,
+                    topLeft = Offset(x = tx, y = ty),
+                    size = Size(width = tw, height = th),
+                    cornerRadius = CornerRadius(crosshairConfig.tooltipCornerRadius.toPx())
                 )
-                drawText(layout, topLeft = Offset(tx + padPx, ty + padPx))
+                drawText(
+                    textLayoutResult = layout,
+                    topLeft = Offset(x = tx + padPx, y = ty + padPx)
+                )
             }
         }
     }

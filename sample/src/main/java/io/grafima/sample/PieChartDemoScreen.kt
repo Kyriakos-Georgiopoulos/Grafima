@@ -1,18 +1,6 @@
 package io.grafima.sample
 
-import io.grafima.charts.*
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,54 +16,26 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.hypot
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sin
+import io.grafima.charts.ElbowCalloutPieSelectionRenderer
+import io.grafima.charts.PieChart
+import io.grafima.charts.PieChartStyle
+import io.grafima.charts.PieDataSet
+import io.grafima.charts.PieEntry
+import io.grafima.charts.SliceBrush
+import io.grafima.charts.TooltipPieSelectionRenderer
 import kotlin.random.Random
 
 // ==========================================
@@ -84,26 +44,29 @@ import kotlin.random.Random
 
 @Composable
 fun PieChartDemoScreen() {
-    val oceanBrush = SliceBrush.Linear(listOf(Color(0xFF00C9FF), Color(0xFF92FE9D)))
-    val emeraldBrush = SliceBrush.Radial(listOf(Color(0xFF11998E), Color(0xFF38EF7D)))
+    val oceanBrush = SliceBrush.Linear(colors = listOf(Color(0xFF00C9FF), Color(0xFF92FE9D)))
+    val emeraldBrush = SliceBrush.Radial(colors = listOf(Color(0xFF11998E), Color(0xFF38EF7D)))
     val sunsetBrush = SliceBrush.Linear(
         colors = listOf(Color(0xFFFF512F), Color(0xFFF09819), Color(0xFFFFB75E)),
         angleDegrees = 90f
     )
     val amethystBrush = SliceBrush.Sweep(
-        listOf(Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121))
+        colors = listOf(Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121))
     )
-    val royalBrush = SliceBrush.Linear(listOf(Color(0xFF536976), Color(0xFF292E49)), angleDegrees = 135f)
+    val royalBrush = SliceBrush.Linear(
+        colors = listOf(Color(0xFF536976), Color(0xFF292E49)),
+        angleDegrees = 135f
+    )
 
     var dataSet by remember {
         mutableStateOf(
             PieDataSet(
                 entries = listOf(
-                    PieEntry("A", "Product A", 300f, brush = oceanBrush),
-                    PieEntry("B", "Product B", 250f, brush = sunsetBrush),
-                    PieEntry("C", "Product C", 400f, brush = amethystBrush),
-                    PieEntry("D", "Product D", 150f, brush = emeraldBrush),
-                    PieEntry("E", "Product E", 200f, brush = royalBrush)
+                    PieEntry(id = "A", label = "Product A", value = 300f, brush = oceanBrush),
+                    PieEntry(id = "B", label = "Product B", value = 250f, brush = sunsetBrush),
+                    PieEntry(id = "C", label = "Product C", value = 400f, brush = amethystBrush),
+                    PieEntry(id = "D", label = "Product D", value = 150f, brush = emeraldBrush),
+                    PieEntry(id = "E", label = "Product E", value = 200f, brush = royalBrush)
                 ),
                 contentDescription = "Market Share Distribution"
             )

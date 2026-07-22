@@ -1,18 +1,6 @@
 package io.grafima.sample
 
-import io.grafima.charts.*
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,48 +15,26 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.ceil
+import io.grafima.charts.A11yConfig
+import io.grafima.charts.BarChart
+import io.grafima.charts.BarDataSet
+import io.grafima.charts.BarEntry
+import io.grafima.charts.BarOrientation
+import io.grafima.charts.TooltipSelectionRenderer
 import kotlin.random.Random
 
 // ==========================================
@@ -88,11 +54,16 @@ fun BarChartDemoScreen() {
         mutableStateOf(
             BarDataSet(
                 entries = listOf(
-                    BarEntry("JAN", "Jan", 45f, gradientColors = oceanGradient),
-                    BarEntry("FEB", "Feb", 80f, gradientColors = sunsetGradient),
-                    BarEntry("MAR", "Mar", 55f, gradientColors = amethystGradient),
-                    BarEntry("APR", "Apr", 95f, gradientColors = sunsetGradient),
-                    BarEntry("MAY", "May", 65f, gradientColors = emeraldGradient)
+                    BarEntry(id = "JAN", xLabel = "Jan", y = 45f, gradientColors = oceanGradient),
+                    BarEntry(id = "FEB", xLabel = "Feb", y = 80f, gradientColors = sunsetGradient),
+                    BarEntry(
+                        id = "MAR",
+                        xLabel = "Mar",
+                        y = 55f,
+                        gradientColors = amethystGradient
+                    ),
+                    BarEntry(id = "APR", xLabel = "Apr", y = 95f, gradientColors = sunsetGradient),
+                    BarEntry(id = "MAY", xLabel = "May", y = 65f, gradientColors = emeraldGradient)
                 ),
                 contentDescription = "Q1 and Q2 Revenue Trends"
             )
@@ -162,7 +133,11 @@ fun BarChartDemoScreen() {
                         contentColor = if (selected) Color.White else Color(0xFF6B7280)
                     ),
                     shape = RoundedCornerShape(10.dp),
-                    elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 0.dp,
+                        pressedElevation = 0.dp,
+                        focusedElevation = 0.dp
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .height(40.dp)

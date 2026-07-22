@@ -25,35 +25,17 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -73,7 +55,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
@@ -87,7 +68,6 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
-import kotlin.random.Random
 
 // ==========================================
 // 1. DATA MODELS & CONFIG
@@ -353,13 +333,13 @@ class TooltipRadarSelectionRenderer(
 
         drawRoundRect(
             color = backgroundColor,
-            topLeft = Offset(tooltipX, tooltipY),
-            size = Size(tooltipW, tooltipH),
+            topLeft = Offset(x = tooltipX, y = tooltipY),
+            size = Size(width = tooltipW, height = tooltipH),
             cornerRadius = CornerRadius(cornerRadius.toPx())
         )
         drawText(
             textLayoutResult = layout,
-            topLeft = Offset(tooltipX + padPx, tooltipY + padPx)
+            topLeft = Offset(x = tooltipX + padPx, y = tooltipY + padPx)
         )
     }
 }
@@ -576,7 +556,7 @@ fun RadarChart(
     // Only recomputes when axis count, start angle, or RTL changes.
     val trigCache = remember(axes.size, style.startAngle, isRtl) {
         val count = axes.size
-        if (count < 3) AxisTrigCache(FloatArray(0), FloatArray(0))
+        if (count < 3) AxisTrigCache(cosA = FloatArray(0), sinA = FloatArray(0))
         else {
             val step = 360f / count
             val dir = if (isRtl) -1f else 1f
@@ -696,8 +676,11 @@ fun RadarChart(
                     } else 0f
 
                     val chartRadius = resolveRadarRadius(
-                        activeStyle, size.width.toFloat(), size.height.toFloat(),
-                        labelSpace, activeDensity
+                        style = activeStyle,
+                        canvasWidth = size.width.toFloat(),
+                        canvasHeight = size.height.toFloat(),
+                        labelSpace = labelSpace,
+                        density = activeDensity
                     )
 
                     // Find closest vertex across all series
@@ -742,7 +725,7 @@ fun RadarChart(
 
         val cx = size.width / 2f
         val cy = size.height / 2f
-        val center = Offset(cx, cy)
+        val center = Offset(x = cx, y = cy)
 
         val cosA = trigCache.cosA
         val sinA = trigCache.sinA
@@ -753,7 +736,11 @@ fun RadarChart(
         } else 0f
 
         val chartRadius = resolveRadarRadius(
-            style, size.width, size.height, labelSpace, density
+            style = style,
+            canvasWidth = size.width,
+            canvasHeight = size.height,
+            labelSpace = labelSpace,
+            density = density
         )
 
         // ── 1. Grid rings ──
@@ -772,7 +759,11 @@ fun RadarChart(
                             if (i == 0) gridPath.moveTo(x, y) else gridPath.lineTo(x, y)
                         }
                         gridPath.close()
-                        drawPath(gridPath, style.gridColor, style = Stroke(gridStrokePx))
+                        drawPath(
+                            path = gridPath,
+                            color = style.gridColor,
+                            style = Stroke(gridStrokePx)
+                        )
                     }
 
                     RadarGridStyle.Circular -> {
@@ -793,7 +784,7 @@ fun RadarChart(
             drawLine(
                 color = style.axisColor,
                 start = center,
-                end = Offset(cx + chartRadius * cosA[i], cy + chartRadius * sinA[i]),
+                end = Offset(x = cx + chartRadius * cosA[i], y = cy + chartRadius * sinA[i]),
                 strokeWidth = axisStrokePx
             )
         }
@@ -840,8 +831,8 @@ fun RadarChart(
                         color = s.color.copy(alpha = seriesAlpha),
                         radius = dotRadiusPx,
                         center = Offset(
-                            cx + chartRadius * norm * cosA[i],
-                            cy + chartRadius * norm * sinA[i]
+                            x = cx + chartRadius * norm * cosA[i],
+                            y = cy + chartRadius * norm * sinA[i]
                         )
                     )
                 }
@@ -880,8 +871,8 @@ fun RadarChart(
                 val animVal = animationEngine.valueAnimatables[key]?.value ?: 0f
                 val norm = (animVal / axes[i].maxValue).coerceIn(0f, 1f)
                 Offset(
-                    cx + chartRadius * norm * cosA[i],
-                    cy + chartRadius * norm * sinA[i]
+                    x = cx + chartRadius * norm * cosA[i],
+                    y = cy + chartRadius * norm * sinA[i]
                 )
             }
 
