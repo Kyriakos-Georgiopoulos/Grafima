@@ -551,7 +551,7 @@ vanniktech-maven-publish = { id = "com.vanniktech.maven.publish", version.ref = 
 
 - [ ] **Step 2: Declare the plugin at the root (apply false)**
 
-In the root `build.gradle.kts`, extend the `plugins { }` block:
+NOTE: `alias(libs.plugins.android.library) apply false` was ALREADY added to the root `build.gradle.kts` during Task 3 (required for the library plugin classpath). Do NOT re-add it. Only add the Vanniktech line, so the block reads:
 
 ```kotlin
 plugins {
@@ -560,6 +560,15 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.vanniktech.maven.publish) apply false
 }
+```
+
+- [ ] **Step 2b: Drop the unused tooling deps from the library (pre-publish cleanup)**
+
+The library has no `@Preview` usage (verified), so these two lines in `library/build.gradle.kts` `dependencies { }` are dead weight — `ui-tooling-preview` would even leak into consumers' runtime classpath. Delete both:
+
+```kotlin
+debugImplementation(libs.androidx.compose.ui.tooling)
+implementation(libs.androidx.compose.ui.tooling.preview)
 ```
 
 - [ ] **Step 3: Apply and configure publishing in the library**

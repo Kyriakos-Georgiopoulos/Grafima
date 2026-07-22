@@ -1,10 +1,5 @@
 package io.grafima.sample
 
-import io.grafima.charts.BarChartDemoScreen
-import io.grafima.charts.GaugeChartDemoScreen
-import io.grafima.charts.LineChartDemoScreen
-import io.grafima.charts.PieChartDemoScreen
-import io.grafima.charts.RadarChartDemoScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
