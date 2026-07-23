@@ -192,7 +192,6 @@ class ElbowCalloutPieSelectionRenderer(
         val sinA = sin(angleRad).toFloat()
         val isRightSide = cosA >= 0
 
-        val dotAnchorPoint = sliceCentroid
         val dotRadius = 4.dp.toPx()
 
         val bgWidth = layout.size.width + (pillPaddingX.toPx() * 2)
@@ -214,16 +213,16 @@ class ElbowCalloutPieSelectionRenderer(
             val maxEndX = size.width - margin - bgWidth
             endX = min(endX, maxEndX)
             kneeX = min(kneeX, endX - stubPx)
-            if (kneeX < dotAnchorPoint.x) {
-                kneeX = dotAnchorPoint.x
+            if (kneeX < sliceCentroid.x) {
+                kneeX = sliceCentroid.x
                 endX = kneeX + stubPx
             }
         } else {
             val minEndX = margin + bgWidth
             endX = max(endX, minEndX)
             kneeX = max(kneeX, endX + stubPx)
-            if (kneeX > dotAnchorPoint.x) {
-                kneeX = dotAnchorPoint.x
+            if (kneeX > sliceCentroid.x) {
+                kneeX = sliceCentroid.x
                 endX = kneeX - stubPx
             }
         }
@@ -235,13 +234,13 @@ class ElbowCalloutPieSelectionRenderer(
 
         reusablePath.apply {
             reset()
-            moveTo(x = dotAnchorPoint.x, y = dotAnchorPoint.y)
+            moveTo(x = sliceCentroid.x, y = sliceCentroid.y)
             lineTo(x = kneeX, y = kneeY)
             lineTo(x = endX, y = kneeY)
         }
 
         drawPath(path = reusablePath, color = sliceColor, style = Stroke(width = lineWidth.toPx()))
-        drawCircle(color = sliceColor, radius = dotRadius, center = dotAnchorPoint)
+        drawCircle(color = sliceColor, radius = dotRadius, center = sliceCentroid)
 
         drawRoundRect(
             color = pillBackgroundColor,

@@ -127,11 +127,10 @@ class TooltipRadarSelectionRenderer(
 
         val isLtr = layoutDirection == LayoutDirection.Ltr
         val tooltipX = if (isLtr) size.width - tooltipW - margin else margin
-        val tooltipY = margin
 
         drawRoundRect(
             color = backgroundColor,
-            topLeft = Offset(x = tooltipX, y = tooltipY),
+            topLeft = Offset(x = tooltipX, y = margin),
             size = Size(width = tooltipW, height = tooltipH),
             cornerRadius = CornerRadius(cornerRadius.toPx())
         )

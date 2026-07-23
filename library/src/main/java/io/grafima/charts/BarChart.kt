@@ -211,10 +211,9 @@ fun BarChart(
                         val hChartLeft = if (isRtl) topSpacePx else horizontalCatLabelSpacePx
                         val hChartRight =
                             if (isRtl) canvasWidth - horizontalCatLabelSpacePx else canvasWidth - topSpacePx
-                        val hChartTop = horizontalTopPadPx
                         val hChartBottom = canvasHeight - bottomSpacePx
                         val hChartWidth = hChartRight - hChartLeft
-                        val hChartHeight = hChartBottom - hChartTop
+                        val hChartHeight = hChartBottom - horizontalTopPadPx
 
                         val safeSpacing = style.barSpacingFactor.coerceIn(0f, 0.9f)
                         val totalSpacing = hChartHeight * safeSpacing
@@ -223,7 +222,7 @@ fun BarChart(
 
                         var foundEntry: BarEntry? = null
                         for (i in entries.indices) {
-                            val yOff = hChartTop + barGap + i * (barThickness + barGap)
+                            val yOff = horizontalTopPadPx + barGap + i * (barThickness + barGap)
                             val animVal =
                                 animationEngine.heightAnimatables[entries[i].id]?.value ?: 0f
                             val barLen = (animVal / maxBarValue) * hChartWidth
@@ -302,14 +301,11 @@ fun BarChart(
         if (entries.isEmpty()) return@Canvas
 
         if (isHorizontal) {
-            val hCatSpace = horizontalCatLabelSpacePx
-            val hValEndSpace = topSpacePx
-            val hChartLeft = if (isRtl) hValEndSpace else hCatSpace
-            val hChartRight = if (isRtl) size.width - hCatSpace else size.width - hValEndSpace
-            val hChartTop = horizontalTopPadPx
+            val hChartLeft = if (isRtl) topSpacePx else horizontalCatLabelSpacePx
+            val hChartRight = if (isRtl) size.width - horizontalCatLabelSpacePx else size.width - topSpacePx
             val hChartBottom = size.height - bottomSpacePx
             val hChartWidth = hChartRight - hChartLeft
-            val hChartHeight = hChartBottom - hChartTop
+            val hChartHeight = hChartBottom - horizontalTopPadPx
 
             if (axisConfig.showYAxis || axisConfig.showGridLines) {
                 for (i in 0..axisConfig.yAxisSteps) {
@@ -320,7 +316,7 @@ fun BarChart(
                     if (axisConfig.showGridLines) {
                         drawLine(
                             color = axisConfig.axisColor,
-                            start = Offset(x = gridX, y = hChartTop),
+                            start = Offset(x = gridX, y = horizontalTopPadPx),
                             end = Offset(x = gridX, y = hChartBottom),
                             strokeWidth = 1.dp.toPx(),
                             pathEffect = axisConfig.dashEffect
@@ -344,7 +340,7 @@ fun BarChart(
             val zeroX = if (isRtl) hChartRight else hChartLeft
             drawLine(
                 color = axisConfig.axisColor,
-                start = Offset(x = zeroX, y = hChartTop),
+                start = Offset(x = zeroX, y = horizontalTopPadPx),
                 end = Offset(x = zeroX, y = hChartBottom),
                 strokeWidth = 2.dp.toPx()
             )
@@ -359,7 +355,7 @@ fun BarChart(
                 val selAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
                 val barLen = (animVal / maxBarValue) * hChartWidth
 
-                val yOff = hChartTop + barGap + index * (barThickness + barGap)
+                val yOff = horizontalTopPadPx + barGap + index * (barThickness + barGap)
                 val xOff = if (isRtl) hChartRight - barLen else hChartLeft
 
                 if (barLen > 0f) {
@@ -429,7 +425,7 @@ fun BarChart(
                 if (animVal > entry.y * 0.9f) {
                     val targetLen = (entry.y / maxBarValue) * hChartWidth
                     val idx = entryIndexMap[entry.id] ?: return@let
-                    val yOff = hChartTop + barGap + idx * (barThickness + barGap)
+                    val yOff = horizontalTopPadPx + barGap + idx * (barThickness + barGap)
                     val xOff = if (isRtl) hChartRight - targetLen else hChartLeft
 
                     with(selectionRenderer) {
