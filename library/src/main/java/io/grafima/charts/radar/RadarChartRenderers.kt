@@ -71,7 +71,6 @@ fun interface RadarChartSelectionRenderer {
 class TooltipRadarSelectionRenderer(
     val backgroundColor: Color = Color(0xFF111827),
     val textColor: Color = Color.White,
-    val titleFontSize: TextUnit = 13.sp,
     val bodyFontSize: TextUnit = 11.sp,
     val cornerRadius: Dp = 10.dp,
     val tooltipPadding: Dp = 12.dp,
