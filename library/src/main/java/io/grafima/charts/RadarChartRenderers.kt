@@ -136,7 +136,7 @@ class TooltipRadarSelectionRenderer(
         )
         drawText(
             textLayoutResult = layout,
-            topLeft = Offset(x = tooltipX + padPx, y = tooltipY + padPx)
+            topLeft = Offset(x = tooltipX + padPx, y = margin + padPx)
         )
     }
 }
