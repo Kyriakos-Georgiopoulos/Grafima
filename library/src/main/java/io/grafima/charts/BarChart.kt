@@ -152,7 +152,9 @@ fun BarChart(
     }
 
     val colorStopArrays = remember(entries) {
-        entries.associate { it.id to it.colorStops?.toTypedArray() }
+        entries.associate { entry ->
+            entry.id to entry.colorStops?.map { stop -> stop.position to stop.color }?.toTypedArray()
+        }
     }
 
     val entryIndexMap = remember(entries) {

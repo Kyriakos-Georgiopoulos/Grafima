@@ -33,13 +33,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
+ * A single gradient color stop: a [color] anchored at a fractional [position]
+ * along the gradient axis (0f = gradient start, 1f = gradient end).
+ *
+ * @property position Position along the gradient, from 0f to 1f.
+ * @property color The color at this position.
+ */
+@Immutable
+data class ColorStop(val position: Float, val color: Color)
+
+/**
  * A single bar in the chart.
  *
  * @property id Unique identifier — drives animation continuity across data updates.
  * @property xLabel Text shown on the X axis below the bar.
  * @property y The bar's numeric value. Must be positive.
  * @property gradientColors Vertical gradient colors. Falls back to [BarDataSet.defaultGradientColors] when null.
- * @property colorStops Explicit gradient stops (position 0f..1f to [Color]). Takes priority over [gradientColors].
+ * @property colorStops Explicit gradient [ColorStop]s. Takes priority over [gradientColors].
  */
 @Immutable
 data class BarEntry(
@@ -47,7 +57,7 @@ data class BarEntry(
     val xLabel: String,
     val y: Float,
     val gradientColors: List<Color>? = null,
-    val colorStops: List<Pair<Float, Color>>? = null
+    val colorStops: List<ColorStop>? = null
 )
 
 enum class BarOrientation { Vertical, Horizontal }
