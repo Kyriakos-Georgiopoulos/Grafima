@@ -32,9 +32,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-@Stable
-open class ChartEntry(open val id: String, open val xLabel: String, open val y: Float)
-
 /**
  * A single bar in the chart.
  *
@@ -46,12 +43,12 @@ open class ChartEntry(open val id: String, open val xLabel: String, open val y: 
  */
 @Immutable
 data class BarEntry(
-    override val id: String,
-    override val xLabel: String,
-    override val y: Float,
+    val id: String,
+    val xLabel: String,
+    val y: Float,
     val gradientColors: List<Color>? = null,
     val colorStops: List<Pair<Float, Color>>? = null
-) : ChartEntry(id, xLabel, y)
+)
 
 enum class BarOrientation { Vertical, Horizontal }
 
