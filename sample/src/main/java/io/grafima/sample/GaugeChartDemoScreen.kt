@@ -32,13 +32,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.grafima.charts.GaugeAnimationConfig
-import io.grafima.charts.GaugeChart
-import io.grafima.charts.GaugeChartStyle
-import io.grafima.charts.GaugeNeedleConfig
-import io.grafima.charts.GaugeNeedleStyle
-import io.grafima.charts.GaugeTickConfig
-import io.grafima.charts.GaugeZone
+import io.grafima.charts.gauge.GaugeAnimationConfig
+import io.grafima.charts.gauge.GaugeChart
+import io.grafima.charts.gauge.GaugeChartStyle
+import io.grafima.charts.gauge.GaugeNeedleConfig
+import io.grafima.charts.gauge.GaugeNeedleStyle
+import io.grafima.charts.gauge.GaugeTickConfig
+import io.grafima.charts.gauge.GaugeZone
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 

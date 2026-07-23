@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.grafima.charts
+package io.grafima.charts.radar
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D

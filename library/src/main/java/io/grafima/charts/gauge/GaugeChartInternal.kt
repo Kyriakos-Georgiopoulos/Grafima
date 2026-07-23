@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.grafima.charts
+package io.grafima.charts.gauge
 
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color

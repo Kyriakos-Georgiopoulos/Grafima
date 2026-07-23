@@ -32,13 +32,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.grafima.charts.LineAxisConfig
-import io.grafima.charts.LineChart
-import io.grafima.charts.LineChartStyle
-import io.grafima.charts.LineCurveType
-import io.grafima.charts.LineDataPoint
-import io.grafima.charts.LineDataSet
-import io.grafima.charts.LineSeries
+import io.grafima.charts.line.LineAxisConfig
+import io.grafima.charts.line.LineChart
+import io.grafima.charts.line.LineChartStyle
+import io.grafima.charts.line.LineCurveType
+import io.grafima.charts.line.LineDataPoint
+import io.grafima.charts.line.LineDataSet
+import io.grafima.charts.line.LineSeries
 
 // ==========================================
 // 5. DEMO

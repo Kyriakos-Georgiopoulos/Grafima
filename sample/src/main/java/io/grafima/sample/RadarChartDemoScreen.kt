@@ -32,12 +32,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.grafima.charts.RadarAxis
-import io.grafima.charts.RadarChart
-import io.grafima.charts.RadarChartStyle
-import io.grafima.charts.RadarDataSet
-import io.grafima.charts.RadarGridStyle
-import io.grafima.charts.RadarSeries
+import io.grafima.charts.radar.RadarAxis
+import io.grafima.charts.radar.RadarChart
+import io.grafima.charts.radar.RadarChartStyle
+import io.grafima.charts.radar.RadarDataSet
+import io.grafima.charts.radar.RadarGridStyle
+import io.grafima.charts.radar.RadarSeries
 import kotlin.random.Random
 
 // ==========================================

@@ -30,13 +30,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.grafima.charts.ElbowCalloutPieSelectionRenderer
-import io.grafima.charts.PieChart
-import io.grafima.charts.PieChartStyle
-import io.grafima.charts.PieDataSet
-import io.grafima.charts.PieEntry
-import io.grafima.charts.SliceBrush
-import io.grafima.charts.TooltipPieSelectionRenderer
+import io.grafima.charts.pie.ElbowCalloutPieSelectionRenderer
+import io.grafima.charts.pie.PieChart
+import io.grafima.charts.pie.PieChartStyle
+import io.grafima.charts.pie.PieDataSet
+import io.grafima.charts.pie.PieEntry
+import io.grafima.charts.pie.SliceBrush
+import io.grafima.charts.pie.TooltipPieSelectionRenderer
 import kotlin.random.Random
 
 // ==========================================

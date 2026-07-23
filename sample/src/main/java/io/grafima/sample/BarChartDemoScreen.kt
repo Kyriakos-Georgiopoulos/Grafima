@@ -30,12 +30,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.grafima.charts.A11yConfig
-import io.grafima.charts.BarChart
-import io.grafima.charts.BarDataSet
-import io.grafima.charts.BarEntry
-import io.grafima.charts.BarOrientation
-import io.grafima.charts.TooltipSelectionRenderer
+import io.grafima.charts.bar.A11yConfig
+import io.grafima.charts.bar.BarChart
+import io.grafima.charts.bar.BarDataSet
+import io.grafima.charts.bar.BarEntry
+import io.grafima.charts.bar.BarOrientation
+import io.grafima.charts.bar.TooltipSelectionRenderer
 import kotlin.random.Random
 
 // ==========================================
