@@ -33,8 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -82,6 +84,7 @@ import kotlin.math.sin
  *   your own [PieChartSelectionRenderer] implementation.
  * @param selectedEntry The currently selected slice, or null for no selection.
  *   Hoist this into the parent to control selection externally.
+ * @param selectionHaptic Haptic effect performed when a slice becomes selected. Pass null to disable.
  * @param onSliceSelected Called when the user taps a slice (with the entry) or taps
  *   outside / re-taps the same slice (with null).
  * @param centerContent Optional composable rendered at the center of a donut chart.
@@ -97,6 +100,7 @@ fun PieChart(
     a11yConfig: PieA11yConfig = PieA11yConfig(),
     selectionRenderer: PieChartSelectionRenderer = remember { TooltipPieSelectionRenderer() },
     selectedEntry: PieEntry? = null,
+    selectionHaptic: HapticFeedbackType? = HapticFeedbackType.LongPress,
     onSliceSelected: (PieEntry?) -> Unit = {},
     centerContent: @Composable (() -> Unit)? = null
 ) {
@@ -110,8 +114,11 @@ fun PieChart(
     // ── Stable state refs for long-lived lambdas (pointerInput, derivedStateOf) ──
     // These allow the pointer input coroutine and derived state lambda to always
     // read the latest values without restarting or re-creating.
+    val haptic = LocalHapticFeedback.current
+
     val currentSelectedEntry by rememberUpdatedState(selectedEntry)
     val currentOnSliceSelected by rememberUpdatedState(onSliceSelected)
+    val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
     val currentStyle by rememberUpdatedState(style)
     val currentIsRtl by rememberUpdatedState(isRtl)
     val currentDensity by rememberUpdatedState(density)
@@ -278,6 +285,7 @@ fun PieChart(
                             if (currentSelectedEntry?.id == tappedSlice.id) {
                                 currentOnSliceSelected(null)
                             } else {
+                                currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
                                 currentOnSliceSelected(tappedSlice)
                             }
                         } else {

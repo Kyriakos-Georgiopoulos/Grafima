@@ -32,8 +32,10 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -60,6 +62,7 @@ import kotlin.math.ceil
  * @param a11yConfig Accessibility label builders for TalkBack.
  * @param selectionRenderer Draws the selection indicator. Defaults to [TooltipSelectionRenderer].
  * @param selectedEntry The currently selected bar, or null for no selection.
+ * @param selectionHaptic Haptic effect performed when a bar becomes selected. Pass null to disable.
  * @param onBarSelected Called when the user taps a bar (entry) or deselects (null).
  */
 @Composable
@@ -73,6 +76,7 @@ fun BarChart(
     a11yConfig: A11yConfig = A11yConfig(),
     selectionRenderer: BarChartSelectionRenderer = remember { TooltipSelectionRenderer() },
     selectedEntry: BarEntry? = null,
+    selectionHaptic: HapticFeedbackType? = HapticFeedbackType.LongPress,
     onBarSelected: (BarEntry?) -> Unit = {}
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -84,8 +88,11 @@ fun BarChart(
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
+    val haptic = LocalHapticFeedback.current
+
     val currentSelectedEntry by rememberUpdatedState(selectedEntry)
     val currentOnBarSelected by rememberUpdatedState(onBarSelected)
+    val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
 
     val maxBarValue = remember(entries) {
         val rawMax = entries.maxOfOrNull { it.y }?.takeIf { it > 0f } ?: 1f
@@ -242,6 +249,7 @@ fun BarChart(
                             if (isInitialDown && currentSelectedEntry?.id == foundEntry.id) {
                                 currentOnBarSelected(null)
                             } else if (currentSelectedEntry?.id != foundEntry.id) {
+                                currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
                                 currentOnBarSelected(foundEntry)
                             }
                         }
@@ -281,6 +289,7 @@ fun BarChart(
                         if (isInitialDown && currentSelectedEntry?.id == foundEntry.id) {
                             currentOnBarSelected(null)
                         } else if (currentSelectedEntry?.id != foundEntry.id) {
+                            currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
                             currentOnBarSelected(foundEntry)
                         }
                     }

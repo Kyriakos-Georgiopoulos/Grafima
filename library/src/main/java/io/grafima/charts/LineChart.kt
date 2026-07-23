@@ -36,9 +36,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -99,6 +101,8 @@ import kotlin.math.min
  * @param a11yConfig Accessibility description builders for TalkBack.
  * @param selectedPointIndex Currently highlighted x-axis data point index, or null.
  *   Hoist this in the parent to control crosshair externally.
+ * @param selectionHaptic Haptic effect performed each time the crosshair snaps to a new
+ *   data point during a drag. Pass null to disable.
  * @param onPointSelected Called during touch/drag (with the nearest point index)
  *   and on finger release (with null). The crosshair renders at this index.
  */
@@ -112,6 +116,7 @@ fun LineChart(
     animationConfig: LineAnimationConfig = LineAnimationConfig(),
     a11yConfig: LineA11yConfig = LineA11yConfig(),
     selectedPointIndex: Int? = null,
+    selectionHaptic: HapticFeedbackType? = HapticFeedbackType.SegmentTick,
     onPointSelected: (Int?) -> Unit = {}
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -122,10 +127,13 @@ fun LineChart(
     val animationEngine = remember { LineChartAnimationEngine() }
 
     // ── Stable state refs for pointerInput(Unit) ──
+    val haptic = LocalHapticFeedback.current
+
     val currentSeries by rememberUpdatedState(series)
     val currentOnPointSelected by rememberUpdatedState(onPointSelected)
     val currentDensity by rememberUpdatedState(density)
     val currentIsRtl by rememberUpdatedState(isRtl)
+    val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
 
     // ── Data ranges (recomputed only on data change) ──
     val allPoints = remember(series) { series.flatMap { it.points } }
@@ -283,12 +291,19 @@ fun LineChart(
                         fp.indices.minByOrNull { abs(mapTouchX(fp[it].x) - touchX) } ?: 0
 
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    currentOnPointSelected(nearest(down.position.x))
+                    var lastHapticIndex = nearest(down.position.x)
+                    currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                    currentOnPointSelected(lastHapticIndex)
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)
                         val change = event.changes.firstOrNull() ?: break
                         if (!change.pressed) break
-                        currentOnPointSelected(nearest(change.position.x))
+                        val index = nearest(change.position.x)
+                        if (index != lastHapticIndex) {
+                            lastHapticIndex = index
+                            currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                        }
+                        currentOnPointSelected(index)
                         change.consume()
                     }
                     currentOnPointSelected(null)

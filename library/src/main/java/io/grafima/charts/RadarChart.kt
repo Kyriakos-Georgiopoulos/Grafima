@@ -30,8 +30,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -90,6 +92,7 @@ import kotlin.math.sin
  * @param a11yConfig Accessibility label builders.
  * @param selectionRenderer Strategy for drawing the selection indicator.
  * @param selectedSeries The currently selected series, or null for no selection.
+ * @param selectionHaptic Haptic effect performed when a series becomes selected. Pass null to disable.
  * @param onSeriesSelected Called when the user taps near a vertex (with the series)
  *   or taps outside / re-taps the same series (with null).
  */
@@ -102,6 +105,7 @@ fun RadarChart(
     a11yConfig: RadarA11yConfig = RadarA11yConfig(),
     selectionRenderer: RadarChartSelectionRenderer = remember { TooltipRadarSelectionRenderer() },
     selectedSeries: RadarSeries? = null,
+    selectionHaptic: HapticFeedbackType? = HapticFeedbackType.LongPress,
     onSeriesSelected: (RadarSeries?) -> Unit = {}
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -113,8 +117,11 @@ fun RadarChart(
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
     // ── Stable state refs for long-lived lambdas (pointerInput) ──
+    val haptic = LocalHapticFeedback.current
+
     val currentSelectedSeries by rememberUpdatedState(selectedSeries)
     val currentOnSeriesSelected by rememberUpdatedState(onSeriesSelected)
+    val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
     val currentStyle by rememberUpdatedState(style)
     val currentIsRtl by rememberUpdatedState(isRtl)
     val currentDensity by rememberUpdatedState(density)
@@ -283,6 +290,7 @@ fun RadarChart(
                         if (currentSelectedSeries?.id == closestSeries?.id) {
                             currentOnSeriesSelected(null)
                         } else {
+                            currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
                             currentOnSeriesSelected(closestSeries)
                         }
                     } else {
