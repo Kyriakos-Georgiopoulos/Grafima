@@ -16,6 +16,8 @@
 
 package io.grafima.charts.radar
 
+import android.provider.Settings
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -32,10 +34,15 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -113,6 +120,30 @@ fun RadarChart(
     val series = dataSet.series
     val animationEngine = remember { RadarChartAnimationEngine() }
     val density = LocalDensity.current
+
+    val context = LocalContext.current
+    val reduceMotion = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) == 0f
+    }
+    val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
+        if (reduceMotion) {
+            animationConfig.copy(
+                initialEntrySpec = snap(),
+                morphSpec = snap(),
+                selectionSpec = snap(),
+                startDelayMs = 0L,
+                seriesStaggerMs = 0L,
+                vertexStaggerMs = 0L
+            )
+        } else {
+            animationConfig
+        }
+    }
+
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
@@ -210,13 +241,13 @@ fun RadarChart(
         if (currentSelectedSeries != null && series.none { it.id == currentSelectedSeries?.id }) {
             currentOnSeriesSelected(null)
         }
-        animationEngine.launchEntryAnimations(axes, series, animationConfig, this)
+        animationEngine.launchEntryAnimations(axes, series, effectiveAnimationConfig, this)
     }
 
     // ── Selection animations ──
     LaunchedEffect(axes, series, selectedSeries) {
         animationEngine.launchSelectionAnimations(
-            series, selectedSeries, style, animationConfig, this
+            series, selectedSeries, style, effectiveAnimationConfig, this
         )
     }
 
@@ -229,6 +260,25 @@ fun RadarChart(
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
             .semantics(mergeDescendants = true) {
                 contentDescription = chartDescription
+                liveRegion = LiveRegionMode.Polite
+                customActions = buildList {
+                    series.forEach { s ->
+                        add(
+                            CustomAccessibilityAction(label = "Select ${s.label}") {
+                                onSeriesSelected(s)
+                                true
+                            }
+                        )
+                    }
+                    if (selectedSeries != null) {
+                        add(
+                            CustomAccessibilityAction(label = "Clear selection") {
+                                onSeriesSelected(null)
+                                true
+                            }
+                        )
+                    }
+                }
             }
             // ── pointerInput(Unit): never restarts ──
             .pointerInput(Unit) {

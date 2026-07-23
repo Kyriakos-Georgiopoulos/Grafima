@@ -16,7 +16,9 @@
 
 package io.grafima.charts.gauge
 
+import android.provider.Settings
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -116,6 +119,26 @@ fun GaugeChart(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
+
+    val context = LocalContext.current
+    val reduceMotion = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) == 0f
+    }
+    val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
+        if (reduceMotion) {
+            animationConfig.copy(
+                needleSpec = snap(),
+                initialDelayMs = 0L
+            )
+        } else {
+            animationConfig
+        }
+    }
+
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
@@ -133,7 +156,7 @@ fun GaugeChart(
         }
     val needleAnimatable = remember { Animatable(style.startAngle) }
     LaunchedEffect(targetAngle) {
-        needleAnimatable.animateTo(targetAngle, animationConfig.needleSpec)
+        needleAnimatable.animateTo(targetAngle, effectiveAnimationConfig.needleSpec)
     }
 
     // ── Pre-computed tick trig (zero trig in draw) ──

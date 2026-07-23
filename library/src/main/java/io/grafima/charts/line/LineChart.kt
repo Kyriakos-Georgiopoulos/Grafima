@@ -16,6 +16,8 @@
 
 package io.grafima.charts.line
 
+import android.provider.Settings
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -39,10 +41,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -122,6 +129,29 @@ fun LineChart(
     val textMeasurer = rememberTextMeasurer()
     val series = dataSet.series
     val density = LocalDensity.current
+
+    val context = LocalContext.current
+    val reduceMotion = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) == 0f
+    }
+    val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
+        if (reduceMotion) {
+            animationConfig.copy(
+                entrySpec = snap(),
+                morphSpec = snap(),
+                staggerMs = 0L,
+                startDelayMs = 0L,
+                seriesStaggerMs = 0L
+            )
+        } else {
+            animationConfig
+        }
+    }
+
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
     val animationEngine = remember { LineChartAnimationEngine() }
@@ -255,13 +285,41 @@ fun LineChart(
     SideEffect { animationEngine.syncAnimatables(series) }
     LaunchedEffect(series) {
         tooltipCache.clear()
-        animationEngine.launchEntryAnimations(series, animationConfig, yMin, this)
+        animationEngine.launchEntryAnimations(series, effectiveAnimationConfig, yMin, this)
     }
 
     Canvas(
         modifier = modifier
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
-            .semantics(mergeDescendants = true) { contentDescription = chartDescription }
+            .semantics(mergeDescendants = true) {
+                contentDescription = chartDescription
+                liveRegion = LiveRegionMode.Polite
+                customActions = buildList {
+                    val points = series.firstOrNull()?.points.orEmpty()
+                    if (points.isNotEmpty()) {
+                        add(
+                            CustomAccessibilityAction(label = "Select next point") {
+                                onPointSelected(((selectedPointIndex ?: -1) + 1).coerceAtMost(points.size - 1))
+                                true
+                            }
+                        )
+                        add(
+                            CustomAccessibilityAction(label = "Select previous point") {
+                                onPointSelected(((selectedPointIndex ?: points.size) - 1).coerceAtLeast(0))
+                                true
+                            }
+                        )
+                        if (selectedPointIndex != null) {
+                            add(
+                                CustomAccessibilityAction(label = "Clear selection") {
+                                    onPointSelected(null)
+                                    true
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             // pointerInput(Unit): never restarts, reads all values via rememberUpdatedState
             .pointerInput(Unit) {
                 if (!crosshairConfig.enabled) return@pointerInput

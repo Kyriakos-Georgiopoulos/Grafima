@@ -16,6 +16,8 @@
 
 package io.grafima.charts.bar
 
+import android.provider.Settings
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -34,10 +36,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
@@ -84,6 +91,28 @@ fun BarChart(
     val coroutineScope = rememberCoroutineScope()
     val animationEngine = remember { ChartAnimationEngine() }
     val density = LocalDensity.current
+
+    val context = LocalContext.current
+    val reduceMotion = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) == 0f
+    }
+    val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
+        if (reduceMotion) {
+            animationConfig.copy(
+                initialEntrySpec = snap(),
+                morphSpec = snap(),
+                selectionSpec = snap(),
+                staggerDelayMs = 0L,
+                startDelayMs = 0L
+            )
+        } else {
+            animationConfig
+        }
+    }
 
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
@@ -146,6 +175,7 @@ fun BarChart(
     val cornerRadiusPx = remember(style.barCornerRadius, density) {
         with(density) { style.barCornerRadius.toPx() }
     }
+    val hitSlopPx = remember(density) { with(density) { 12.dp.toPx() } }
 
     val centeredValueTextStyle = remember(style.valueTextStyle) {
         style.valueTextStyle.copy(textAlign = TextAlign.Center)
@@ -186,7 +216,7 @@ fun BarChart(
             currentOnBarSelected(null)
         }
         valueTextCache.clear()
-        animationEngine.updateEntryData(entries, animationConfig, coroutineScope)
+        animationEngine.updateEntryData(entries, effectiveAnimationConfig, coroutineScope)
     }
 
     LaunchedEffect(entries, selectedEntry) {
@@ -194,7 +224,7 @@ fun BarChart(
             entries,
             selectedEntry,
             style,
-            animationConfig,
+            effectiveAnimationConfig,
             coroutineScope
         )
     }
@@ -203,6 +233,25 @@ fun BarChart(
         modifier = modifier
             .semantics(mergeDescendants = true) {
                 contentDescription = chartDescription
+                liveRegion = LiveRegionMode.Polite
+                customActions = buildList {
+                    entries.forEach { entry ->
+                        add(
+                            CustomAccessibilityAction(label = "Select ${entry.xLabel}") {
+                                onBarSelected(entry)
+                                true
+                            }
+                        )
+                    }
+                    if (selectedEntry != null) {
+                        add(
+                            CustomAccessibilityAction(label = "Clear selection") {
+                                onBarSelected(null)
+                                true
+                            }
+                        )
+                    }
+                }
             }
             .pointerInput(
                 entries,
@@ -210,7 +259,8 @@ fun BarChart(
                 style.barSpacingFactor,
                 isRtl,
                 orientation,
-                horizontalCatLabelSpacePx
+                horizontalCatLabelSpacePx,
+                hitSlopPx
             ) {
                 fun processTouch(touchPos: Offset, isInitialDown: Boolean) {
                     val canvasWidth = size.width.toFloat()
@@ -237,8 +287,8 @@ fun BarChart(
                             val barLen = (animVal / maxBarValue) * hChartWidth
                             val xOff = if (isRtl) hChartRight - barLen else hChartLeft
 
-                            if (touchPos.y in (yOff - 15f)..(yOff + barThickness + 15f) &&
-                                touchPos.x in (xOff - 15f)..(xOff + barLen + 15f)
+                            if (touchPos.y in (yOff - hitSlopPx)..(yOff + barThickness + hitSlopPx) &&
+                                touchPos.x in (xOff - hitSlopPx)..(xOff + barLen + hitSlopPx)
                             ) {
                                 foundEntry = entries[i]
                                 break
@@ -279,7 +329,7 @@ fun BarChart(
                         val startY = canvasHeight - bottomSpacePx - targetHeight
                         val endY = canvasHeight - bottomSpacePx
 
-                        if (touchPos.x in (startX - 15f)..(endX + 15f) && touchPos.y in (startY - 15f)..(endY + 15f)) {
+                        if (touchPos.x in (startX - hitSlopPx)..(endX + hitSlopPx) && touchPos.y in (startY - hitSlopPx)..(endY + hitSlopPx)) {
                             foundEntry = entries[i]
                             break
                         }

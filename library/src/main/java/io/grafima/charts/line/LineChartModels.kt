@@ -161,7 +161,7 @@ data class LineAxisConfig(
     val gridStrokeWidth: Dp = 1.dp,
     val axisColor: Color = Color(0xFFE2E8F0),
     val axisStrokeWidth: Dp = 1.dp,
-    val labelColor: Color = Color(0xFF94A3B8),
+    val labelColor: Color = Color(0xFF64748B),
     val labelFontSize: TextUnit = 10.sp,
     val yTickCount: Int = 5,
     val xLabelFormatter: (Float) -> String = { it.toInt().toString() },

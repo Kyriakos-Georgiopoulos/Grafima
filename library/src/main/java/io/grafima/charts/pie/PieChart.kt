@@ -16,6 +16,8 @@
 
 package io.grafima.charts.pie
 
+import android.provider.Settings
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -35,10 +37,15 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -108,6 +115,29 @@ fun PieChart(
     val entries = dataSet.entries
     val animationEngine = remember { PieChartAnimationEngine() }
     val density = LocalDensity.current
+
+    val context = LocalContext.current
+    val reduceMotion = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) == 0f
+    }
+    val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
+        if (reduceMotion) {
+            animationConfig.copy(
+                initialEntrySpec = snap(),
+                morphSpec = snap(),
+                selectionSpec = snap(),
+                staggerDelayMs = 0L,
+                startDelayMs = 0L
+            )
+        } else {
+            animationConfig
+        }
+    }
+
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
@@ -212,7 +242,7 @@ fun PieChart(
         if (currentSelectedEntry != null && entries.none { it.id == currentSelectedEntry?.id }) {
             currentOnSliceSelected(null)
         }
-        animationEngine.launchEntryAnimations(entries, animationConfig, this)
+        animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, this)
     }
 
     // ── Selection animations ──
@@ -221,7 +251,7 @@ fun PieChart(
     // When entries change, new entries pick up the current selection state.
     LaunchedEffect(entries, selectedEntry) {
         animationEngine.launchSelectionAnimations(
-            entries, selectedEntry, style, animationConfig, this
+            entries, selectedEntry, style, effectiveAnimationConfig, this
         )
     }
 
@@ -234,6 +264,25 @@ fun PieChart(
                 .fillMaxSize()
                 .semantics(mergeDescendants = true) {
                     contentDescription = chartDescription
+                    liveRegion = LiveRegionMode.Polite
+                    customActions = buildList {
+                        entries.forEach { entry ->
+                            add(
+                                CustomAccessibilityAction(label = "Select ${entry.label}") {
+                                    onSliceSelected(entry)
+                                    true
+                                }
+                            )
+                        }
+                        if (selectedEntry != null) {
+                            add(
+                                CustomAccessibilityAction(label = "Clear selection") {
+                                    onSliceSelected(null)
+                                    true
+                                }
+                            )
+                        }
+                    }
                 }
                 // ── pointerInput(Unit): never restarts ──
                 // All external values are read through rememberUpdatedState refs,
