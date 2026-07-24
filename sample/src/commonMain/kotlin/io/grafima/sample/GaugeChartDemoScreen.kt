@@ -45,7 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import org.jetbrains.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.gauge.GaugeAnimationConfig
@@ -276,7 +276,7 @@ fun GaugeChartDemoScreen() {
         }
     }
 }
-@Preview(showBackground = true, showSystemUi = true)
+@Preview
 @Composable
 private fun GaugeChartDemoScreenPreview() {
     GaugeChartDemoScreen()
