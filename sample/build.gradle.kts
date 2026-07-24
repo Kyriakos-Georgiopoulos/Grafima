@@ -31,5 +31,8 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.uiToolingPreview)
         }
+        androidMain.dependencies {
+            implementation(compose.uiTooling)
+        }
     }
 }
