@@ -12,7 +12,7 @@
 
 - Maven coordinates: `io.grafima:grafima:1.0.0` (artifactId stays `grafima` even though the module path is `:library`).
 - Kotlin package root: `io.grafima.*` (charts → `io.grafima.charts`, app → `io.grafima.sample`, theme → `io.grafima.sample.ui.theme`). No `com.grafima.*` may remain.
-- `minSdk = 24`, `compileSdk = 36`, `targetSdk = 36` (sample only). Java 11 source/target. Kotlin code style `official`.
+- `minSdk = 24`, `compileSdk = 37`, `targetSdk = 37` (sample only). Java 11 source/target. Kotlin code style `official`. (compileSdk/targetSdk were bumped 36→37 in a preliminary baseline fix — `androidx.core:core:1.19.0` and `androidx.lifecycle:…:2.11.0` require API 37.)
 - Library depends on Compose `foundation`, `ui`, `ui-graphics`, `ui-text`, `animation`, `runtime` only — **never `material3` or `activity-compose`**. Compose types in public signatures use `api(...)`.
 - `kotlin { explicitApi() }` on the library.
 - No chart feature/visual/behavior changes. No new chart types.
@@ -295,9 +295,7 @@ plugins {
 android {
     namespace = "io.grafima.charts"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
@@ -553,7 +551,7 @@ vanniktech-maven-publish = { id = "com.vanniktech.maven.publish", version.ref = 
 
 - [ ] **Step 2: Declare the plugin at the root (apply false)**
 
-In the root `build.gradle.kts`, extend the `plugins { }` block:
+NOTE: `alias(libs.plugins.android.library) apply false` was ALREADY added to the root `build.gradle.kts` during Task 3 (required for the library plugin classpath). Do NOT re-add it. Only add the Vanniktech line, so the block reads:
 
 ```kotlin
 plugins {
@@ -562,6 +560,15 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.vanniktech.maven.publish) apply false
 }
+```
+
+- [ ] **Step 2b: Drop the unused tooling deps from the library (pre-publish cleanup)**
+
+The library has no `@Preview` usage (verified), so these two lines in `library/build.gradle.kts` `dependencies { }` are dead weight — `ui-tooling-preview` would even leak into consumers' runtime classpath. Delete both:
+
+```kotlin
+debugImplementation(libs.androidx.compose.ui.tooling)
+implementation(libs.androidx.compose.ui.tooling.preview)
 ```
 
 - [ ] **Step 3: Apply and configure publishing in the library**

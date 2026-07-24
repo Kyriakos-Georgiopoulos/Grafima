@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Superpowers subagent-driven-development scratch (briefs, reviews, reports, ledger)
+.superpowers/
