@@ -16,7 +16,6 @@
 
 package io.grafima.charts.pie
 
-import android.provider.Settings
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -37,7 +36,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -50,6 +48,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
+import io.grafima.charts.rememberReduceMotion
+import io.grafima.charts.toDegrees
+import io.grafima.charts.toRadians
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -116,14 +117,7 @@ fun PieChart(
     val animationEngine = remember { PieChartAnimationEngine() }
     val density = LocalDensity.current
 
-    val context = LocalContext.current
-    val reduceMotion = remember(context) {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f
-        ) == 0f
-    }
+    val reduceMotion = rememberReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -319,7 +313,7 @@ fun PieChart(
                             return@awaitEachGesture
                         }
 
-                        var touchAngle = Math.toDegrees(
+                        var touchAngle = toDegrees(
                             atan2(dy.toDouble(), dx.toDouble())
                         ).toFloat()
                         touchAngle = (touchAngle - activeStyle.startAngle) % 360f
@@ -435,7 +429,7 @@ fun PieChart(
                     val sweepAngle = (animatedValue / targetTotalValue) * 360f * directionMultiplier
                     val midAngle = targetStartAngle + (sweepAngle / 2f)
 
-                    val midAngleRad = Math.toRadians(midAngle.toDouble())
+                    val midAngleRad = toRadians(midAngle.toDouble())
                     val centroidRadius = canvasRadius - (strokeWidth / 2f)
                     val centroidX = cx + (centroidRadius * cos(midAngleRad)).toFloat()
                     val centroidY = cy + (centroidRadius * sin(midAngleRad)).toFloat()

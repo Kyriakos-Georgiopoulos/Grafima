@@ -16,7 +16,6 @@
 
 package io.grafima.charts.line
 
-import android.provider.Settings
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -41,7 +40,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -59,6 +57,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.rememberReduceMotion
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -130,14 +129,7 @@ fun LineChart(
     val series = dataSet.series
     val density = LocalDensity.current
 
-    val context = LocalContext.current
-    val reduceMotion = remember(context) {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f
-        ) == 0f
-    }
+    val reduceMotion = rememberReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(

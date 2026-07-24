@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.Dp
+import io.grafima.charts.toRadians
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -41,7 +42,7 @@ internal fun resolveBrush(
 ): Brush = when (sliceBrush) {
     is SliceBrush.Solid -> SolidColor(sliceBrush.color)
     is SliceBrush.Linear -> {
-        val rad = Math.toRadians(sliceBrush.angleDegrees.toDouble())
+        val rad = toRadians(sliceBrush.angleDegrees.toDouble())
         val dx = cos(rad).toFloat() * radius
         val dy = sin(rad).toFloat() * radius
         Brush.linearGradient(

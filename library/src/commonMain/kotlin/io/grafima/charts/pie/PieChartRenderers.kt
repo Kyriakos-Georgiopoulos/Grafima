@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.toRadians
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -114,7 +115,7 @@ class TooltipPieSelectionRenderer(
         val tooltipWidth = tooltipLayout.size.width + (horizontalPadding.toPx() * 2)
         val tooltipHeight = tooltipLayout.size.height + (verticalPadding.toPx() * 2)
 
-        val angleRad = Math.toRadians(midAngleDegrees.toDouble())
+        val angleRad = toRadians(midAngleDegrees.toDouble())
         val cosA = cos(angleRad).toFloat()
         val sinA = sin(angleRad).toFloat()
 
@@ -187,7 +188,7 @@ class ElbowCalloutPieSelectionRenderer(
             textMeasurer.measure(text = "${entry.label}: ${entry.value.toInt()}", style = textStyle)
         }
 
-        val angleRad = Math.toRadians(midAngleDegrees.toDouble())
+        val angleRad = toRadians(midAngleDegrees.toDouble())
         val cosA = cos(angleRad).toFloat()
         val sinA = sin(angleRad).toFloat()
         val isRightSide = cosA >= 0

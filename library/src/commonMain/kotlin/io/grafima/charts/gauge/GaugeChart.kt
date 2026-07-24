@@ -16,7 +16,6 @@
 
 package io.grafima.charts.gauge
 
-import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
@@ -36,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -50,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import io.grafima.charts.rememberReduceMotion
+import io.grafima.charts.toRadians
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -120,14 +120,7 @@ fun GaugeChart(
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
 
-    val context = LocalContext.current
-    val reduceMotion = remember(context) {
-        Settings.Global.getFloat(
-            context.contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f
-        ) == 0f
-    }
+    val reduceMotion = rememberReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -167,7 +160,7 @@ fun GaugeChart(
         val majors = tickConfig.majorTickCount
         val minorsPerMajor = tickConfig.minorTicksPerMajor
         val majorAnglesRad = DoubleArray(majors + 1) { i ->
-            Math.toRadians((style.startAngle + style.sweepAngle * (i.toFloat() / majors)).toDouble())
+            toRadians((style.startAngle + style.sweepAngle * (i.toFloat() / majors)).toDouble())
         }
         val minorAnglesList = mutableListOf<Double>()
         val majorStep = style.sweepAngle / majors
@@ -175,7 +168,7 @@ fun GaugeChart(
         for (m in 0 until majors) {
             for (n in 1..minorsPerMajor) {
                 minorAnglesList.add(
-                    Math.toRadians((style.startAngle + m * majorStep + n * minorStep).toDouble())
+                    toRadians((style.startAngle + m * majorStep + n * minorStep).toDouble())
                 )
             }
         }
@@ -436,7 +429,7 @@ fun GaugeChart(
 
             // ── 6. Needle ──
             val animatedAngle = needleAnimatable.value
-            val needleAngleRad = Math.toRadians(animatedAngle.toDouble())
+            val needleAngleRad = toRadians(animatedAngle.toDouble())
             val cosN = cos(needleAngleRad).toFloat()
             val sinN = sin(needleAngleRad).toFloat()
             val needleLength = gaugeRadius * needleConfig.lengthFraction
