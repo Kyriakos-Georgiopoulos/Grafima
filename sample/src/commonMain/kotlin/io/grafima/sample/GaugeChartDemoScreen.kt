@@ -157,7 +157,7 @@ fun GaugeChartDemoScreen() {
                                 Color(0xFFEF4444)
                             ) else emptyList(),
                             fillFraction = 0.82f,
-                            centerContentOffset = 52.dp
+                            centerContentOffset = 84.dp
                         ),
                         tickConfig = GaugeTickConfig(
                             majorTickCount = 10,
