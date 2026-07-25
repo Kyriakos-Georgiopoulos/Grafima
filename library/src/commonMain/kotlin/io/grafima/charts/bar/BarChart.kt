@@ -22,6 +22,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -90,6 +91,12 @@ fun BarChart(
     val coroutineScope = rememberCoroutineScope()
     val animationEngine = remember { ChartAnimationEngine() }
     val density = LocalDensity.current
+
+    // Create the animatables after composition but before the first draw so the Canvas
+    // subscribes to them on frame one. Populating them only inside LaunchedEffect (below)
+    // leaves the first draw with no subscription, so the entry animation never repaints
+    // the bars — the slices/lines charts already avoid this via the same SideEffect.
+    SideEffect { animationEngine.syncAnimatables(entries) }
 
     val reduceMotion = rememberReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
@@ -208,7 +215,7 @@ fun BarChart(
             currentOnBarSelected(null)
         }
         valueTextCache.clear()
-        animationEngine.updateEntryData(entries, effectiveAnimationConfig, coroutineScope)
+        animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, coroutineScope)
     }
 
     LaunchedEffect(entries, selectedEntry) {

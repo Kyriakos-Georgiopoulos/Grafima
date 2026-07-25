@@ -29,23 +29,29 @@ internal class ChartAnimationEngine {
     val selectionAlphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedIds = mutableSetOf<String>()
 
-    fun updateEntryData(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
+    fun syncAnimatables(entries: List<BarEntry>) {
         val currentIds = entries.mapTo(mutableSetOf()) { it.id }
         heightAnimatables.keys.removeAll { it !in currentIds }
         selectionAlphaAnimatables.keys.removeAll { it !in currentIds }
         initializedIds.removeAll { it !in currentIds }
 
-        entries.forEachIndexed { index, entry ->
+        entries.forEach { entry ->
             heightAnimatables.getOrPut(entry.id) { Animatable(0f) }
             selectionAlphaAnimatables.getOrPut(entry.id) { Animatable(1f) }
+        }
+    }
+
+    fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
+        entries.forEachIndexed { index, entry ->
+            val heightAnim = heightAnimatables[entry.id] ?: return@forEachIndexed
             val isInitialLoad = initializedIds.add(entry.id)
 
             scope.launch {
                 if (isInitialLoad) {
                     delay(config.startDelayMs + (index * config.staggerDelayMs))
-                    heightAnimatables[entry.id]?.animateTo(entry.y, config.initialEntrySpec)
-                } else if (heightAnimatables[entry.id]?.targetValue != entry.y) {
-                    heightAnimatables[entry.id]?.animateTo(entry.y, config.morphSpec)
+                    heightAnim.animateTo(entry.y, config.initialEntrySpec)
+                } else if (heightAnim.targetValue != entry.y) {
+                    heightAnim.animateTo(entry.y, config.morphSpec)
                 }
             }
         }
