@@ -8,11 +8,16 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
-/build
+build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+.kotlin/
+
+# Xcode
+xcuserdata/
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcshareddata/
 
 # Superpowers subagent-driven-development scratch (briefs, reviews, reports, ledger)
 .superpowers/

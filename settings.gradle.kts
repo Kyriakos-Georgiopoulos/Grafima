@@ -23,5 +23,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Grafima"
-include(":library", ":sample")
+include(":library", ":sample", ":androidApp")
  
