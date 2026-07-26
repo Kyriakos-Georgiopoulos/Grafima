@@ -25,7 +25,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -88,7 +87,6 @@ fun BarChart(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val entries = dataSet.entries
-    val coroutineScope = rememberCoroutineScope()
     val animationEngine = remember { ChartAnimationEngine() }
     val density = LocalDensity.current
 
@@ -215,7 +213,7 @@ fun BarChart(
             currentOnBarSelected(null)
         }
         valueTextCache.clear()
-        animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, coroutineScope)
+        animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, this)
     }
 
     LaunchedEffect(entries, selectedEntry) {
@@ -224,7 +222,7 @@ fun BarChart(
             selectedEntry,
             style,
             effectiveAnimationConfig,
-            coroutineScope
+            this
         )
     }
 

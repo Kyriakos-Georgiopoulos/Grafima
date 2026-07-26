@@ -43,7 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.bar.A11yConfig
@@ -258,6 +258,7 @@ fun BarChartDemoScreen() {
         }
     }
 }
+
 @Preview
 @Composable
 private fun BarChartDemoScreenPreview() {

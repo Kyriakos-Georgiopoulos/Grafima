@@ -6,7 +6,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "io.grafima.charts"
         compileSdk = 37
         minSdk = 24
@@ -18,10 +18,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             // Compose types appear in Grafima's public API -> exposed via `api`.
-            api(compose.runtime)
-            api(compose.foundation)
-            api(compose.ui)
-            api(compose.animation)
+            api(libs.compose.runtime)
+            api(libs.compose.foundation)
+            api(libs.compose.ui)
+            api(libs.compose.animation)
         }
     }
 }
