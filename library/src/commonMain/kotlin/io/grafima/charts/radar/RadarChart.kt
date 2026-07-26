@@ -330,7 +330,7 @@ fun RadarChart(
                     val touchThreshold = with(activeDensity) { 48.dp.toPx() }
 
                     if (closestSeries != null && closestDist < touchThreshold) {
-                        if (currentSelectedSeries?.id == closestSeries?.id) {
+                        if (currentSelectedSeries?.id == closestSeries.id) {
                             currentOnSeriesSelected(null)
                         } else {
                             currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }

@@ -86,7 +86,7 @@ internal fun resolveOuterRadius(
  * Computes the normalized sweep angle for a single entry, applying the minSliceAngle
  * floor and the pre-computed normalizer. Pure function, no allocations.
  */
-internal inline fun computeNormalizedSweep(
+internal fun computeNormalizedSweep(
     animatedValue: Float,
     totalValue: Float,
     minSliceAngle: Float,
