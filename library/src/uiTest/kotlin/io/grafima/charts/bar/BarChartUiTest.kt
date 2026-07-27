@@ -74,19 +74,6 @@ class BarChartUiTest {
         onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
     }
 
-    @Test
-    fun the_chart_announces_data_changes_as_a_polite_live_region() = runComposeUiTest {
-        setContent {
-            BarChart(
-                dataSet = dataSet,
-                modifier = Modifier.size(300.dp),
-                animationConfig = snapAnimations
-            )
-        }
-        onNodeWithContentDescription("Monthly revenue", substring = true).assert(
-            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
-        )
-    }
 
     @Test
     fun the_select_accessibility_action_reports_the_entry_to_the_callback() = runComposeUiTest {

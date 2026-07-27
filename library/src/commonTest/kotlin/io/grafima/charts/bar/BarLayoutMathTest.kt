@@ -86,7 +86,6 @@ class BarLayoutMathTest {
         assertEquals(ltr, mirrorForRtl(ltr, totalExtent = 300f, thickness = 40f, isRtl = false))
         val mirrored = mirrorForRtl(ltr, totalExtent = 300f, thickness = 40f, isRtl = true)
         assertEquals(300f - 70f - 40f, mirrored)
-        // Mirroring twice restores the original offset.
         assertEquals(ltr, mirrorForRtl(mirrored, totalExtent = 300f, thickness = 40f, isRtl = true))
     }
 

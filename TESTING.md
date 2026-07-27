@@ -1,7 +1,10 @@
 # Testing
 
 Grafima's tests live in `:library` and run on two platforms from a single
-`commonTest` source set, plus an iOS-only UI suite.
+`commonTest` source set, plus a shared UI suite.
+
+[MANUAL_TESTING.md](MANUAL_TESTING.md) covers what automation can't reach —
+screen-reader announcements, animation feel, and readability on real displays.
 
 | Source set | What lives there | Runs on |
 |---|---|---|

@@ -22,9 +22,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -102,28 +104,34 @@ class AccessibilityContractTest {
     )
 
     @Test
-    fun every_chart_exposes_a_content_description() {
+    fun every_chart_exposes_exactly_one_described_accessibility_node() {
+        // mergeDescendants keeps screen readers from walking chart internals,
+        // so each chart must surface one described node — never zero, never many.
         for ((name, chart) in allCharts) {
             runComposeUiTest {
                 setContent { chart() }
                 val nodes = onAllNodes(
                     SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentDescription)
                 ).fetchSemanticsNodes()
-                assertTrue(nodes.isNotEmpty(), "$name exposes no content description")
+                assertEquals(1, nodes.size, "$name exposed ${nodes.size} described nodes")
             }
         }
     }
 
     @Test
-    fun every_chart_merges_into_a_single_accessibility_node() {
-        // mergeDescendants keeps screen readers from walking chart internals.
-        for ((name, chart) in allCharts) {
+    fun interactive_charts_announce_updates_as_polite_live_regions() {
+        // GaugeChart is excluded deliberately: it is non-interactive and
+        // exposes ProgressBarRangeInfo instead of a live region.
+        for ((name, chart) in allCharts.filterNot { it.first == "GaugeChart" }) {
             runComposeUiTest {
                 setContent { chart() }
-                val nodes = onAllNodes(
-                    SemanticsMatcher.keyIsDefined(SemanticsProperties.ContentDescription)
-                ).fetchSemanticsNodes()
-                assertEquals(1, nodes.size, "$name exposes ${nodes.size} nodes, expected a merged one")
+                onChartNode().assert(
+                    SemanticsMatcher.expectValue(
+                        SemanticsProperties.LiveRegion,
+                        LiveRegionMode.Polite
+                    ),
+                    messagePrefixOnError = { "$name is not a polite live region" }
+                )
             }
         }
     }

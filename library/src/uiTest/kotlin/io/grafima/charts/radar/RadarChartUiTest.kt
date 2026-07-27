@@ -113,17 +113,4 @@ class RadarChartUiTest {
         assertNull(selected, "selection must clear when its series leaves the dataset")
     }
 
-    @Test
-    fun the_chart_announces_data_changes_as_a_polite_live_region() = runComposeUiTest {
-        setContent {
-            RadarChart(
-                dataSet = dataSet,
-                modifier = Modifier.size(300.dp),
-                animationConfig = snapAnimations
-            )
-        }
-        onChartNode().assert(
-            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
-        )
-    }
 }

@@ -73,8 +73,6 @@ class ColorContrastTest {
 
     @Test
     fun `the contrast formula matches known WCAG reference values`() {
-        // Anchors the implementation: black-on-white is the 21:1 maximum,
-        // identical colors are 1:1.
         assertTrue(contrastRatio(Color.Black, Color.White) > 20.9)
         assertTrue(contrastRatio(Color.White, Color.White) in 0.99..1.01)
         // #767676 on white is the canonical WCAG AA boundary example (~4.54:1).
@@ -84,7 +82,6 @@ class ColorContrastTest {
 
     @Test
     fun `tooltip text meets AA against its own background`() {
-        // Both colors are library-owned, so this is a guarantee, not a guess.
         val bar = TooltipSelectionRenderer()
         assertMeetsAA("Bar tooltip", bar.textStyle.color, bar.backgroundColor)
 
@@ -100,22 +97,12 @@ class ColorContrastTest {
 
     @Test
     fun `axis and value labels meet AA on a white surface`() {
+        // The shared grey sits close to the limit, so this fails before a
+        // palette tweak silently drops it under 4.5:1.
         val style = ChartStyle()
         assertMeetsAA("Bar x-axis label", style.labelTextStyle.color, Color.White)
         assertMeetsAA("Bar value label", style.valueTextStyle.color, Color.White)
         assertMeetsAA("Y-axis label", AxisConfig().axisLabelTextStyle.color, Color.White)
-    }
-
-    @Test
-    fun `label colors keep a margin above the AA threshold`() {
-        // The shared grey sits near the limit; this fails before a palette
-        // tweak silently drops it under 4.5:1.
-        val grey = ChartStyle().labelTextStyle.color
-        val ratio = contrastRatio(grey, Color.White)
-        assertTrue(
-            ratio >= AA_NORMAL_TEXT,
-            "label grey is ${(ratio * 100).toInt() / 100.0}:1 — below AA"
-        )
     }
 
     private companion object {

@@ -64,7 +64,6 @@ class AccessibilityEnvironmentTest {
                 BarChart(dataSet = barData, modifier = Modifier.size(300.dp))
             }
         }
-        // Text measurement at large scales must not break layout or semantics.
         onNodeWithContentDescription("Monthly revenue", substring = true).assertExists()
         onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
     }
@@ -102,8 +101,6 @@ class AccessibilityEnvironmentTest {
 
     @Test
     fun every_chart_stays_accessible_with_an_empty_dataset() {
-        // Empty data must still announce something rather than crashing or
-        // exposing a silent, unlabelled node.
         runComposeUiTest {
             setContent {
                 BarChart(
