@@ -71,5 +71,9 @@ swap"*.
   `runTest` + a hand-pumped `BroadcastFrameClock` (see `AnimationTestHarness`).
 - **Accessibility defaults are pinned as exact strings** — for screen-reader
   text, silent drift is a bug.
+- **Accessibility is tested at three levels**: exact screen-reader strings and
+  WCAG contrast ratios in `commonTest`; per-chart semantics and actions in
+  `uiTest`; and cross-chart contracts plus large font scales, RTL, and empty
+  datasets in `AccessibilityContractTest` / `AccessibilityEnvironmentTest`.
 - Engine tests assert on `internal` state deliberately; the UI suite covers
   the public surface through semantics.
