@@ -45,7 +45,7 @@ class GaugeChartUiTest {
         )
 
     @Test
-    fun `the gauge exposes its value as progress semantics`() = runComposeUiTest {
+    fun the_gauge_exposes_its_value_as_progress_semantics() = runComposeUiTest {
         setContent {
             GaugeChart(
                 value = 30f,
@@ -57,7 +57,7 @@ class GaugeChartUiTest {
     }
 
     @Test
-    fun `a value change updates the progress semantics`() = runComposeUiTest {
+    fun a_value_change_updates_the_progress_semantics() = runComposeUiTest {
         var value by mutableStateOf(30f)
         setContent {
             GaugeChart(
@@ -74,7 +74,7 @@ class GaugeChartUiTest {
     }
 
     @Test
-    fun `out-of-range values clamp in the semantics`() = runComposeUiTest {
+    fun out_of_range_values_clamp_in_the_semantics() = runComposeUiTest {
         setContent {
             GaugeChart(
                 value = 150f,

@@ -6,10 +6,11 @@ Grafima's tests live in `:library` and run on two platforms from a single
 | Source set | What lives there | Runs on |
 |---|---|---|
 | `library/src/commonTest` | Chart math, animation engines, accessibility string defaults | JVM **and** iOS simulator |
-| `library/src/iosTest` | Compose UI tests (`runComposeUiTest`): semantics, accessibility actions, pixel regression | iOS simulator only |
+| `library/src/uiTest` | Compose UI tests (`runComposeUiTest`): semantics, accessibility actions, pixel regression | iOS simulator **and** Android device/emulator |
 
-Compose UI tests are iOS-only on purpose: on Android they would need
-instrumentation (an emulator), which this repo doesn't require for now.
+`src/uiTest` isn't a Kotlin source set of its own — the directory is added to
+both `iosTest` and `androidDeviceTest`, so one suite compiles into both test
+targets.
 
 ## Running
 
@@ -20,12 +21,16 @@ instrumentation (an emulator), which this repo doesn't require for now.
 # iOS simulator (commonTest + the UI suite)
 ./gradlew :library:iosSimulatorArm64Test
 
+# Android instrumented UI tests (needs a connected device or running emulator)
+./gradlew :library:connectedAndroidDeviceTest
+
 # Everything, plus lint (what CI runs)
 ./gradlew build
 ```
 
-Requirements: JDK 17+ (Android Studio's bundled JBR works), and for the iOS
-tasks a Mac with Xcode and an iOS simulator runtime installed.
+Requirements: JDK 17+ (Android Studio's bundled JBR works); a Mac with Xcode
+and an iOS simulator runtime for the iOS tasks; a device with USB debugging or
+a running emulator for `connectedAndroidDeviceTest`.
 
 The iOS test task defaults to the **iPhone 17 Pro** simulator. If your machine
 doesn't have that device, pass any available one:
@@ -56,8 +61,12 @@ swap"*.
 
 ## Conventions
 
-- **Test names are sentences** (backticked function names). The name must be a
-  claim the test actually proves.
+- **Test names are sentences.** The name must be a claim the test actually
+  proves. `commonTest` uses backticked names with spaces; `uiTest` uses
+  `underscore_separated` names instead — those tests are dexed for Android
+  instrumentation, and D8 rejects spaces in class names below DEX version 040
+  (Kotlin derives lambda class names from the enclosing function, and the
+  library targets minSdk 24).
 - **No wall-clock time.** Animation tests run on virtual time via
   `runTest` + a hand-pumped `BroadcastFrameClock` (see `AnimationTestHarness`).
 - **Accessibility defaults are pinned as exact strings** — for screen-reader

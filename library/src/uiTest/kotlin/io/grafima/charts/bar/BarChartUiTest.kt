@@ -61,7 +61,7 @@ class BarChartUiTest {
     )
 
     @Test
-    fun `the chart description contains the dataset and every bar`() = runComposeUiTest {
+    fun the_chart_description_contains_the_dataset_and_every_bar() = runComposeUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet,
@@ -75,7 +75,7 @@ class BarChartUiTest {
     }
 
     @Test
-    fun `the chart announces data changes as a polite live region`() = runComposeUiTest {
+    fun the_chart_announces_data_changes_as_a_polite_live_region() = runComposeUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet,
@@ -89,7 +89,7 @@ class BarChartUiTest {
     }
 
     @Test
-    fun `the select accessibility action reports the entry to the callback`() = runComposeUiTest {
+    fun the_select_accessibility_action_reports_the_entry_to_the_callback() = runComposeUiTest {
         var selected: BarEntry? = null
         setContent {
             BarChart(
@@ -106,7 +106,7 @@ class BarChartUiTest {
     }
 
     @Test
-    fun `the clear selection action appears only while a bar is selected and clears it`() =
+    fun the_clear_selection_action_appears_only_while_a_bar_is_selected_and_clears_it() =
         runComposeUiTest {
             var selected by mutableStateOf<BarEntry?>(null)
             setContent {
@@ -130,7 +130,7 @@ class BarChartUiTest {
         }
 
     @Test
-    fun `removing the selected entry clears the selection`() = runComposeUiTest {
+    fun removing_the_selected_entry_clears_the_selection() = runComposeUiTest {
         // Snapshot state so reassignment recomposes the chart.
         var dataState by mutableStateOf(dataSet)
         var selected by mutableStateOf<BarEntry?>(dataSet.entries.first())
@@ -161,7 +161,7 @@ class BarChartUiTest {
      * never painted, the count is zero.
      */
     @Test
-    fun `bars actually paint after the entry animation`() = runComposeUiTest {
+    fun bars_actually_paint_after_the_entry_animation() = runComposeUiTest {
         val solidRed = dataSet.copy(defaultGradientColors = listOf(Color.Red, Color.Red))
         setContent {
             BarChart(

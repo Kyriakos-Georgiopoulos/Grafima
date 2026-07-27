@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.grafima.charts.radar
+package io.grafima.charts.pie
 
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.size
@@ -36,56 +36,50 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 @OptIn(ExperimentalTestApi::class)
-class RadarChartUiTest {
+class PieChartUiTest {
 
-    private val dataSet = RadarDataSet(
-        axes = listOf(
-            RadarAxis(id = "speed", label = "Speed"),
-            RadarAxis(id = "power", label = "Power"),
-            RadarAxis(id = "range", label = "Range")
+    private val dataSet = PieDataSet(
+        entries = listOf(
+            PieEntry(id = "design", label = "Design", value = 30f),
+            PieEntry(id = "dev", label = "Development", value = 70f)
         ),
-        series = listOf(
-            RadarSeries(id = "s1", label = "Model A", values = mapOf("speed" to 80f)),
-            RadarSeries(id = "s2", label = "Model B", values = mapOf("power" to 60f))
-        ),
-        contentDescription = "Model comparison"
+        contentDescription = "Team budget"
     )
 
-    private val snapAnimations = RadarAnimationConfig(
+    private val snapAnimations = PieAnimationConfig(
         initialEntrySpec = snap(),
         morphSpec = snap(),
         selectionSpec = snap(),
-        startDelayMs = 0L,
-        seriesStaggerMs = 0L,
-        vertexStaggerMs = 0L
+        staggerDelayMs = 0L,
+        startDelayMs = 0L
     )
 
     @Test
-    fun `the select accessibility action reports the series to the callback`() = runComposeUiTest {
-        var selected: RadarSeries? = null
+    fun the_select_accessibility_action_reports_the_slice_to_the_callback() = runComposeUiTest {
+        var selected: PieEntry? = null
         setContent {
-            RadarChart(
+            PieChart(
                 dataSet = dataSet,
                 modifier = Modifier.size(300.dp),
                 animationConfig = snapAnimations,
-                onSeriesSelected = { selected = it }
+                onSliceSelected = { selected = it }
             )
         }
-        onChartNode().performCustomAction("Select Model B")
+        onChartNode().performCustomAction("Select Development")
         waitForIdle()
-        assertEquals("s2", selected?.id)
+        assertEquals("dev", selected?.id)
     }
 
     @Test
-    fun `the clear selection action clears the hoisted state`() = runComposeUiTest {
-        var selected by mutableStateOf<RadarSeries?>(dataSet.series.first())
+    fun the_clear_selection_action_clears_the_hoisted_state() = runComposeUiTest {
+        var selected by mutableStateOf<PieEntry?>(dataSet.entries.first())
         setContent {
-            RadarChart(
+            PieChart(
                 dataSet = dataSet,
                 modifier = Modifier.size(300.dp),
                 animationConfig = snapAnimations,
-                selectedSeries = selected,
-                onSeriesSelected = { selected = it }
+                selectedEntry = selected,
+                onSliceSelected = { selected = it }
             )
         }
         onChartNode().performCustomAction("Clear selection")
@@ -94,29 +88,32 @@ class RadarChartUiTest {
     }
 
     @Test
-    fun `removing the selected series clears the selection`() = runComposeUiTest {
+    fun removing_the_selected_slice_clears_the_selection() = runComposeUiTest {
         var dataState by mutableStateOf(dataSet)
-        var selected by mutableStateOf<RadarSeries?>(dataSet.series.first())
+        var selected by mutableStateOf<PieEntry?>(dataSet.entries.first())
         setContent {
-            RadarChart(
+            PieChart(
                 dataSet = dataState,
                 modifier = Modifier.size(300.dp),
                 animationConfig = snapAnimations,
-                selectedSeries = selected,
-                onSeriesSelected = { selected = it }
+                selectedEntry = selected,
+                onSliceSelected = { selected = it }
             )
         }
         waitForIdle()
 
-        dataState = dataSet.copy(series = listOf(dataSet.series[1]))
+        dataState = PieDataSet(
+            entries = listOf(PieEntry(id = "qa", label = "QA", value = 10f)),
+            contentDescription = "Team budget"
+        )
         waitForIdle()
-        assertNull(selected, "selection must clear when its series leaves the dataset")
+        assertNull(selected, "selection must clear when its slice leaves the dataset")
     }
 
     @Test
-    fun `the chart announces data changes as a polite live region`() = runComposeUiTest {
+    fun the_chart_announces_data_changes_as_a_polite_live_region() = runComposeUiTest {
         setContent {
-            RadarChart(
+            PieChart(
                 dataSet = dataSet,
                 modifier = Modifier.size(300.dp),
                 animationConfig = snapAnimations

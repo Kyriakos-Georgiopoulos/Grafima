@@ -64,7 +64,7 @@ class LineChartUiTest {
     )
 
     @Test
-    fun `select next walks forward and clamps at the last point`() = runComposeUiTest {
+    fun select_next_walks_forward_and_clamps_at_the_last_point() = runComposeUiTest {
         var selected by mutableStateOf<Int?>(null)
         setContent {
             LineChart(
@@ -85,7 +85,7 @@ class LineChartUiTest {
     }
 
     @Test
-    fun `select previous starts at the end and then clamps at zero`() = runComposeUiTest {
+    fun select_previous_starts_at_the_end_and_then_clamps_at_zero() = runComposeUiTest {
         var selected by mutableStateOf<Int?>(null)
         setContent {
             LineChart(
@@ -109,7 +109,7 @@ class LineChartUiTest {
     }
 
     @Test
-    fun `clear selection appears only while a point is selected and clears it`() =
+    fun clear_selection_appears_only_while_a_point_is_selected_and_clears_it() =
         runComposeUiTest {
             var selected by mutableStateOf<Int?>(null)
             setContent {
@@ -131,7 +131,7 @@ class LineChartUiTest {
         }
 
     @Test
-    fun `a stale selection index survives a dataset shrink without crashing`() = runComposeUiTest {
+    fun a_stale_selection_index_survives_a_dataset_shrink_without_crashing() = runComposeUiTest {
         // The index is hoisted, so the caller can hold one that no longer exists;
         // the chart must skip the crosshair rather than crash.
         var dataState by mutableStateOf(dataSet)
@@ -154,7 +154,7 @@ class LineChartUiTest {
     }
 
     @Test
-    fun `the chart announces data changes as a polite live region`() = runComposeUiTest {
+    fun the_chart_announces_data_changes_as_a_polite_live_region() = runComposeUiTest {
         setContent {
             LineChart(
                 dataSet = dataSet,

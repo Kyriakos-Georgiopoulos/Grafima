@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
+/*
+ * Test names in this source set use `underscore_separated` names rather than the
+ * backticked sentences used in commonTest. These tests are dexed for Android
+ * instrumentation, and D8 rejects space characters in class names below DEX
+ * version 040 (the library targets minSdk 24) — Kotlin derives lambda class
+ * names from the enclosing function, so spaces here would fail the build.
+ */
+
 package io.grafima.charts
 
 import androidx.compose.ui.semantics.SemanticsActions
