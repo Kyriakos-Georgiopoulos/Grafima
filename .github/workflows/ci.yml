@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Lets any branch be run manually from the Actions tab, without opening a PR.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
