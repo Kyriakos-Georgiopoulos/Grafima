@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs on every push at 1× the minute rate. iOS compilation tasks are
+  # automatically skipped on Linux hosts, so this covers the Android app,
+  # lint, and the JVM run of the commonTest suites.
+  android:
+    name: Android build & JVM tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build, lint, and run JVM tests
+        run: ./gradlew build
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reports
+          path: |
+            **/build/reports/tests/**
+            **/build/reports/*.html
+
+  # macOS minutes bill at 10× — this job is kept lean: compile the iOS
+  # targets, link the sample framework, and run the full test suite
+  # (commonTest + UI tests) on a simulator.
+  ios:
+    name: iOS build & simulator tests
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Pick an available iPhone simulator
+        id: sim
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -oE 'iPhone [^(]+' | head -1 | xargs)
+          if [ -z "$DEVICE" ]; then
+            echo "No iPhone simulator available on this runner" >&2
+            exit 1
+          fi
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+          echo "Using simulator: $DEVICE"
+      - name: Run library tests on the simulator and link the sample framework
+        run: >
+          ./gradlew
+          :library:iosSimulatorArm64Test
+          :sample:linkDebugFrameworkIosSimulatorArm64
+          "-PiosSimulatorDevice=${{ steps.sim.outputs.device }}"
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-reports
+          path: library/build/reports/tests/**

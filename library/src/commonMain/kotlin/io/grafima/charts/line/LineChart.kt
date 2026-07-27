@@ -58,7 +58,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.rememberReduceMotion
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -326,19 +325,11 @@ fun LineChart(
                     val yLabelW = currentMaxYLabelWidth
                     val cLeft = if (rtl) gap else yLabelW + gap
                     val cRight = if (rtl) size.width - yLabelW - gap else size.width - gap
-                    val cWidth = cRight - cLeft
                     val axMin = currentXMin
                     val axMax = currentXMax
-                    val xRange = axMax - axMin
-
-                    fun mapTouchX(dataX: Float): Float {
-                        val raw =
-                            if (xRange > 0f) cLeft + (dataX - axMin) / xRange * cWidth else cLeft
-                        return if (rtl) cRight - (raw - cLeft) else raw
-                    }
 
                     fun nearest(touchX: Float): Int =
-                        fp.indices.minByOrNull { abs(mapTouchX(fp[it].x) - touchX) } ?: 0
+                        nearestPointIndex(fp, touchX, axMin, axMax, cLeft, cRight, rtl)
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var lastHapticIndex = nearest(down.position.x)

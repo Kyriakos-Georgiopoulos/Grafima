@@ -23,11 +23,46 @@ import androidx.compose.ui.graphics.Path
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.sqrt
+
+/**
+ * Maps a data-space X value to a canvas X coordinate, mirroring for RTL.
+ * Falls back to [chartLeft] when the axis range is degenerate.
+ */
+internal fun mapDataXToCanvas(
+    dataX: Float,
+    xMin: Float,
+    xMax: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean
+): Float {
+    val xRange = xMax - xMin
+    val raw = if (xRange > 0f) {
+        chartLeft + (dataX - xMin) / xRange * (chartRight - chartLeft)
+    } else {
+        chartLeft
+    }
+    return if (isRtl) chartRight - (raw - chartLeft) else raw
+}
+
+/** Index of the point whose canvas X is nearest to [touchX]; 0 when [points] is empty. */
+internal fun nearestPointIndex(
+    points: List<LineDataPoint>,
+    touchX: Float,
+    xMin: Float,
+    xMax: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean
+): Int = points.indices.minByOrNull {
+    abs(mapDataXToCanvas(points[it].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
+} ?: 0
 
 /**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly

@@ -22,6 +22,57 @@ import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.ceil
+
+/**
+ * Y-axis maximum: 20% headroom over the tallest bar, rounded up to a tidy
+ * step (5, 10, or 50 depending on magnitude) so axis labels stay round numbers.
+ */
+internal fun computeBarAxisMax(entries: List<BarEntry>): Float {
+    val rawMax = entries.maxOfOrNull { it.y }?.takeIf { it > 0f } ?: 1f
+    val maxWithHeadroom = rawMax * 1.2f
+    val step = if (maxWithHeadroom > 100) 50f else if (maxWithHeadroom > 10) 10f else 5f
+    return ceil(maxWithHeadroom / step) * step
+}
+
+/**
+ * Bar thickness and gap along the layout axis. Gaps flank every bar, so
+ * [count] bars produce count+1 gaps: thickness*count + gap*(count+1) == extent.
+ */
+internal fun barThicknessAndGap(
+    extent: Float,
+    count: Int,
+    spacingFactor: Float
+): Pair<Float, Float> {
+    val totalSpacing = extent * spacingFactor.coerceIn(0f, 0.9f)
+    return (extent - totalSpacing) / count to totalSpacing / (count + 1)
+}
+
+/** LTR offset of bar [index] along the layout axis, measured from [leadingInset]. */
+internal fun barSlotOffset(index: Int, leadingInset: Float, thickness: Float, gap: Float): Float =
+    leadingInset + gap + index * (thickness + gap)
+
+/** Mirrors an LTR offset across [totalExtent] for RTL layouts. */
+internal fun mirrorForRtl(
+    ltrOffset: Float,
+    totalExtent: Float,
+    thickness: Float,
+    isRtl: Boolean
+): Float = if (isRtl) totalExtent - ltrOffset - thickness else ltrOffset
+
+/**
+ * The merged accessibility description: chart summary, one sentence per bar,
+ * then the selection state. TalkBack reads this as a single announcement.
+ */
+internal fun buildBarChartDescription(
+    dataSet: BarDataSet,
+    selectedEntry: BarEntry?,
+    a11yConfig: A11yConfig
+): String = buildString {
+    append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
+    dataSet.entries.forEach { append(a11yConfig.barDescriptionBuilder(it)).append(". ") }
+    append(a11yConfig.selectedStateDescription(selectedEntry))
+}
 
 @Stable
 internal class ChartAnimationEngine {
