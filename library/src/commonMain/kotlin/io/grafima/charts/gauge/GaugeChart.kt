@@ -38,8 +38,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -48,7 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
-import io.grafima.charts.rememberReduceMotion
+import io.grafima.charts.rememberEffectiveReduceMotion
 import io.grafima.charts.toRadians
 import kotlin.math.cos
 import kotlin.math.max
@@ -120,7 +122,7 @@ fun GaugeChart(
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
 
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -255,6 +257,7 @@ fun GaugeChart(
             modifier = Modifier
                 .fillMaxSize()
                 .semantics(mergeDescendants = true) {
+                    role = Role.Image
                     contentDescription = chartDescription
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         current = clampedValue,

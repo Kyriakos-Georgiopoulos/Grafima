@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
@@ -185,21 +186,52 @@ class AccessibilityContractTest {
     }
 
     @Test
-    fun the_description_reports_the_current_selection_state() = runComposeUiTest {
-        var selected by mutableStateOf<BarEntry?>(null)
-        setContent {
-            BarChart(
-                dataSet = barData,
-                modifier = Modifier.size(300.dp),
-                selectedEntry = selected,
-                onBarSelected = { selected = it }
+    fun selection_is_reported_as_state_rather_than_in_the_description() {
+        // Keeping selection out of contentDescription means a screen reader
+        // announces just the state change, not the whole chart again.
+        runComposeUiTest {
+            var selected by mutableStateOf<BarEntry?>(null)
+            setContent {
+                BarChart(
+                    dataSet = barData,
+                    modifier = Modifier.size(300.dp),
+                    selectedEntry = selected,
+                    onBarSelected = { selected = it }
+                )
+            }
+            waitForIdle()
+            val chart = onChartNode()
+            chart.assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription, "No bar selected."
+                )
             )
-        }
-        waitForIdle()
-        onNodeWithContentDescription("No bar selected", substring = true).assertExists()
 
-        selected = barData.entries[1]
-        waitForIdle()
-        onNodeWithContentDescription("Currently selected: Feb", substring = true).assertExists()
+            selected = barData.entries[1]
+            waitForIdle()
+            chart.assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription, "Currently selected: Feb, 80."
+                )
+            )
+            // The bar list itself must not repeat the selection.
+            onNodeWithContentDescription("Currently selected", substring = true)
+                .assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun every_chart_declares_an_image_role() {
+        // Mirrors the ARIA role="img" convention for data visualisations, so a
+        // screen reader can tell the user they are on a graphic.
+        for ((name, chart) in allCharts) {
+            runComposeUiTest {
+                setContent { chart() }
+                onChartNodeWithRole().assert(
+                    SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Image),
+                    messagePrefixOnError = { "$name does not declare Role.Image" }
+                )
+            }
+        }
     }
 }

@@ -154,4 +154,33 @@ class AccessibilityEnvironmentTest {
         }
         onNodeWithContentDescription("42", substring = true).assertExists()
     }
+
+    @Test
+    fun reduce_motion_can_be_forced_by_the_host() {
+        // The platform setting is read from the OS and can't be driven from a
+        // test; LocalReduceMotion makes the behaviour reachable — and lets a
+        // host expose its own "reduce animations" toggle.
+        runComposeUiTest {
+            setContent {
+                CompositionLocalProvider(LocalReduceMotion provides true) {
+                    BarChart(dataSet = barData, modifier = Modifier.size(300.dp))
+                }
+            }
+            // With motion reduced, entry animations snap: the chart is fully
+            // described without waiting for a stagger to finish.
+            onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
+        }
+    }
+
+    @Test
+    fun charts_render_normally_when_reduce_motion_is_forced_off() {
+        runComposeUiTest {
+            setContent {
+                CompositionLocalProvider(LocalReduceMotion provides false) {
+                    BarChart(dataSet = barData, modifier = Modifier.size(300.dp))
+                }
+            }
+            onNodeWithContentDescription("Monthly revenue", substring = true).assertExists()
+        }
+    }
 }

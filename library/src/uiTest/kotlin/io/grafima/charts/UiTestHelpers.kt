@@ -25,6 +25,7 @@
 package io.grafima.charts
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
@@ -36,6 +37,11 @@ import kotlin.test.assertNotNull
 @OptIn(ExperimentalTestApi::class)
 internal fun ComposeUiTest.onChartNode(): SemanticsNodeInteraction =
     onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions))
+
+/** Matches the chart node by its role, for charts without custom actions. */
+@OptIn(ExperimentalTestApi::class)
+internal fun ComposeUiTest.onChartNodeWithRole(): SemanticsNodeInteraction =
+    onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Role))
 
 /** The labels of all custom accessibility actions currently on this node. */
 internal fun SemanticsNodeInteraction.customActionLabels(): List<String> =

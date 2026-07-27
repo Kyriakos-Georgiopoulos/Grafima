@@ -40,17 +40,20 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import io.grafima.charts.rememberReduceMotion
+import io.grafima.charts.rememberEffectiveReduceMotion
 
 /**
  * An animated bar chart with touch selection, RTL support, and accessibility.
@@ -95,7 +98,7 @@ fun BarChart(
     // the bars — the slices/lines charts already avoid this via the same SideEffect.
     SideEffect { animationEngine.syncAnimatables(entries) }
 
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -194,8 +197,11 @@ fun BarChart(
         if (!isHorizontal) 0f else with(density) { 8.dp.toPx() }
     }
 
-    val chartDescription = remember(dataSet, selectedEntry, a11yConfig) {
-        buildBarChartDescription(dataSet, selectedEntry, a11yConfig)
+    val chartDescription = remember(dataSet, a11yConfig) {
+        buildBarChartDescription(dataSet, a11yConfig)
+    }
+    val chartStateDescription = remember(selectedEntry, a11yConfig) {
+        a11yConfig.selectedStateDescription(selectedEntry)
     }
 
     LaunchedEffect(entries) {
@@ -219,7 +225,9 @@ fun BarChart(
     Canvas(
         modifier = modifier
             .semantics(mergeDescendants = true) {
+                role = Role.Image
                 contentDescription = chartDescription
+                stateDescription = chartStateDescription
                 liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     entries.forEach { entry ->

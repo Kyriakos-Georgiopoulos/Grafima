@@ -99,7 +99,9 @@ class BarLayoutMathTest {
     }
 
     @Test
-    fun `the description concatenates the chart summary bars and selection state`() {
+    fun `the description covers the chart summary and every bar`() {
+        // Selection is deliberately absent: it lives in stateDescription so a
+        // screen reader announces only the change, not the whole chart again.
         val dataSet = BarDataSet(
             entries = listOf(
                 BarEntry(id = "jan", xLabel = "Jan", y = 45f),
@@ -108,14 +110,8 @@ class BarLayoutMathTest {
             contentDescription = "Monthly revenue"
         )
         assertEquals(
-            "Bar Chart representing Monthly revenue. " +
-                    "Jan value is 45. Feb value is 80. No bar selected.",
-            buildBarChartDescription(dataSet, selectedEntry = null, a11yConfig = A11yConfig())
-        )
-        assertEquals(
-            "Bar Chart representing Monthly revenue. " +
-                    "Jan value is 45. Feb value is 80. Currently selected: Feb, 80.",
-            buildBarChartDescription(dataSet, dataSet.entries[1], A11yConfig())
+            "Bar Chart representing Monthly revenue. Jan value is 45. Feb value is 80. ",
+            buildBarChartDescription(dataSet, A11yConfig())
         )
     }
 }

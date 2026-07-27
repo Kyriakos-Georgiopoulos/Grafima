@@ -38,10 +38,13 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -49,7 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import io.grafima.charts.rememberReduceMotion
+import io.grafima.charts.rememberEffectiveReduceMotion
 import io.grafima.charts.toRadians
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -121,7 +124,7 @@ fun RadarChart(
     val animationEngine = remember { RadarChartAnimationEngine() }
     val density = LocalDensity.current
 
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -213,13 +216,16 @@ fun RadarChart(
     }
     val currentMaxLabelDim by rememberUpdatedState(maxLabelDim)
 
-    val chartDescription = remember(dataSet, selectedSeries, a11yConfig) {
+    val chartStateDescription = remember(selectedSeries, a11yConfig) {
+        a11yConfig.selectedStateDescription(selectedSeries)
+    }
+
+    val chartDescription = remember(dataSet, a11yConfig) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
             series.forEach { s ->
                 append(a11yConfig.seriesDescriptionBuilder(s, axes)).append(". ")
             }
-            append(a11yConfig.selectedStateDescription(selectedSeries))
         }
     }
 
@@ -252,7 +258,9 @@ fun RadarChart(
         modifier = modifier
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
             .semantics(mergeDescendants = true) {
+                role = Role.Image
                 contentDescription = chartDescription
+                stateDescription = chartStateDescription
                 liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     series.forEach { s ->

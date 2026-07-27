@@ -61,17 +61,18 @@ internal fun mirrorForRtl(
 ): Float = if (isRtl) totalExtent - ltrOffset - thickness else ltrOffset
 
 /**
- * The merged accessibility description: chart summary, one sentence per bar,
- * then the selection state. TalkBack reads this as a single announcement.
+ * The chart's accessibility description: summary plus one sentence per bar.
+ *
+ * Selection is deliberately excluded — it is exposed as a separate
+ * `stateDescription`, so a screen reader announces only what changed on
+ * selection instead of re-reading every bar.
  */
 internal fun buildBarChartDescription(
     dataSet: BarDataSet,
-    selectedEntry: BarEntry?,
     a11yConfig: A11yConfig
 ): String = buildString {
     append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
     dataSet.entries.forEach { append(a11yConfig.barDescriptionBuilder(it)).append(". ") }
-    append(a11yConfig.selectedStateDescription(selectedEntry))
 }
 
 @Stable

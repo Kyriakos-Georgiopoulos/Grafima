@@ -41,14 +41,17 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
-import io.grafima.charts.rememberReduceMotion
+import io.grafima.charts.rememberEffectiveReduceMotion
 import io.grafima.charts.toDegrees
 import io.grafima.charts.toRadians
 import kotlin.math.atan2
@@ -117,7 +120,7 @@ fun PieChart(
     val animationEngine = remember { PieChartAnimationEngine() }
     val density = LocalDensity.current
 
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -155,7 +158,11 @@ fun PieChart(
     }
     val currentTargetTotal by rememberUpdatedState(targetTotalValue)
 
-    val chartDescription = remember(dataSet, selectedEntry, targetTotalValue, a11yConfig) {
+    val chartStateDescription = remember(selectedEntry, a11yConfig) {
+        a11yConfig.selectedStateDescription(selectedEntry)
+    }
+
+    val chartDescription = remember(dataSet, targetTotalValue, a11yConfig) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
             if (targetTotalValue > 0f) {
@@ -164,7 +171,6 @@ fun PieChart(
                     append(a11yConfig.sliceDescriptionBuilder(entry, percentage)).append(". ")
                 }
             }
-            append(a11yConfig.selectedStateDescription(selectedEntry))
         }
     }
 
@@ -257,7 +263,9 @@ fun PieChart(
             modifier = Modifier
                 .fillMaxSize()
                 .semantics(mergeDescendants = true) {
+                    role = Role.Image
                     contentDescription = chartDescription
+                    stateDescription = chartStateDescription
                     liveRegion = LiveRegionMode.Polite
                     customActions = buildList {
                         entries.forEach { entry ->

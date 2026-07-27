@@ -34,6 +34,9 @@ For each chart tab:
       not as a series of fragments, and not silently skipped.
 - [ ] The announcement names the chart, then the data. It should be
       comprehensible read aloud, not a wall of numbers.
+- [ ] Selecting a bar announces **only the selection change**, not the whole
+      chart again. (Selection is exposed as `stateDescription`; this is the
+      main thing to listen for.)
 - [ ] Open the actions menu (swipe up-then-right). Every entry has a distinct,
       meaningful "Select …" action.
 - [ ] Activate a "Select …" action. The new selection is announced.
@@ -82,8 +85,10 @@ Enable: **Settings → Accessibility → VoiceOver**, or triple-click the side b
 - [ ] **Reduce motion.** Android: *Settings → Accessibility → Remove animations*.
       iOS: *Settings → Accessibility → Motion → Reduce Motion*. Charts should
       appear instantly with no entry animation.
-      **Known limitation:** the setting is read once when the chart enters
-      composition, so it takes effect on the next launch, not immediately.
+      **Known limitation:** the OS setting is read once when the chart enters
+      composition, so toggling it takes effect on the next launch rather than
+      immediately. A host that needs live control can provide
+      `LocalReduceMotion` instead, which applies on the next recomposition.
 - [ ] Entry animations feel smooth, not janky, on the oldest device you support.
 - [ ] Rapidly pressing **Update Data** doesn't leave bars stranded at stale
       values or mid-animation.

@@ -45,10 +45,13 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -57,7 +60,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import io.grafima.charts.rememberReduceMotion
+import io.grafima.charts.rememberEffectiveReduceMotion
 import kotlin.math.max
 import kotlin.math.min
 
@@ -128,7 +131,7 @@ fun LineChart(
     val series = dataSet.series
     val density = LocalDensity.current
 
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -266,7 +269,8 @@ fun LineChart(
         selectedPointIndex?.let { idx -> a11yConfig.selectedPointDescriptionBuilder(idx, series) }
             ?: ""
     }
-    val chartDescription = "$baseDescription $selectedDescription".trim()
+    val chartDescription = baseDescription
+    val chartStateDescription = selectedDescription
 
     val tooltipCache = remember { mutableMapOf<String, TextLayoutResult>() }
     val linePath = remember { Path() }
@@ -283,7 +287,9 @@ fun LineChart(
         modifier = modifier
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
             .semantics(mergeDescendants = true) {
+                role = Role.Image
                 contentDescription = chartDescription
+                stateDescription = chartStateDescription
                 liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     val points = series.firstOrNull()?.points.orEmpty()
