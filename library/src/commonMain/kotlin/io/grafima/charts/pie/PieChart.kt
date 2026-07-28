@@ -31,9 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -53,11 +50,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
 import io.grafima.charts.rememberEffectiveReduceMotion
 import io.grafima.charts.toDegrees
-import io.grafima.charts.toRadians
 import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.hypot
-import kotlin.math.sin
 
 /**
  * A composable pie/donut chart with animated transitions, tap selection, gradient support,
@@ -138,9 +132,8 @@ fun PieChart(
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
-    // ── Stable state refs for long-lived lambdas (pointerInput, derivedStateOf) ──
-    // These allow the pointer input coroutine and derived state lambda to always
-    // read the latest values without restarting or re-creating.
+    // Let the long-lived pointerInput and derivedStateOf lambdas read current
+    // values without restarting.
     val haptic = LocalHapticFeedback.current
 
     val currentSelectedEntry by rememberUpdatedState(selectedEntry)
@@ -174,10 +167,8 @@ fun PieChart(
         }
     }
 
-    // ── Touch bounds computed reactively via derivedStateOf ──
-    // Reads animatable snapshot state + rememberUpdatedState refs.
-    // Evaluated lazily only when the pointer input handler accesses it on tap,
-    // not on every animation frame. Zero cost during idle and animation.
+    // derivedStateOf so this is evaluated on tap rather than every animation
+    // frame — idle and animating cost nothing.
     val sliceTouchBounds by remember {
         derivedStateOf {
             val ents = currentEntries
@@ -187,7 +178,7 @@ fun PieChart(
 
             if (ents.isEmpty() || total <= 0f) return@derivedStateOf emptyList()
 
-            // First pass: compute floor-adjusted sum for normalization (no allocation)
+            // First pass: floor-adjusted sum, accumulated rather than collected.
             val hasMinAngle = minAngle > 0f
             var rawSweepSum = 0f
             ents.forEach { entry ->
@@ -198,7 +189,6 @@ fun PieChart(
             }
             val normalizer = if (rawSweepSum > 0f) 360f / rawSweepSum else 1f
 
-            // Second pass: build bounds list
             val bounds = mutableListOf<Pair<PieEntry, ClosedFloatingPointRange<Float>>>()
             var logicalStart = startAngle
 
@@ -226,17 +216,13 @@ fun PieChart(
         }
     }
 
-    // ── Animatable map housekeeping (synchronous, runs before draw) ──
-    // SideEffect runs after every committed composition, before layout and draw.
-    // This ensures animatable maps are in sync with the latest entries before the
-    // Canvas reads them, eliminating the one-frame gap that LaunchedEffect would have.
+    // SideEffect runs before layout and draw, so the Canvas sees the animatables
+    // on frame one. LaunchedEffect would leave a one-frame gap.
     SideEffect {
         animationEngine.syncAnimatables(entries)
     }
 
-    // ── Entry value animations ──
-    // Scoped to entries: when data changes, old stagger coroutines are cancelled
-    // and new ones start. No leaked animation coroutines across data updates.
+    // Scoped to entries so a data change cancels the old stagger coroutines.
     LaunchedEffect(entries) {
         selectionCache.clear()
         if (currentSelectedEntry != null && entries.none { it.id == currentSelectedEntry?.id }) {
@@ -245,10 +231,8 @@ fun PieChart(
         animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, this)
     }
 
-    // ── Selection animations ──
-    // Keyed on both entries AND selectedEntry. When selection changes, old scale/alpha
-    // animations cancel and new ones start from the current animated value (no jump).
-    // When entries change, new entries pick up the current selection state.
+    // Keyed on entries and selection: a selection change restarts from the current
+    // animated value rather than jumping, and new entries adopt the current state.
     LaunchedEffect(entries, selectedEntry) {
         animationEngine.launchSelectionAnimations(
             entries, selectedEntry, style, effectiveAnimationConfig, this
@@ -286,10 +270,8 @@ fun PieChart(
                         }
                     }
                 }
-                // ── pointerInput(Unit): never restarts ──
-                // All external values are read through rememberUpdatedState refs,
-                // so the gesture coroutine survives data/style/selection changes
-                // without dropping touches during a restart window.
+                // pointerInput(Unit) never restarts, so no touches are dropped
+                // during a restart window; current values come from the refs above.
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
@@ -363,102 +345,45 @@ fun PieChart(
 
             val directionMultiplier = if (isRtl) -1f else 1f
 
-            // Two-pass min-angle normalization without list allocation.
-            // First pass: accumulate the floor-adjusted sweep sum.
-            val minAngle = style.minSliceAngle
-            val hasMinAngle = minAngle > 0f
-            var rawSweepSum = 0f
-            if (hasMinAngle) {
-                entries.forEach { entry ->
-                    val v = animationEngine.valueAnimatables[entry.id]?.value ?: 0f
-                    var s = (v / targetTotalValue) * 360f
-                    if (s > 0f) s = s.coerceAtLeast(minAngle)
-                    rawSweepSum += s
-                }
-            }
-            val normalizer = if (hasMinAngle && rawSweepSum > 0f) 360f / rawSweepSum else 1f
-
-            // Second pass: draw arcs.
-            var drawnStartAngle = style.startAngle
-
-            entries.forEach { entry ->
-                val animatedValue = animationEngine.valueAnimatables[entry.id]?.value ?: 0f
-                val sweepAngle = computeNormalizedSweep(
-                    animatedValue = animatedValue,
-                    totalValue = targetTotalValue,
-                    minSliceAngle = minAngle,
-                    normalizer = normalizer
-                )
-
-                val currentScale = animationEngine.scaleAnimatables[entry.id]?.value ?: 1f
-                val currentAlpha = animationEngine.alphaAnimatables[entry.id]?.value ?: 1f
-                val scaledDrawRadius = drawRadius * currentScale
-                val scaledStrokeWidth = strokeWidth * currentScale
-
-                if (sweepAngle > 0f) {
-                    val spacing = if (entries.size > 1 && sweepAngle > style.sliceSpacingAngle) {
-                        style.sliceSpacingAngle
-                    } else 0f
-                    val finalSweepAngle = (sweepAngle - spacing).coerceAtLeast(0f)
-
-                    val brush = resolveBrush(
-                        sliceBrush = entry.brush ?: dataSet.defaultBrush,
-                        cx = cx,
-                        cy = cy,
-                        radius = canvasRadius
-                    )
-
-                    drawArc(
-                        brush = brush,
-                        startAngle = drawnStartAngle,
-                        sweepAngle = finalSweepAngle * directionMultiplier,
-                        useCenter = false,
-                        topLeft = Offset(x = cx - scaledDrawRadius, y = cy - scaledDrawRadius),
-                        size = Size(width = scaledDrawRadius * 2, height = scaledDrawRadius * 2),
-                        style = Stroke(width = scaledStrokeWidth),
-                        alpha = currentAlpha
-                    )
-                }
-
-                drawnStartAngle += (sweepAngle * directionMultiplier)
-            }
-
-            // Draw selection indicator
+            val normalizer = pieSweepNormalizer(
+                entries = entries,
+                animationEngine = animationEngine,
+                totalValue = targetTotalValue,
+                minSliceAngle = style.minSliceAngle
+            )
+            drawPieSlices(
+                dataSet = dataSet,
+                style = style,
+                animationEngine = animationEngine,
+                totalValue = targetTotalValue,
+                normalizer = normalizer,
+                cx = cx,
+                cy = cy,
+                canvasRadius = canvasRadius,
+                drawRadius = drawRadius,
+                strokeWidth = strokeWidth,
+                directionMultiplier = directionMultiplier
+            )
             selectedEntry?.let { entry ->
-                val animatedValue = animationEngine.valueAnimatables[entry.id]?.value ?: 0f
-                if (animatedValue > 0f) {
-                    var targetStartAngle = style.startAngle
-                    for (e in entries) {
-                        if (e.id == entry.id) break
-                        val valAnim = animationEngine.valueAnimatables[e.id]?.value ?: 0f
-                        targetStartAngle += (valAnim / targetTotalValue) * 360f * directionMultiplier
-                    }
-
-                    val sweepAngle = (animatedValue / targetTotalValue) * 360f * directionMultiplier
-                    val midAngle = targetStartAngle + (sweepAngle / 2f)
-
-                    val midAngleRad = toRadians(midAngle.toDouble())
-                    val centroidRadius = canvasRadius - (strokeWidth / 2f)
-                    val centroidX = cx + (centroidRadius * cos(midAngleRad)).toFloat()
-                    val centroidY = cy + (centroidRadius * sin(midAngleRad)).toFloat()
-
-                    with(selectionRenderer) {
-                        drawSelection(
-                            entry = entry,
-                            pieCenter = Offset(x = cx, y = cy),
-                            pieRadius = canvasRadius,
-                            sliceCentroid = Offset(x = centroidX, y = centroidY),
-                            midAngleDegrees = midAngle,
-                            textMeasurer = textMeasurer,
-                            tooltipCache = selectionCache,
-                            layoutDirection = layoutDirection
-                        )
-                    }
-                }
+                drawPieSelection(
+                    entry = entry,
+                    entries = entries,
+                    style = style,
+                    animationEngine = animationEngine,
+                    selectionRenderer = selectionRenderer,
+                    textMeasurer = textMeasurer,
+                    selectionCache = selectionCache,
+                    layoutDirection = layoutDirection,
+                    totalValue = targetTotalValue,
+                    cx = cx,
+                    cy = cy,
+                    canvasRadius = canvasRadius,
+                    strokeWidth = strokeWidth,
+                    directionMultiplier = directionMultiplier
+                )
             }
         }
 
-        // Donut center content slot
         if (centerContent != null && style.donutRatio > 0f) {
             centerContent()
         }

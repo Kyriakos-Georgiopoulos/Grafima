@@ -30,7 +30,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -47,7 +46,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
@@ -143,7 +141,6 @@ fun RadarChart(
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
 
-    // ── Stable state refs for long-lived lambdas (pointerInput) ──
     val haptic = LocalHapticFeedback.current
 
     val currentSelectedSeries by rememberUpdatedState(selectedSeries)
@@ -157,8 +154,7 @@ fun RadarChart(
 
     val selectionCache = remember { mutableMapOf<String, TextLayoutResult>() }
 
-    // ── Pre-computed trig cache (allocated once, survives draw frames) ──
-    // Only recomputes when axis count, start angle, or RTL changes.
+    // Allocated once and reused; recomputed only on axis count, angle or RTL change.
     val trigCache = remember(axes.size, style.startAngle, isRtl) {
         val count = axes.size
         if (count < 3) AxisTrigCache(cosA = FloatArray(0), sinA = FloatArray(0))
@@ -177,8 +173,8 @@ fun RadarChart(
     }
     val currentTrigCache by rememberUpdatedState(trigCache)
 
-    // ── Pre-computed animatable key matrix (avoids string concat in draw) ──
-    // Flat array: keyMatrix[seriesIndex * axisCount + axisIndex] = "seriesId::axisId"
+    // Flat array keyed [seriesIndex * axisCount + axisIndex], so the draw pass
+    // does no string concatenation.
     val axisCount = axes.size
     val keyMatrix = remember(axes, series) {
         if (axisCount < 3 || series.isEmpty()) emptyArray()
@@ -189,7 +185,7 @@ fun RadarChart(
         }
     }
 
-    // ── Pre-measure axis labels (avoids per-frame text measurement) ──
+    // Pre-measured so the draw pass measures no text.
     val labelTextStyle = remember(style.labelColor, style.labelFontSize) {
         TextStyle(
             color = style.labelColor,
@@ -209,7 +205,6 @@ fun RadarChart(
     }
     val currentAxisLabelLayouts by rememberUpdatedState(axisLabelLayouts)
 
-    // ── Cached max label dimension (used by both draw and pointer input) ──
     val maxLabelDim = remember(axisLabelLayouts) {
         if (axisLabelLayouts.isEmpty()) 0f
         else axisLabelLayouts.values.maxOf { max(it.size.width, it.size.height) }.toFloat()
@@ -229,12 +224,10 @@ fun RadarChart(
         }
     }
 
-    // ── Animatable map housekeeping (synchronous, before draw) ──
     SideEffect {
         animationEngine.syncAnimatables(axes, series)
     }
 
-    // ── Entry value animations ──
     LaunchedEffect(axes, series) {
         selectionCache.clear()
         if (currentSelectedSeries != null && series.none { it.id == currentSelectedSeries?.id }) {
@@ -243,14 +236,13 @@ fun RadarChart(
         animationEngine.launchEntryAnimations(axes, series, effectiveAnimationConfig, this)
     }
 
-    // ── Selection animations ──
     LaunchedEffect(axes, series, selectedSeries) {
         animationEngine.launchSelectionAnimations(
             series, selectedSeries, style, effectiveAnimationConfig, this
         )
     }
 
-    // Reusable Path objects (allocated once, reset per frame)
+    // Allocated once and rewound per frame rather than reallocated.
     val gridPath = remember { Path() }
     val seriesPath = remember { Path() }
 
@@ -312,7 +304,6 @@ fun RadarChart(
                         density = activeDensity
                     )
 
-                    // Find closest vertex across all series
                     var closestSeries: RadarSeries? = null
                     var closestDist = Float.MAX_VALUE
 
@@ -373,133 +364,42 @@ fun RadarChart(
             density = density
         )
 
-        // ── 1. Grid rings ──
-        if (style.gridLevels > 0) {
-            val gridStrokePx = style.gridStrokeWidth.toPx()
-
-            for (level in 1..style.gridLevels) {
-                val levelRadius = chartRadius * (level.toFloat() / style.gridLevels)
-
-                when (style.gridStyle) {
-                    RadarGridStyle.Polygon -> {
-                        gridPath.reset()
-                        for (i in 0 until axisCount) {
-                            val x = cx + levelRadius * cosA[i]
-                            val y = cy + levelRadius * sinA[i]
-                            if (i == 0) gridPath.moveTo(x, y) else gridPath.lineTo(x, y)
-                        }
-                        gridPath.close()
-                        drawPath(
-                            path = gridPath,
-                            color = style.gridColor,
-                            style = Stroke(gridStrokePx)
-                        )
-                    }
-
-                    RadarGridStyle.Circular -> {
-                        drawCircle(
-                            color = style.gridColor,
-                            radius = levelRadius,
-                            center = center,
-                            style = Stroke(gridStrokePx)
-                        )
-                    }
-                }
-            }
-        }
-
-        // ── 2. Axis spokes ──
-        val axisStrokePx = style.axisStrokeWidth.toPx()
-        for (i in 0 until axisCount) {
-            drawLine(
-                color = style.axisColor,
-                start = center,
-                end = Offset(x = cx + chartRadius * cosA[i], y = cy + chartRadius * sinA[i]),
-                strokeWidth = axisStrokePx
-            )
-        }
-
-        // ── 3. Series polygons (fill, stroke, dots) ──
-        val dotRadiusPx = style.dotRadius.toPx()
-
-        series.forEachIndexed { si, s ->
-            val seriesAlpha = animationEngine.alphaAnimatables[s.id]?.value ?: 1f
-            val strokePx = s.strokeWidth.toPx()
-
-            // Build polygon path using pre-computed keys
-            seriesPath.reset()
-            for (i in 0 until axisCount) {
-                val key = keyMatrix[si * axisCount + i]
-                val animVal = animationEngine.valueAnimatables[key]?.value ?: 0f
-                val norm = (animVal / axes[i].maxValue).coerceIn(0f, 1f)
-                val x = cx + chartRadius * norm * cosA[i]
-                val y = cy + chartRadius * norm * sinA[i]
-                if (i == 0) seriesPath.moveTo(x, y) else seriesPath.lineTo(x, y)
-            }
-            seriesPath.close()
-
-            // Fill
-            drawPath(
-                path = seriesPath,
-                color = s.color.copy(alpha = s.fillAlpha * seriesAlpha)
-            )
-
-            // Stroke
-            drawPath(
-                path = seriesPath,
-                color = s.color.copy(alpha = seriesAlpha),
-                style = Stroke(width = strokePx)
-            )
-
-            // Dots (second pass over vertices, no allocation)
-            if (style.showDots) {
-                for (i in 0 until axisCount) {
-                    val key = keyMatrix[si * axisCount + i]
-                    val animVal = animationEngine.valueAnimatables[key]?.value ?: 0f
-                    val norm = (animVal / axes[i].maxValue).coerceIn(0f, 1f)
-                    drawCircle(
-                        color = s.color.copy(alpha = seriesAlpha),
-                        radius = dotRadiusPx,
-                        center = Offset(
-                            x = cx + chartRadius * norm * cosA[i],
-                            y = cy + chartRadius * norm * sinA[i]
-                        )
-                    )
-                }
-            }
-        }
-
-        // ── 4. Axis labels ──
+        drawRadarGrid(style, gridPath, cosA, sinA, axisCount, center, chartRadius)
+        drawRadarAxes(style, cosA, sinA, axisCount, center, chartRadius)
+        drawRadarSeries(
+            axes = axes,
+            series = series,
+            style = style,
+            animationEngine = animationEngine,
+            keyMatrix = keyMatrix,
+            seriesPath = seriesPath,
+            cosA = cosA,
+            sinA = sinA,
+            axisCount = axisCount,
+            center = center,
+            chartRadius = chartRadius
+        )
         if (style.showLabels) {
-            val labelPaddingPx = style.labelPadding.toPx()
-
-            for (i in 0 until axisCount) {
-                val layout = axisLabelLayouts[axes[i].id] ?: continue
-                val labelRadius = chartRadius + labelPaddingPx
-
-                val lx = cx + labelRadius * cosA[i]
-                val ly = cy + labelRadius * sinA[i]
-
-                // Offset so the label sits flush away from the chart center.
-                drawText(
-                    textLayoutResult = layout,
-                    topLeft = Offset(
-                        x = lx - layout.size.width / 2f + cosA[i] * layout.size.width / 2f,
-                        y = ly - layout.size.height / 2f + sinA[i] * layout.size.height / 2f
-                    )
-                )
-            }
+            drawRadarLabels(
+                axes = axes,
+                style = style,
+                axisLabelLayouts = axisLabelLayouts,
+                cosA = cosA,
+                sinA = sinA,
+                axisCount = axisCount,
+                center = center,
+                chartRadius = chartRadius
+            )
         }
 
-        // ── 5. Selection indicator ──
         selectedSeries?.let { selected ->
             val selectedIdx = series.indexOfFirst { it.id == selected.id }
             if (selectedIdx < 0) return@let
 
             val vertices = List(axisCount) { i ->
-                val key = keyMatrix[selectedIdx * axisCount + i]
-                val animVal = animationEngine.valueAnimatables[key]?.value ?: 0f
-                val norm = (animVal / axes[i].maxValue).coerceIn(0f, 1f)
+                val norm = animationEngine.normalizedVertex(
+                    keyMatrix, selectedIdx, i, axisCount, axes
+                )
                 Offset(
                     x = cx + chartRadius * norm * cosA[i],
                     y = cy + chartRadius * norm * sinA[i]
