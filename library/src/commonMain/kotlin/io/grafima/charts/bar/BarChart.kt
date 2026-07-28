@@ -27,11 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -48,7 +44,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
@@ -92,10 +87,9 @@ fun BarChart(
     val animationEngine = remember { ChartAnimationEngine() }
     val density = LocalDensity.current
 
-    // Create the animatables after composition but before the first draw so the Canvas
-    // subscribes to them on frame one. Populating them only inside LaunchedEffect (below)
-    // leaves the first draw with no subscription, so the entry animation never repaints
-    // the bars — the slices/lines charts already avoid this via the same SideEffect.
+    // SideEffect runs before the first draw, so the Canvas subscribes to the
+    // animatables on frame one. Creating them in LaunchedEffect instead left the
+    // first draw unsubscribed and the bars never painted on iOS.
     SideEffect { animationEngine.syncAnimatables(entries) }
 
     val reduceMotion = rememberEffectiveReduceMotion()
@@ -355,288 +349,121 @@ fun BarChart(
         if (entries.isEmpty()) return@Canvas
 
         if (isHorizontal) {
-            val hChartLeft = if (isRtl) topSpacePx else horizontalCatLabelSpacePx
-            val hChartRight = if (isRtl) size.width - horizontalCatLabelSpacePx else size.width - topSpacePx
-            val hChartBottom = size.height - bottomSpacePx
-            val hChartWidth = hChartRight - hChartLeft
-            val hChartHeight = hChartBottom - horizontalTopPadPx
-
-            if (axisConfig.showYAxis || axisConfig.showGridLines) {
-                for (i in 0..axisConfig.yAxisSteps) {
-                    val ratio = i.toFloat() / axisConfig.yAxisSteps
-                    val gridX = if (isRtl) hChartRight - hChartWidth * ratio
-                    else hChartLeft + hChartWidth * ratio
-
-                    if (axisConfig.showGridLines) {
-                        drawLine(
-                            color = axisConfig.axisColor,
-                            start = Offset(x = gridX, y = horizontalTopPadPx),
-                            end = Offset(x = gridX, y = hChartBottom),
-                            strokeWidth = 1.dp.toPx(),
-                            pathEffect = axisConfig.dashEffect
-                        )
-                    }
-
-                    if (axisConfig.showYAxis) {
-                        yAxisTextLayouts[i]?.let { layout ->
-                            drawText(
-                                textLayoutResult = layout,
-                                topLeft = Offset(
-                                    x = gridX - layout.size.width / 2,
-                                    y = hChartBottom + 8.dp.toPx()
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            val zeroX = if (isRtl) hChartRight else hChartLeft
-            drawLine(
-                color = axisConfig.axisColor,
-                start = Offset(x = zeroX, y = horizontalTopPadPx),
-                end = Offset(x = zeroX, y = hChartBottom),
-                strokeWidth = 2.dp.toPx()
-            )
-
-            val barCount = entries.size
+            val chartLeft = if (isRtl) topSpacePx else horizontalCatLabelSpacePx
+            val chartRight =
+                if (isRtl) size.width - horizontalCatLabelSpacePx else size.width - topSpacePx
+            val chartBottom = size.height - bottomSpacePx
+            val hChartWidth = chartRight - chartLeft
             val (barThickness, barGap) = barThicknessAndGap(
-                hChartHeight, barCount, style.barSpacingFactor
+                chartBottom - horizontalTopPadPx, entries.size, style.barSpacingFactor
             )
 
-            entries.forEachIndexed { index, entry ->
-                val animVal = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-                val selAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
-                val barLen = (animVal / maxBarValue) * hChartWidth
-
-                val yOff = barSlotOffset(index, horizontalTopPadPx, barThickness, barGap)
-                val xOff = if (isRtl) hChartRight - barLen else hChartLeft
-
-                if (barLen > 0f) {
-                    barPath.rewind()
-                    val cr = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
-                    barPath.addRoundRect(
-                        RoundRect(
-                            left = xOff,
-                            top = yOff,
-                            right = xOff + barLen,
-                            bottom = yOff + barThickness,
-                            topLeftCornerRadius = if (isRtl) cr else CornerRadius.Zero,
-                            topRightCornerRadius = if (isRtl) CornerRadius.Zero else cr,
-                            bottomLeftCornerRadius = if (isRtl) cr else CornerRadius.Zero,
-                            bottomRightCornerRadius = if (isRtl) CornerRadius.Zero else cr
-                        )
-                    )
-
-                    val stops = colorStopArrays[entry.id]
-                    val colors = entry.gradientColors ?: dataSet.defaultGradientColors
-                    val brushStart = if (isRtl) xOff + barLen else xOff
-                    val brushEnd = if (isRtl) xOff else xOff + barLen
-                    val brush = if (stops != null) {
-                        Brush.horizontalGradient(*stops, startX = brushStart, endX = brushEnd)
-                    } else {
-                        Brush.horizontalGradient(
-                            colors = colors,
-                            startX = brushStart,
-                            endX = brushEnd
-                        )
-                    }
-
-                    drawPath(path = barPath, brush = brush, alpha = selAlpha)
-                }
-
-                xLabelLayouts[entry.id]?.let { layout ->
-                    val lx = if (isRtl) hChartRight + 8.dp.toPx()
-                    else hChartLeft - layout.size.width - 8.dp.toPx()
-                    drawText(
-                        textLayoutResult = layout,
-                        topLeft = Offset(
-                            x = lx,
-                            y = yOff + (barThickness - layout.size.height) / 2
-                        ),
-                        alpha = selAlpha
-                    )
-                }
-
-                if (style.showFloatingValues && animVal > 1f && selectedEntry == null) {
-                    val vi = animVal.toInt()
-                    val vl = valueTextCache.getOrPut(vi) {
-                        textMeasurer.measure(text = vi.toString(), style = centeredValueTextStyle)
-                    }
-                    val prog = if (entry.y > 0f) (animVal / entry.y).coerceIn(0f, 1f) else 0f
-                    val vx = if (isRtl) xOff - vl.size.width - 6.dp.toPx()
-                    else xOff + barLen + 6.dp.toPx()
-                    drawText(
-                        textLayoutResult = vl,
-                        topLeft = Offset(x = vx, y = yOff + (barThickness - vl.size.height) / 2),
-                        alpha = prog
-                    )
-                }
-            }
-
+            drawHorizontalGrid(
+                axisConfig = axisConfig,
+                yAxisTextLayouts = yAxisTextLayouts,
+                chartLeft = chartLeft,
+                chartRight = chartRight,
+                chartBottom = chartBottom,
+                chartWidth = hChartWidth,
+                topPadPx = horizontalTopPadPx,
+                isRtl = isRtl
+            )
+            drawHorizontalBars(
+                dataSet = dataSet,
+                style = style,
+                animationEngine = animationEngine,
+                colorStopArrays = colorStopArrays,
+                xLabelLayouts = xLabelLayouts,
+                valueTextCache = valueTextCache,
+                textMeasurer = textMeasurer,
+                centeredValueTextStyle = centeredValueTextStyle,
+                barPath = barPath,
+                selectedEntry = selectedEntry,
+                maxBarValue = maxBarValue,
+                barThickness = barThickness,
+                barGap = barGap,
+                chartLeft = chartLeft,
+                chartRight = chartRight,
+                chartWidth = hChartWidth,
+                topPadPx = horizontalTopPadPx,
+                cornerRadiusPx = cornerRadiusPx,
+                isRtl = isRtl
+            )
             selectedEntry?.let { entry ->
-                val animVal = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-                if (animVal > entry.y * 0.9f) {
-                    val targetLen = (entry.y / maxBarValue) * hChartWidth
-                    val idx = entryIndexMap[entry.id] ?: return@let
-                    val yOff = barSlotOffset(idx, horizontalTopPadPx, barThickness, barGap)
-                    val xOff = if (isRtl) hChartRight - targetLen else hChartLeft
-
-                    with(selectionRenderer) {
-                        drawSelection(
-                            entry = entry,
-                            barTopLeft = Offset(x = xOff, y = yOff),
-                            barSize = Size(width = targetLen, height = barThickness),
-                            orientation = orientation,
-                            textMeasurer = textMeasurer,
-                            tooltipCache = selectionCache
-                        )
-                    }
-                }
+                drawBarSelection(
+                    entry = entry,
+                    orientation = orientation,
+                    selectionRenderer = selectionRenderer,
+                    animationEngine = animationEngine,
+                    entryIndexMap = entryIndexMap,
+                    textMeasurer = textMeasurer,
+                    selectionCache = selectionCache,
+                    maxBarValue = maxBarValue,
+                    barExtent = barThickness,
+                    barGap = barGap,
+                    chartExtent = hChartWidth,
+                    leadingInset = horizontalTopPadPx,
+                    crossAxisOffset = chartLeft,
+                    chartRight = chartRight,
+                    isRtl = isRtl
+                )
             }
-
             return@Canvas
         }
 
         val chartWidth = size.width - yAxisWidthPx
         val chartHeight = size.height - bottomSpacePx - topSpacePx
-
-        if (axisConfig.showYAxis || axisConfig.showGridLines) {
-            for (i in 0..axisConfig.yAxisSteps) {
-                val yRatio = 1f - (i.toFloat() / axisConfig.yAxisSteps.toFloat())
-                val yPos = topSpacePx + (chartHeight * yRatio)
-
-                if (axisConfig.showGridLines) {
-                    val startX = if (isRtl) 0f else yAxisWidthPx
-                    val endX = if (isRtl) size.width - yAxisWidthPx else size.width
-                    drawLine(
-                        color = axisConfig.axisColor,
-                        start = Offset(x = startX, y = yPos),
-                        end = Offset(x = endX, y = yPos),
-                        strokeWidth = 1.dp.toPx(),
-                        pathEffect = axisConfig.dashEffect
-                    )
-                }
-
-                if (axisConfig.showYAxis) {
-                    yAxisTextLayouts[i]?.let { layout ->
-                        val ltrTextX =
-                            yAxisWidthPx - layout.size.width - axisConfig.yAxisLabelPadding.toPx()
-                        val rtlTextX =
-                            size.width - yAxisWidthPx + axisConfig.yAxisLabelPadding.toPx()
-                        val textX = if (isRtl) rtlTextX else ltrTextX
-                        drawText(
-                            textLayoutResult = layout,
-                            topLeft = Offset(x = textX, y = yPos - (layout.size.height / 2))
-                        )
-                    }
-                }
-            }
-        }
-
-        val baseLineStart = if (isRtl) 0f else yAxisWidthPx
-        val baseLineEnd = if (isRtl) size.width - yAxisWidthPx else size.width
-        drawLine(
-            color = axisConfig.axisColor,
-            start = Offset(x = baseLineStart, y = size.height - bottomSpacePx),
-            end = Offset(x = baseLineEnd, y = size.height - bottomSpacePx),
-            strokeWidth = 2.dp.toPx()
-        )
-
-        val barCount = entries.size
         val (barWidth, barSpacing) = barThicknessAndGap(
-            chartWidth, barCount, style.barSpacingFactor
+            chartWidth, entries.size, style.barSpacingFactor
         )
 
-        entries.forEachIndexed { index, entry ->
-            val currentAnimatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-            val currentSelectionAlpha =
-                animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
-            val targetHeight = (currentAnimatedValue / maxBarValue) * chartHeight
-
-            val ltrXOffset = barSlotOffset(index, yAxisWidthPx, barWidth, barSpacing)
-            val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
-            val yOffset = size.height - bottomSpacePx - targetHeight
-
-            if (targetHeight > 0f) {
-                barPath.rewind()
-                barPath.addRoundRect(
-                    RoundRect(
-                        left = xOffset,
-                        top = yOffset,
-                        right = xOffset + barWidth,
-                        bottom = yOffset + targetHeight,
-                        topLeftCornerRadius = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx),
-                        topRightCornerRadius = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx),
-                        bottomLeftCornerRadius = CornerRadius.Zero,
-                        bottomRightCornerRadius = CornerRadius.Zero
-                    )
-                )
-
-                val cachedStops = colorStopArrays[entry.id]
-                val activeColors = entry.gradientColors ?: dataSet.defaultGradientColors
-                val barBrush = if (cachedStops != null) Brush.verticalGradient(
-                    *cachedStops,
-                    startY = yOffset,
-                    endY = yOffset + targetHeight
-                ) else Brush.verticalGradient(
-                    colors = activeColors,
-                    startY = yOffset,
-                    endY = yOffset + targetHeight
-                )
-
-                drawPath(path = barPath, brush = barBrush, alpha = currentSelectionAlpha)
-            }
-
-            if (style.showFloatingValues && currentAnimatedValue > 1f && selectedEntry == null) {
-                val valueInt = currentAnimatedValue.toInt()
-                val valueLayout = valueTextCache.getOrPut(valueInt) {
-                    textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
-                }
-                val animationProgress =
-                    if (entry.y > 0f) (currentAnimatedValue / entry.y).coerceIn(0f, 1f) else 0f
-                drawText(
-                    textLayoutResult = valueLayout,
-                    topLeft = Offset(
-                        x = xOffset + (barWidth - valueLayout.size.width) / 2,
-                        y = yOffset - valueLayout.size.height - 6.dp.toPx()
-                    ),
-                    alpha = animationProgress
-                )
-            }
-
-            xLabelLayouts[entry.id]?.let { cachedLayout ->
-                drawText(
-                    textLayoutResult = cachedLayout,
-                    topLeft = Offset(
-                        x = xOffset + (barWidth - cachedLayout.size.width) / 2,
-                        y = size.height - bottomSpacePx + 12.dp.toPx()
-                    ),
-                    alpha = currentSelectionAlpha
-                )
-            }
-        }
-
+        drawVerticalGrid(
+            axisConfig = axisConfig,
+            yAxisTextLayouts = yAxisTextLayouts,
+            yAxisWidthPx = yAxisWidthPx,
+            topSpacePx = topSpacePx,
+            bottomSpacePx = bottomSpacePx,
+            chartHeight = chartHeight,
+            isRtl = isRtl
+        )
+        drawVerticalBars(
+            dataSet = dataSet,
+            style = style,
+            animationEngine = animationEngine,
+            colorStopArrays = colorStopArrays,
+            xLabelLayouts = xLabelLayouts,
+            valueTextCache = valueTextCache,
+            textMeasurer = textMeasurer,
+            centeredValueTextStyle = centeredValueTextStyle,
+            barPath = barPath,
+            selectedEntry = selectedEntry,
+            maxBarValue = maxBarValue,
+            barWidth = barWidth,
+            barSpacing = barSpacing,
+            yAxisWidthPx = yAxisWidthPx,
+            bottomSpacePx = bottomSpacePx,
+            chartHeight = chartHeight,
+            cornerRadiusPx = cornerRadiusPx,
+            isRtl = isRtl
+        )
         selectedEntry?.let { entry ->
-            val currentHeightValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-            if (currentHeightValue > entry.y * 0.9f) {
-                val targetHeight = (entry.y / maxBarValue) * chartHeight
-                val targetIndex = entryIndexMap[entry.id] ?: return@let
-                val ltrXOffset = barSlotOffset(targetIndex, yAxisWidthPx, barWidth, barSpacing)
-                val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
-                val yOffset = size.height - bottomSpacePx - targetHeight
-
-                with(selectionRenderer) {
-                    drawSelection(
-                        entry = entry,
-                        barTopLeft = Offset(x = xOffset, y = yOffset),
-                        barSize = Size(width = barWidth, height = targetHeight),
-                        orientation = orientation,
-                        textMeasurer = textMeasurer,
-                        tooltipCache = selectionCache
-                    )
-                }
-            }
+            drawBarSelection(
+                entry = entry,
+                orientation = orientation,
+                selectionRenderer = selectionRenderer,
+                animationEngine = animationEngine,
+                entryIndexMap = entryIndexMap,
+                textMeasurer = textMeasurer,
+                selectionCache = selectionCache,
+                maxBarValue = maxBarValue,
+                barExtent = barWidth,
+                barGap = barSpacing,
+                chartExtent = chartHeight,
+                leadingInset = yAxisWidthPx,
+                crossAxisOffset = size.height - bottomSpacePx,
+                chartRight = 0f,
+                isRtl = isRtl
+            )
         }
     }
 }
