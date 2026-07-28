@@ -38,6 +38,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Build, lint, and run JVM tests
         run: ./gradlew build
+      # Fails if the public API drifts from library/api/. Run
+      # `./gradlew :library:updateKotlinAbi` and commit the diff to accept it.
+      - name: Check public API has not drifted
+        run: ./gradlew :library:checkKotlinAbi
       - name: Upload reports
         if: failure()
         uses: actions/upload-artifact@v7

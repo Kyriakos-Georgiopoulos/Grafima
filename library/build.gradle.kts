@@ -6,6 +6,15 @@ plugins {
 }
 
 kotlin {
+    // Dumps the public API to api/. `checkKotlinAbi` fails when it drifts, so
+    // API changes surface as a reviewable diff instead of shipping unnoticed.
+    // The dump covers the klib targets, which is the whole public surface:
+    // androidMain holds no public API, only an internal `actual`.
+    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+    abiValidation {
+        enabled.set(true)
+    }
+
     android {
         namespace = "io.grafima.charts"
         compileSdk = 37
