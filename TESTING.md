@@ -80,3 +80,20 @@ swap"*.
   datasets in `AccessibilityContractTest` / `AccessibilityEnvironmentTest`.
 - Engine tests assert on `internal` state deliberately; the UI suite covers
   the public surface through semantics.
+
+## Public API
+
+`library/api/library.klib.api` records Grafima's public API. CI fails if the
+code drifts from it, so API changes show up as a reviewable diff rather than
+slipping through unnoticed.
+
+```bash
+# Did I change the public API?
+./gradlew :library:checkKotlinAbi
+
+# Yes, and it was intentional — update the dump and commit it.
+./gradlew :library:updateKotlinAbi
+```
+
+The dump covers the klib targets, which is the entire public surface:
+`androidMain` contains no public API, only an internal `actual`.
