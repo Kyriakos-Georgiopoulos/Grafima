@@ -40,18 +40,20 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import io.grafima.charts.rememberReduceMotion
-import kotlin.math.ceil
+import io.grafima.charts.rememberEffectiveReduceMotion
 
 /**
  * An animated bar chart with touch selection, RTL support, and accessibility.
@@ -96,7 +98,7 @@ fun BarChart(
     // the bars — the slices/lines charts already avoid this via the same SideEffect.
     SideEffect { animationEngine.syncAnimatables(entries) }
 
-    val reduceMotion = rememberReduceMotion()
+    val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
             animationConfig.copy(
@@ -120,12 +122,7 @@ fun BarChart(
     val currentOnBarSelected by rememberUpdatedState(onBarSelected)
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
 
-    val maxBarValue = remember(entries) {
-        val rawMax = entries.maxOfOrNull { it.y }?.takeIf { it > 0f } ?: 1f
-        val maxWithHeadroom = rawMax * 1.2f
-        val step = if (maxWithHeadroom > 100) 50f else if (maxWithHeadroom > 10) 10f else 5f
-        ceil(maxWithHeadroom / step) * step
-    }
+    val maxBarValue = remember(entries) { computeBarAxisMax(entries) }
 
     val maxLabelResult = remember(maxBarValue, axisConfig.axisLabelTextStyle) {
         textMeasurer.measure(
@@ -200,12 +197,11 @@ fun BarChart(
         if (!isHorizontal) 0f else with(density) { 8.dp.toPx() }
     }
 
-    val chartDescription = remember(dataSet, selectedEntry, a11yConfig) {
-        buildString {
-            append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-            entries.forEach { append(a11yConfig.barDescriptionBuilder(it)).append(". ") }
-            append(a11yConfig.selectedStateDescription(selectedEntry))
-        }
+    val chartDescription = remember(dataSet, a11yConfig) {
+        buildBarChartDescription(dataSet, a11yConfig)
+    }
+    val chartStateDescription = remember(selectedEntry, a11yConfig) {
+        a11yConfig.selectedStateDescription(selectedEntry)
     }
 
     LaunchedEffect(entries) {
@@ -229,7 +225,9 @@ fun BarChart(
     Canvas(
         modifier = modifier
             .semantics(mergeDescendants = true) {
+                role = Role.Image
                 contentDescription = chartDescription
+                stateDescription = chartStateDescription
                 liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     entries.forEach { entry ->
@@ -271,14 +269,13 @@ fun BarChart(
                         val hChartWidth = hChartRight - hChartLeft
                         val hChartHeight = hChartBottom - horizontalTopPadPx
 
-                        val safeSpacing = style.barSpacingFactor.coerceIn(0f, 0.9f)
-                        val totalSpacing = hChartHeight * safeSpacing
-                        val barThickness = (hChartHeight - totalSpacing) / entries.size
-                        val barGap = totalSpacing / (entries.size + 1)
+                        val (barThickness, barGap) = barThicknessAndGap(
+                            hChartHeight, entries.size, style.barSpacingFactor
+                        )
 
                         var foundEntry: BarEntry? = null
                         for (i in entries.indices) {
-                            val yOff = horizontalTopPadPx + barGap + i * (barThickness + barGap)
+                            val yOff = barSlotOffset(i, horizontalTopPadPx, barThickness, barGap)
                             val animVal =
                                 animationEngine.heightAnimatables[entries[i].id]?.value ?: 0f
                             val barLen = (animVal / maxBarValue) * hChartWidth
@@ -308,16 +305,15 @@ fun BarChart(
                     val chartWidth = canvasWidth - yAxisWidthPx
                     val chartHeight = canvasHeight - bottomSpacePx - topSpacePx
 
-                    val safeSpacingFactor = style.barSpacingFactor.coerceIn(0f, 0.9f)
-                    val totalSpacing = chartWidth * safeSpacingFactor
-                    val barWidth = (chartWidth - totalSpacing) / entries.size
-                    val barSpacing = totalSpacing / (entries.size + 1)
+                    val (barWidth, barSpacing) = barThicknessAndGap(
+                        chartWidth, entries.size, style.barSpacingFactor
+                    )
 
                     var foundEntry: BarEntry? = null
 
                     for (i in entries.indices) {
-                        val ltrStartX = yAxisWidthPx + barSpacing + i * (barWidth + barSpacing)
-                        val startX = if (isRtl) canvasWidth - ltrStartX - barWidth else ltrStartX
+                        val ltrStartX = barSlotOffset(i, yAxisWidthPx, barWidth, barSpacing)
+                        val startX = mirrorForRtl(ltrStartX, canvasWidth, barWidth, isRtl)
                         val endX = startX + barWidth
 
                         val currentAnimatedValue =
@@ -404,16 +400,16 @@ fun BarChart(
             )
 
             val barCount = entries.size
-            val hTotalSpacing = hChartHeight * style.barSpacingFactor.coerceIn(0f, 0.9f)
-            val barThickness = (hChartHeight - hTotalSpacing) / barCount
-            val barGap = hTotalSpacing / (barCount + 1)
+            val (barThickness, barGap) = barThicknessAndGap(
+                hChartHeight, barCount, style.barSpacingFactor
+            )
 
             entries.forEachIndexed { index, entry ->
                 val animVal = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
                 val selAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
                 val barLen = (animVal / maxBarValue) * hChartWidth
 
-                val yOff = horizontalTopPadPx + barGap + index * (barThickness + barGap)
+                val yOff = barSlotOffset(index, horizontalTopPadPx, barThickness, barGap)
                 val xOff = if (isRtl) hChartRight - barLen else hChartLeft
 
                 if (barLen > 0f) {
@@ -483,7 +479,7 @@ fun BarChart(
                 if (animVal > entry.y * 0.9f) {
                     val targetLen = (entry.y / maxBarValue) * hChartWidth
                     val idx = entryIndexMap[entry.id] ?: return@let
-                    val yOff = horizontalTopPadPx + barGap + idx * (barThickness + barGap)
+                    val yOff = barSlotOffset(idx, horizontalTopPadPx, barThickness, barGap)
                     val xOff = if (isRtl) hChartRight - targetLen else hChartLeft
 
                     with(selectionRenderer) {
@@ -548,9 +544,9 @@ fun BarChart(
         )
 
         val barCount = entries.size
-        val totalSpacing = chartWidth * style.barSpacingFactor.coerceIn(0f, 0.9f)
-        val barWidth = (chartWidth - totalSpacing) / barCount
-        val barSpacing = totalSpacing / (barCount + 1)
+        val (barWidth, barSpacing) = barThicknessAndGap(
+            chartWidth, barCount, style.barSpacingFactor
+        )
 
         entries.forEachIndexed { index, entry ->
             val currentAnimatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
@@ -558,8 +554,8 @@ fun BarChart(
                 animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
             val targetHeight = (currentAnimatedValue / maxBarValue) * chartHeight
 
-            val ltrXOffset = yAxisWidthPx + barSpacing + index * (barWidth + barSpacing)
-            val xOffset = if (isRtl) size.width - ltrXOffset - barWidth else ltrXOffset
+            val ltrXOffset = barSlotOffset(index, yAxisWidthPx, barWidth, barSpacing)
+            val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
             val yOffset = size.height - bottomSpacePx - targetHeight
 
             if (targetHeight > 0f) {
@@ -626,8 +622,8 @@ fun BarChart(
             if (currentHeightValue > entry.y * 0.9f) {
                 val targetHeight = (entry.y / maxBarValue) * chartHeight
                 val targetIndex = entryIndexMap[entry.id] ?: return@let
-                val ltrXOffset = yAxisWidthPx + barSpacing + targetIndex * (barWidth + barSpacing)
-                val xOffset = if (isRtl) size.width - ltrXOffset - barWidth else ltrXOffset
+                val ltrXOffset = barSlotOffset(targetIndex, yAxisWidthPx, barWidth, barSpacing)
+                val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
                 val yOffset = size.height - bottomSpacePx - targetHeight
 
                 with(selectionRenderer) {

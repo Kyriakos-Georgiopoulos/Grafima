@@ -1,0 +1,61 @@
+/*
+ * Copyright 2026 Kyriakos Georgiopoulos
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * Test names in this source set use `underscore_separated` names rather than the
+ * backticked sentences used in commonTest. These tests are dexed for Android
+ * instrumentation, and D8 rejects space characters in class names below DEX
+ * version 040 (the library targets minSdk 24) — Kotlin derives lambda class
+ * names from the enclosing function, so spaces here would fail the build.
+ */
+
+package io.grafima.charts
+
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ComposeUiTest
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
+import kotlin.test.assertNotNull
+
+/** Matches the chart node: the one carrying custom accessibility actions. */
+@OptIn(ExperimentalTestApi::class)
+internal fun ComposeUiTest.onChartNode(): SemanticsNodeInteraction =
+    onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions))
+
+/** Matches the chart node by its role, for charts without custom actions. */
+@OptIn(ExperimentalTestApi::class)
+internal fun ComposeUiTest.onChartNodeWithRole(): SemanticsNodeInteraction =
+    onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.Role))
+
+/** The labels of all custom accessibility actions currently on this node. */
+internal fun SemanticsNodeInteraction.customActionLabels(): List<String> =
+    fetchSemanticsNode().config[SemanticsActions.CustomActions].map { it.label }
+
+/**
+ * Invokes a chart's custom accessibility action by its visible label via the
+ * official test API, failing with the list of available labels when absent.
+ */
+@OptIn(ExperimentalTestApi::class)
+internal fun SemanticsNodeInteraction.performCustomAction(label: String) {
+    assertNotNull(
+        customActionLabels().firstOrNull { it == label },
+        "no custom action \"$label\" in ${customActionLabels()}"
+    )
+    performCustomAccessibilityActionWithLabel(label)
+}

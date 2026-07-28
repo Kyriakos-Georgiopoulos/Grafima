@@ -10,6 +10,13 @@ kotlin {
         namespace = "io.grafima.charts"
         compileSdk = 37
         minSdk = 24
+        // JVM unit tests for commonTest (pure logic + animation engines).
+        withHostTest {}
+        // Instrumented tests for the shared uiTest source set.
+        withDeviceTest {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            animationsDisabled = true
+        }
     }
 
     iosArm64()
@@ -23,5 +30,47 @@ kotlin {
             api(libs.compose.ui)
             api(libs.compose.animation)
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+        }
+
+        // Compose UI tests live in src/uiTest and are compiled into BOTH test
+        // targets: iOS runs them on a simulator, Android as instrumented tests.
+        // Sharing the directory (rather than a dependsOn edge) keeps KMP's
+        // default hierarchy template intact.
+        val uiTestSrcDir = "src/uiTest/kotlin"
+
+        iosTest {
+            kotlin.srcDir(uiTestSrcDir)
+            dependencies {
+                implementation(libs.compose.ui.test)
+            }
+        }
+
+        // `androidDeviceTest` exists but has no typed accessor in the KMP DSL.
+        getByName("androidDeviceTest") {
+            kotlin.srcDir(uiTestSrcDir)
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.compose.ui.test)
+                implementation(project.dependencies.platform(libs.androidx.compose.bom))
+                implementation(libs.androidx.test.runner)
+                implementation(libs.androidx.compose.ui.test.manifest)
+            }
+        }
     }
+}
+
+// Compose Multiplatform 1.11.1 registers a resource-copy task for the
+// androidDeviceTest variant without configuring its output directory, which
+// fails the build. Grafima ships no Compose resources, so the task has nothing
+// to do — disable it rather than feed it a dummy directory.
+tasks.matching { it.name == "copyAndroidDeviceTestComposeResourcesToAndroidAssets" }
+    .configureEach { enabled = false }
+
+// The default simulator device may not exist on a given machine; pin one and
+// let CI override it via -PiosSimulatorDevice=<name>.
+tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+    device.set(providers.gradleProperty("iosSimulatorDevice").orElse("iPhone 17 Pro"))
 }
