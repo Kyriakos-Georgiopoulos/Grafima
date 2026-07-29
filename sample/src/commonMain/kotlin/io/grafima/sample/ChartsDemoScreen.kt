@@ -167,7 +167,7 @@ private fun ChartTabBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp)
             .background(colors.surfaceMuted, RoundedCornerShape(16.dp))
             .padding(4.dp)
             .drawBehind {

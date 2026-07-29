@@ -86,7 +86,7 @@ fun DemoScreenScaffold(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (header != null) {
@@ -99,7 +99,9 @@ fun DemoScreenScaffold(
                     .weight(1f)
             ) { chart() }
             Spacer(Modifier.height(20.dp))
-            controls()
+            // Same spacing the wide column uses, so a screen with more than one
+            // group of buttons gets a gap between them either way round.
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
         }
     }
 }
