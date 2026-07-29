@@ -151,17 +151,23 @@ internal class PieChartAnimationEngine {
         config: PieAnimationConfig,
         scope: CoroutineScope
     ) {
-        entries.forEachIndexed { index, entry ->
-            val valueAnim = valueAnimatables[entry.id] ?: return@forEachIndexed
-            val isInitialLoad = initializedIds.add(entry.id)
+        // Stagger by position among the slices appearing *now*, not by position
+        // in the dataset. The two agree on first load, where the cascade is the
+        // point, and diverge once a slice is added to a chart already on screen:
+        // keyed on the dataset index, the newcomer would sit idle for one
+        // stagger step per slice already drawn before it began to sweep.
+        var appearing = 0
+        entries.forEach { entry ->
+            val valueAnim = valueAnimatables[entry.id] ?: return@forEach
 
-            scope.launch {
-                if (isInitialLoad) {
-                    delay(config.startDelayMs + (index * config.staggerDelayMs))
+            if (initializedIds.add(entry.id)) {
+                val position = appearing++
+                scope.launch {
+                    delay(config.startDelayMs + (position * config.staggerDelayMs))
                     valueAnim.animateTo(entry.value, config.initialEntrySpec)
-                } else if (valueAnim.targetValue != entry.value) {
-                    valueAnim.animateTo(entry.value, config.morphSpec)
                 }
+            } else if (valueAnim.targetValue != entry.value) {
+                scope.launch { valueAnim.animateTo(entry.value, config.morphSpec) }
             }
         }
     }

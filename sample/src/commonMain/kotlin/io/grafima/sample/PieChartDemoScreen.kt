@@ -16,6 +16,8 @@
 
 package io.grafima.sample
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +50,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.pie.ElbowCalloutPieSelectionRenderer
+import io.grafima.charts.pie.PieAnimationConfig
 import io.grafima.charts.pie.PieChart
 import io.grafima.charts.pie.PieChartStyle
 import io.grafima.charts.pie.PieDataSet
@@ -74,6 +77,44 @@ private val RoyalBrush = SliceBrush.Linear(
     colors = listOf(Color(0xFF536976), Color(0xFF292E49)),
     angleDegrees = 135f
 )
+
+private val CoralBrush = SliceBrush.Linear(
+    colors = listOf(Color(0xFFFF6A88), Color(0xFFFF99AC))
+)
+private val VioletBrush = SliceBrush.Radial(
+    colors = listOf(Color(0xFF7F00FF), Color(0xFFE100FF))
+)
+private val LimeBrush = SliceBrush.Linear(
+    colors = listOf(Color(0xFF7EC850), Color(0xFFD9E86B)),
+    angleDegrees = 45f
+)
+
+// One brush per slice the demo can reach, so an added slice never repeats a
+// colour already on the chart.
+private val SliceBrushes = listOf(
+    OceanBrush, SunsetBrush, AmethystBrush, EmeraldBrush,
+    RoyalBrush, CoralBrush, VioletBrush, LimeBrush
+)
+
+private const val MinSlices = 2
+private const val MaxSlices = 8
+
+private fun PieDataSet.plusEntry(): PieDataSet {
+    val index = entries.size
+    val id = ('A' + index).toString()
+    val used = entries.mapTo(mutableSetOf()) { it.brush }
+    return copy(
+        entries = entries + PieEntry(
+            id = id,
+            label = "Product $id",
+            value = Random.nextInt(50, 500).toFloat(),
+            brush = SliceBrushes.firstOrNull { it !in used }
+                ?: SliceBrushes[index % SliceBrushes.size]
+        )
+    )
+}
+
+private fun PieDataSet.minusEntry(): PieDataSet = copy(entries = entries.dropLast(1))
 
 @Composable
 fun PieChartDemoScreen() {
@@ -132,10 +173,38 @@ fun PieChartDemoScreen() {
         )
     }
 
+    // Tighter than the library defaults: a slice arriving on a chart already on
+    // screen should land promptly rather than unfold at opening-cascade pace.
+    val animationConfig = remember {
+        PieAnimationConfig(
+            initialEntrySpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+            staggerDelayMs = 60L,
+            startDelayMs = 60L
+        )
+    }
+
     val total = remember(dataSet) { dataSet.entries.sumOf { it.value.toInt() } }
 
     DemoScreenScaffold(
         controls = {
+            DemoControls { buttonModifier ->
+                DemoAddButton(
+                    text = "Add Slice",
+                    enabled = dataSet.entries.size < MaxSlices,
+                    onClick = { dataSet = dataSet.plusEntry() },
+                    modifier = buttonModifier
+                )
+                DemoRemoveButton(
+                    text = "Remove Slice",
+                    enabled = dataSet.entries.size > MinSlices,
+                    onClick = {
+                        selectedSliceId = null
+                        dataSet = dataSet.minusEntry()
+                    },
+                    modifier = buttonModifier
+                )
+            }
+
             DemoControls { buttonModifier ->
                 Button(
                     onClick = { isDonut = !isDonut },
@@ -243,6 +312,7 @@ fun PieChartDemoScreen() {
                         dataSet = dataSet,
                         modifier = Modifier.fillMaxSize(),
                         style = chartStyle,
+                        animationConfig = animationConfig,
                         selectionRenderer = activeRenderer,
                         selectedEntry = selectedSliceData,
                         onSliceSelected = { entry -> selectedSliceId = entry?.id },

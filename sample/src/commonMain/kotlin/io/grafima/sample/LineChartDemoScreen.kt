@@ -103,12 +103,28 @@ private fun randomSeries(
     )
 }
 
-private fun monthlyDataSet(): LineDataSet = LineDataSet(
-    series = listOf(
-        randomSeries(id = "rev", label = "Revenue", base = 80, variance = 40),
-        randomSeries(id = "exp", label = "Expenses", base = 55, variance = 25)
-    ),
-    contentDescription = "Monthly Revenue vs Expenses"
+private const val MinSeries = 1
+private const val MaxSeries = 4
+
+private fun LineDataSet.plusSeries(): LineDataSet {
+    val index = series.size
+    return copy(
+        series = series + randomSeries(
+            id = "series$index",
+            label = "Series ${index + 1}",
+            base = 70,
+            variance = 35
+        )
+    )
+}
+
+private fun LineDataSet.minusSeries(): LineDataSet = copy(series = series.dropLast(1))
+
+/** Re-rolls every series that is currently on the chart, added ones included. */
+private fun LineDataSet.randomized(): LineDataSet = copy(
+    series = series.map { s ->
+        randomSeries(id = s.id, label = s.label, base = 75, variance = 35)
+    }
 )
 
 private fun seededDataSet(): LineDataSet = LineDataSet(
@@ -160,6 +176,21 @@ fun LineChartDemoScreen() {
     DemoScreenScaffold(
         controls = {
             DemoControls { buttonModifier ->
+                DemoAddButton(
+                    text = "Add Series",
+                    enabled = dataSet.series.size < MaxSeries,
+                    onClick = { dataSet = dataSet.plusSeries() },
+                    modifier = buttonModifier
+                )
+                DemoRemoveButton(
+                    text = "Remove Series",
+                    enabled = dataSet.series.size > MinSeries,
+                    onClick = { dataSet = dataSet.minusSeries() },
+                    modifier = buttonModifier
+                )
+            }
+
+            DemoControls { buttonModifier ->
                 Button(
                     onClick = {
                         curveType = if (curveType == LineCurveType.MonotoneCubic) {
@@ -201,7 +232,7 @@ fun LineChartDemoScreen() {
             }
 
             Button(
-                onClick = { dataSet = monthlyDataSet() },
+                onClick = { dataSet = dataSet.randomized() },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.onSurface,
                     contentColor = colors.background

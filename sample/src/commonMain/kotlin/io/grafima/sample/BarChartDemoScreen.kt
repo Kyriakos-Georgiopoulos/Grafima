@@ -16,6 +16,8 @@
 
 package io.grafima.sample
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +51,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.bar.A11yConfig
+import io.grafima.charts.bar.AnimationConfig
 import io.grafima.charts.bar.BarChart
 import io.grafima.charts.bar.BarDataSet
 import io.grafima.charts.bar.BarEntry
@@ -67,6 +70,14 @@ private val AmethystGradient = listOf(Color(0xFF8A2387), Color(0xFFE94057), Colo
 private val BarGradients =
     listOf(SunsetGradient, OceanGradient, AmethystGradient, EmeraldGradient)
 
+private val MonthLabels = listOf(
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+)
+
+private const val MinBars = 2
+private const val MaxBars = 12
+
 private fun BarDataSet.randomized(): BarDataSet = copy(
     entries = entries.map { entry ->
         entry.copy(
@@ -75,6 +86,20 @@ private fun BarDataSet.randomized(): BarDataSet = copy(
         )
     }
 )
+
+private fun BarDataSet.plusEntry(): BarDataSet {
+    val label = MonthLabels.getOrElse(entries.size) { "M${entries.size + 1}" }
+    return copy(
+        entries = entries + BarEntry(
+            id = label.uppercase(),
+            xLabel = label,
+            y = Random.nextInt(20, 110).toFloat(),
+            gradientColors = BarGradients.random()
+        )
+    )
+}
+
+private fun BarDataSet.minusEntry(): BarDataSet = copy(entries = entries.dropLast(1))
 
 @Composable
 fun BarChartDemoScreen() {
@@ -114,6 +139,16 @@ fun BarChartDemoScreen() {
             cornerRadius = 16.dp,
             horizontalPadding = 16.dp,
             verticalPadding = 8.dp
+        )
+    }
+
+    // Tighter than the library defaults: a bar arriving on a chart already on
+    // screen should land promptly rather than grow at opening-cascade pace.
+    val animationConfig = remember {
+        AnimationConfig(
+            initialEntrySpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+            staggerDelayMs = 60L,
+            startDelayMs = 80L
         )
     }
 
@@ -177,6 +212,24 @@ fun BarChartDemoScreen() {
             }
         },
         controls = {
+            DemoControls { buttonModifier ->
+                DemoAddButton(
+                    text = "Add Bar",
+                    enabled = dataSet.entries.size < MaxBars,
+                    onClick = { dataSet = dataSet.plusEntry() },
+                    modifier = buttonModifier
+                )
+                DemoRemoveButton(
+                    text = "Remove Bar",
+                    enabled = dataSet.entries.size > MinBars,
+                    onClick = {
+                        selectedBarId = null
+                        dataSet = dataSet.minusEntry()
+                    },
+                    modifier = buttonModifier
+                )
+            }
+
             Button(
                 onClick = { dataSet = dataSet.randomized() },
                 colors = ButtonDefaults.buttonColors(
@@ -241,6 +294,7 @@ fun BarChartDemoScreen() {
                     selectionRenderer = customPillRenderer,
                     selectedEntry = selectedBarData,
                     onBarSelected = { entry -> selectedBarId = entry?.id },
+                    animationConfig = animationConfig,
                     a11yConfig = a11yConfig
                 )
             }

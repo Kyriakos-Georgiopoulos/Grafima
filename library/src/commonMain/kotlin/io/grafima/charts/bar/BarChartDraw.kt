@@ -147,6 +147,7 @@ internal fun DrawScope.drawHorizontalGrid(
 
 internal fun DrawScope.drawVerticalBars(
     dataSet: BarDataSet,
+    slots: List<Pair<BarEntry, Float>>,
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
@@ -165,12 +166,17 @@ internal fun DrawScope.drawVerticalBars(
     cornerRadiusPx: Float,
     isRtl: Boolean
 ) {
-    dataSet.entries.forEachIndexed { index, entry ->
+    // `position` is the running total of slots to the left, so a collapsing slot
+    // slides the bars after it across instead of teleporting them.
+    var position = 0f
+    slots.forEach { (entry, occupancy) ->
         val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-        val selectionAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+        val selectionAlpha =
+            (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
         val targetHeight = (animatedValue / maxBarValue) * chartHeight
 
-        val ltrXOffset = barSlotOffset(index, yAxisWidthPx, barWidth, barSpacing)
+        val ltrXOffset = barSlotOffset(position, yAxisWidthPx, barWidth, barSpacing)
+        position += occupancy
         val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
         val yOffset = size.height - bottomSpacePx - targetHeight
 
@@ -233,6 +239,7 @@ internal fun DrawScope.drawVerticalBars(
 
 internal fun DrawScope.drawHorizontalBars(
     dataSet: BarDataSet,
+    slots: List<Pair<BarEntry, Float>>,
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
@@ -252,12 +259,16 @@ internal fun DrawScope.drawHorizontalBars(
     cornerRadiusPx: Float,
     isRtl: Boolean
 ) {
-    dataSet.entries.forEachIndexed { index, entry ->
+    // See drawVerticalBars.
+    var position = 0f
+    slots.forEach { (entry, occupancy) ->
         val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-        val selectionAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+        val selectionAlpha =
+            (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
         val barLen = (animatedValue / maxBarValue) * chartWidth
 
-        val yOff = barSlotOffset(index, topPadPx, barThickness, barGap)
+        val yOff = barSlotOffset(position, topPadPx, barThickness, barGap)
+        position += occupancy
         val xOff = if (isRtl) chartRight - barLen else chartLeft
 
         if (barLen > 0f) {

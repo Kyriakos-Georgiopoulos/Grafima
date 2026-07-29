@@ -25,9 +25,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -82,10 +81,12 @@ fun ChartsDemoScreen(
         coroutineScope.launch { pagerState.animateScrollToPage(index) }
     }
 
+    // safeDrawing rather than status + navigation bars: in landscape the display
+    // cutout sits on a *side*, and the rail or the controls column would run
+    // underneath it.
     val insets = Modifier
         .fillMaxSize()
-        .statusBarsPadding()
-        .navigationBarsPadding()
+        .safeDrawingPadding()
 
     if (LocalIsWideLayout.current) {
         Row(modifier = insets) {
