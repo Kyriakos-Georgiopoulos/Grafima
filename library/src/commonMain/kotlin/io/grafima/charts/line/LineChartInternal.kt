@@ -19,9 +19,13 @@ package io.grafima.charts.line
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Path
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -157,6 +161,10 @@ internal fun Path.buildArea(
     close()
 }
 
+/** A series dropped from the dataset that is still dropping to the baseline. */
+@Stable
+internal class ExitingLineSeries(val series: LineSeries, val index: Int)
+
 /**
  * Manages per-point Y-value [Animatable] instances keyed as `"seriesId::pointIndex"`.
  *
@@ -171,10 +179,27 @@ internal class LineChartAnimationEngine {
     internal val yAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()
 
+    /** Series the dataset no longer contains but the chart is still drawing. */
+    var exiting: List<ExitingLineSeries> by mutableStateOf(emptyList())
+        private set
+
+    private var lastSeries: List<LineSeries> = emptyList()
+
     /** Ensures animatables exist for all current points. Removes stale entries. */
     fun syncAnimatables(series: List<LineSeries>) {
+        val currentIds = series.mapTo(mutableSetOf()) { it.id }
+        val exitingIds = exiting.mapTo(mutableSetOf()) { it.series.id }
+
+        val departed = lastSeries.withIndex()
+            .filter { (_, s) -> s.id !in currentIds && s.id !in exitingIds }
+            .map { (index, s) -> ExitingLineSeries(s, index) }
+        val returned = exiting.filter { it.series.id in currentIds }
+        if (departed.isNotEmpty() || returned.isNotEmpty()) {
+            exiting = exiting - returned.toSet() + departed
+        }
+
         val activeKeys = mutableSetOf<String>()
-        series.forEach { s ->
+        renderSeries(series).forEach { s ->
             s.points.forEachIndexed { i, _ ->
                 val key = "${s.id}::$i"
                 activeKeys.add(key)
@@ -183,6 +208,59 @@ internal class LineChartAnimationEngine {
         }
         yAnimatables.keys.removeAll { it !in activeKeys }
         initializedKeys.removeAll { it !in activeKeys }
+        lastSeries = series
+    }
+
+    /**
+     * Draws a departing series back down to the baseline it rose from, then forgets
+     * it — the reverse of its entry animation.
+     */
+    fun launchExitAnimations(
+        config: LineAnimationConfig,
+        yBaseline: Float,
+        scope: CoroutineScope
+    ) {
+        exiting.forEach { leaving ->
+            val keys = leaving.series.points.indices.map { i -> "${leaving.series.id}::$i" }
+            val anims = keys.mapNotNull { yAnimatables[it] }
+            if (anims.isEmpty()) return@forEach
+            if (anims.any { it.isRunning } || anims.all { it.value == yBaseline }) return@forEach
+
+            scope.launch {
+                anims.map { anim ->
+                    launch { anim.animateTo(yBaseline, config.entrySpec) }
+                }.joinAll()
+
+                keys.forEach { key ->
+                    yAnimatables.remove(key)
+                    initializedKeys.remove(key)
+                }
+                exiting = exiting - leaving
+            }
+        }
+    }
+
+    /**
+     * Dataset series with the departing ones back in the places they held. Draw
+     * order only — the crosshair and the accessibility description stay on the
+     * dataset.
+     */
+    fun renderSeries(series: List<LineSeries>): List<LineSeries> {
+        val currentIds = series.mapTo(mutableSetOf()) { it.id }
+
+        // Runs during composition, before the SideEffect that files a departure
+        // under `exiting`, so pick it up from the previous dataset too — otherwise
+        // the line blinks out for a frame before it starts dropping.
+        val pending = lastSeries.withIndex()
+            .filter { (_, s) -> s.id !in currentIds }
+            .map { (index, s) -> ExitingLineSeries(s, index) }
+
+        val leaving = (exiting + pending).distinctBy { it.series.id }
+        if (leaving.isEmpty()) return series
+
+        val merged = series.toMutableList()
+        leaving.sortedBy { it.index }.forEach { merged.add(it.index.coerceIn(0, merged.size), it.series) }
+        return merged
     }
 
     /**

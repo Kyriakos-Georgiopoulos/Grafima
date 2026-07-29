@@ -150,6 +150,10 @@ fun LineChart(
     val isRtl = layoutDirection == LayoutDirection.Rtl
     val animationEngine = remember { LineChartAnimationEngine() }
 
+    // Series still dropping to the baseline are drawn but are not part of the
+    // dataset: the crosshair and the accessibility description stay on `series`.
+    val renderSeries = animationEngine.renderSeries(series)
+
     // ── Stable state refs for pointerInput(Unit) ──
     val haptic = LocalHapticFeedback.current
 
@@ -160,7 +164,7 @@ fun LineChart(
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
 
     // ── Data ranges (recomputed only on data change) ──
-    val allPoints = remember(series) { series.flatMap { it.points } }
+    val allPoints = remember(renderSeries) { renderSeries.flatMap { it.points } }
     val xMin = remember(allPoints) { allPoints.minOfOrNull { it.x } ?: 0f }
     val xMax = remember(allPoints) { allPoints.maxOfOrNull { it.x } ?: 1f }
     val currentXMin by rememberUpdatedState(xMin)
@@ -237,15 +241,15 @@ fun LineChart(
     }
 
     // ── Pre-computed key matrix + draw buffers (zero allocation in draw) ──
-    val seriesStructure = remember(series) { series.map { it.id to it.points.size } }
+    val seriesStructure = remember(renderSeries) { renderSeries.map { it.id to it.points.size } }
     val keyMatrix =
-        remember(seriesStructure) { series.associate { s -> s.id to Array(s.points.size) { i -> "${s.id}::$i" } } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to Array(s.points.size) { i -> "${s.id}::$i" } } }
     val xBuffers =
-        remember(seriesStructure) { series.associate { s -> s.id to FloatArray(s.points.size) } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val yBuffers =
-        remember(seriesStructure) { series.associate { s -> s.id to FloatArray(s.points.size) } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val tangentBuffers =
-        remember(seriesStructure) { series.associate { s -> s.id to FloatArray(s.points.size) } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val deltasBuffers = remember(seriesStructure) {
         series.associate { s ->
             s.id to FloatArray(
@@ -281,6 +285,7 @@ fun LineChart(
     LaunchedEffect(series) {
         tooltipCache.clear()
         animationEngine.launchEntryAnimations(series, effectiveAnimationConfig, yMin, this)
+        animationEngine.launchExitAnimations(effectiveAnimationConfig, yMin, this)
     }
 
     Canvas(
@@ -445,7 +450,7 @@ fun LineChart(
         }
 
         // ── 4. Series: area fills, line strokes, dots ──
-        series.forEachIndexed { si, s ->
+        renderSeries.forEachIndexed { si, s ->
             val n = s.points.size
             if (n == 0) return@forEachIndexed
             val keys = keyMatrix[s.id] ?: return@forEachIndexed

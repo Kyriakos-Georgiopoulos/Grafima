@@ -64,9 +64,10 @@ internal fun DrawScope.drawPieSlices(
     canvasRadius: Float,
     drawRadius: Float,
     strokeWidth: Float,
-    directionMultiplier: Float
+    directionMultiplier: Float,
+    renderEntries: List<PieEntry>
 ) {
-    val entries = dataSet.entries
+    val entries = renderEntries
     var drawnStartAngle = style.startAngle
 
     entries.forEach { entry ->

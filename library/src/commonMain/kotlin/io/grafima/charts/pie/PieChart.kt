@@ -114,6 +114,10 @@ fun PieChart(
     val animationEngine = remember { PieChartAnimationEngine() }
     val density = LocalDensity.current
 
+    // Slices still closing are drawn but are not part of the dataset: they stay out
+    // of hit testing and out of the accessibility description.
+    val renderEntries = animationEngine.renderEntries(entries)
+
     val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
@@ -146,9 +150,12 @@ fun PieChart(
 
     val selectionCache = remember { mutableMapOf<String, TextLayoutResult>() }
 
+    // Closing slices keep counting toward the total until they are fully shut, so
+    // the survivors expand as that share is released rather than the instant the
+    // slice left the dataset.
     val targetTotalValue = remember(entries) {
         entries.sumOf { it.value.toDouble().coerceAtLeast(0.0) }.toFloat()
-    }
+    } + animationEngine.exitingValue(entries)
     val currentTargetTotal by rememberUpdatedState(targetTotalValue)
 
     val chartStateDescription = remember(selectedEntry, a11yConfig) {
@@ -229,6 +236,7 @@ fun PieChart(
             currentOnSliceSelected(null)
         }
         animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, this)
+        animationEngine.launchExitAnimations(effectiveAnimationConfig, this)
     }
 
     // Keyed on entries and selection: a selection change restarts from the current
@@ -346,7 +354,7 @@ fun PieChart(
             val directionMultiplier = if (isRtl) -1f else 1f
 
             val normalizer = pieSweepNormalizer(
-                entries = entries,
+                entries = renderEntries,
                 animationEngine = animationEngine,
                 totalValue = targetTotalValue,
                 minSliceAngle = style.minSliceAngle
@@ -362,7 +370,8 @@ fun PieChart(
                 canvasRadius = canvasRadius,
                 drawRadius = drawRadius,
                 strokeWidth = strokeWidth,
-                directionMultiplier = directionMultiplier
+                directionMultiplier = directionMultiplier,
+                renderEntries = renderEntries
             )
             selectedEntry?.let { entry ->
                 drawPieSelection(

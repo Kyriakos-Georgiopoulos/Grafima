@@ -19,6 +19,9 @@ package io.grafima.charts.pie
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
@@ -99,6 +102,10 @@ internal fun computeNormalizedSweep(
     return sweep * normalizer
 }
 
+/** A slice dropped from the dataset that is still closing. */
+@Stable
+internal class ExitingSlice(val entry: PieEntry, val index: Int)
+
 /**
  * Manages per-slice [Animatable] instances for value, scale, and alpha.
  *
@@ -120,6 +127,17 @@ internal class PieChartAnimationEngine {
     private val initializedIds = mutableSetOf<String>()
 
     /**
+     * Slices the dataset no longer contains but the chart is still drawing.
+     *
+     * Snapshot state, because dropping one at the end of its exit has to bring the
+     * chart back for another frame.
+     */
+    var exiting: List<ExitingSlice> by mutableStateOf(emptyList())
+        private set
+
+    private var lastEntries: List<PieEntry> = emptyList()
+
+    /**
      * Ensures Animatable instances exist for all current [entries] and removes stale
      * ones from previous datasets. Synchronous and idempotent. Safe to call on every
      * composition via [SideEffect] because it only performs map get-or-put operations
@@ -127,16 +145,91 @@ internal class PieChartAnimationEngine {
      */
     fun syncAnimatables(entries: List<PieEntry>) {
         val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        valueAnimatables.keys.removeAll { it !in currentIds }
-        scaleAnimatables.keys.removeAll { it !in currentIds }
-        alphaAnimatables.keys.removeAll { it !in currentIds }
-        initializedIds.removeAll { it !in currentIds }
+        val exitingIds = exiting.mapTo(mutableSetOf()) { it.entry.id }
+
+        val departed = lastEntries.withIndex()
+            .filter { (_, e) -> e.id !in currentIds && e.id !in exitingIds }
+            .map { (index, e) -> ExitingSlice(e, index) }
+        val returned = exiting.filter { it.entry.id in currentIds }
+
+        if (departed.isNotEmpty() || returned.isNotEmpty()) {
+            exiting = exiting - returned.toSet() + departed
+        }
+
+        val drawn = currentIds + exiting.mapTo(mutableSetOf()) { it.entry.id }
+        valueAnimatables.keys.removeAll { it !in drawn }
+        scaleAnimatables.keys.removeAll { it !in drawn }
+        alphaAnimatables.keys.removeAll { it !in drawn }
+        initializedIds.removeAll { it !in drawn }
 
         entries.forEach { entry ->
             valueAnimatables.getOrPut(entry.id) { Animatable(0f) }
             scaleAnimatables.getOrPut(entry.id) { Animatable(1f) }
             alphaAnimatables.getOrPut(entry.id) { Animatable(1f) }
         }
+        lastEntries = entries
+    }
+
+    /**
+     * Closes a departing slice by running its entry animation backwards, then
+     * forgets it.
+     *
+     * A pie needs no second movement the way a bar does: a slice's value *is* its
+     * angle, so the survivors widen continuously as it closes — provided the total
+     * keeps counting it while it does, which is what [exitingValue] is for.
+     */
+    fun launchExitAnimations(config: PieAnimationConfig, scope: CoroutineScope) {
+        exiting.forEach { slice ->
+            val value = valueAnimatables[slice.entry.id] ?: return@forEach
+            if (value.isRunning || value.value == 0f) return@forEach
+
+            scope.launch {
+                value.animateTo(0f, config.initialEntrySpec)
+                valueAnimatables.remove(slice.entry.id)
+                scaleAnimatables.remove(slice.entry.id)
+                alphaAnimatables.remove(slice.entry.id)
+                initializedIds.remove(slice.entry.id)
+                exiting = exiting - slice
+            }
+        }
+    }
+
+    /**
+     * Dataset slices with the departing ones back in the places they held. Draw
+     * order only — touch handling and the accessibility description stay on the
+     * dataset.
+     */
+    fun renderEntries(entries: List<PieEntry>): List<PieEntry> {
+        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
+
+        // renderEntries runs during composition but slices only move into `exiting`
+        // from the SideEffect after it, so on the frame one is dropped pick the
+        // departure up from the previous dataset too — otherwise it blinks out for
+        // a frame before starting to close.
+        val pending = lastEntries.withIndex()
+            .filter { (_, e) -> e.id !in currentIds }
+            .map { (index, e) -> ExitingSlice(e, index) }
+
+        val leaving = (exiting + pending).distinctBy { it.entry.id }
+        if (leaving.isEmpty()) return entries
+
+        val merged = entries.toMutableList()
+        leaving.sortedBy { it.index }.forEach { slice ->
+            merged.add(slice.index.coerceIn(0, merged.size), slice.entry)
+        }
+        return merged
+    }
+
+    /**
+     * How much of the total the closing slices still account for. Added to the
+     * dataset total so the survivors expand as that share is given up, instead of
+     * jumping the moment the slice left the data.
+     */
+    fun exitingValue(entries: List<PieEntry>): Float {
+        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
+        return renderEntries(entries)
+            .filter { it.id !in currentIds }
+            .fold(0f) { acc, e -> acc + (valueAnimatables[e.id]?.value ?: e.value) }
     }
 
     /**

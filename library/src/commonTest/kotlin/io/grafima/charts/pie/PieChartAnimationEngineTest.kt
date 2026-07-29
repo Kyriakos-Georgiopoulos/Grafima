@@ -16,12 +16,15 @@
 
 package io.grafima.charts.pie
 
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import io.grafima.charts.runEngineTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class PieChartAnimationEngineTest {
 
@@ -37,6 +40,47 @@ class PieChartAnimationEngineTest {
         pairs.map { (id, value) -> PieEntry(id = id, label = id.uppercase(), value = value) }
 
     @Test
+    fun `a removed slice closes before it stops being drawn`() = runEngineTest { harness ->
+        val engine = PieChartAnimationEngine()
+        val config = snapConfig.copy(
+            initialEntrySpec = tween(durationMillis = 200, easing = LinearEasing)
+        )
+        val data = entries("a" to 30f, "b" to 70f)
+
+        engine.syncAnimatables(data)
+        engine.launchEntryAnimations(data, config, harness.launchScope())
+        harness.advanceFrames(400)
+
+        val remaining = entries("a" to 30f)
+        engine.syncAnimatables(remaining)
+        engine.launchExitAnimations(config, harness.launchScope())
+
+        // Part way shut, still drawn, and still counted in the total — that share
+        // is what the surviving slices expand into as it is released.
+        harness.advanceFrames(100)
+        val midExit = engine.valueAnimatables.getValue("b").value
+        assertTrue(midExit > 0f && midExit < 70f, "expected a partial close, got ${'$'}midExit")
+        assertEquals(listOf("a", "b"), engine.renderEntries(remaining).map { it.id })
+        assertEquals(midExit, engine.exitingValue(remaining))
+
+        harness.advanceFrames(150)
+        assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+        assertNull(engine.valueAnimatables["b"])
+        assertEquals(0f, engine.exitingValue(remaining))
+    }
+
+    @Test
+    fun `a slice is still drawn on the very frame it leaves the dataset`() {
+        val engine = PieChartAnimationEngine()
+        engine.syncAnimatables(entries("a" to 30f, "b" to 70f))
+
+        // renderEntries runs during composition, before the SideEffect files "b"
+        // under exiting. It must already report "b" or the slice blinks out.
+        assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+        assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 30f)).map { it.id })
+    }
+
+    @Test
     fun `sync creates value scale and alpha animatables`() {
         val engine = PieChartAnimationEngine()
         engine.syncAnimatables(entries("a" to 30f, "b" to 70f))
@@ -50,7 +94,7 @@ class PieChartAnimationEngineTest {
     }
 
     @Test
-    fun `sync removes stale animatables and keeps surviving instances`() {
+    fun `sync keeps surviving instances and hands a departed slice to the exit`() {
         val engine = PieChartAnimationEngine()
         engine.syncAnimatables(entries("a" to 30f, "b" to 70f))
         val survivor = engine.valueAnimatables.getValue("a")
@@ -58,9 +102,11 @@ class PieChartAnimationEngineTest {
         engine.syncAnimatables(entries("a" to 30f, "c" to 40f))
 
         assertSame(survivor, engine.valueAnimatables.getValue("a"))
-        assertNull(engine.valueAnimatables["b"])
-        assertNull(engine.scaleAnimatables["b"])
-        assertNull(engine.alphaAnimatables["b"])
+
+        // "b" left the dataset but is still drawn while it closes, so its
+        // animatables outlive the swap. Eviction is the exit's job.
+        assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
+        assertEquals(setOf("a", "b", "c"), engine.valueAnimatables.keys)
     }
 
     @Test
