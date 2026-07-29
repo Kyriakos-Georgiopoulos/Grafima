@@ -60,10 +60,6 @@ import io.grafima.sample.theme.themedCrosshair
 import io.grafima.sample.theme.themedLineAxis
 import kotlin.random.Random
 
-// ==========================================
-// 5. DEMO
-// ==========================================
-
 private val Months = listOf(
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -148,9 +144,9 @@ fun LineChartDemoScreen() {
     var dataSet by remember { mutableStateOf(seededDataSet()) }
     var selectedIdx by rememberSaveable { mutableStateOf<Int?>(null) }
 
-    // Stripping the area fill rewrites every series, so it is derived once per
-    // change rather than on each recomposition — otherwise the chart is handed a
-    // brand-new dataset each frame and can never skip.
+    // Stripping the fill rewrites every series, so derive it once per change:
+    // rebuilding inline hands the chart a new dataset on every recomposition and
+    // it can never skip.
     val visibleDataSet = remember(dataSet, showFill) {
         if (showFill) {
             dataSet

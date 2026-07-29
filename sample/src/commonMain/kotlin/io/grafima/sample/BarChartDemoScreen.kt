@@ -57,10 +57,6 @@ import io.grafima.sample.theme.themedBarAxis
 import io.grafima.sample.theme.themedBarStyle
 import kotlin.random.Random
 
-// ==========================================
-// 5. DEMO IMPLEMENTATION
-// ==========================================
-
 private val OceanGradient = listOf(Color(0xFF00C9FF), Color(0xFF92FE9D))
 private val EmeraldGradient = listOf(Color(0xFF11998E), Color(0xFF38EF7D))
 private val SunsetGradient = listOf(Color(0xFFFF512F), Color(0xFFF09819), Color(0xFFFFB75E))

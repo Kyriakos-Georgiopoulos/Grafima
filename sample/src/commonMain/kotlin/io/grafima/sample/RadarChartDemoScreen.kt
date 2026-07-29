@@ -57,10 +57,6 @@ import io.grafima.sample.theme.LocalDemoColors
 import io.grafima.sample.theme.themedRadarStyle
 import kotlin.random.Random
 
-// ==========================================
-// 6. DEMO IMPLEMENTATION
-// ==========================================
-
 private val DefaultAxes = listOf(
     RadarAxis(id = "atk", label = "Attack"),
     RadarAxis(id = "def", label = "Defense"),
@@ -161,7 +157,6 @@ fun RadarChartDemoScreen() {
                     )
                 }
 
-                // Legend
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -169,9 +164,8 @@ fun RadarChartDemoScreen() {
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     dataSet.series.forEach { s ->
-                        // Dimming the unselected entries carries the emphasis by
-                        // weight rather than by fading the colour — a grey light
-                        // enough to read as "off" is too light to read at all.
+                        // Emphasis rides on weight, not on a paler colour: a grey
+                        // light enough to read as "off" is too light to read.
                         val emphasised = selectedSeriesData == null ||
                             selectedSeriesData?.id == s.id
                         Row(verticalAlignment = Alignment.CenterVertically) {

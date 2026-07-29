@@ -127,10 +127,10 @@ private fun ChartTabBar(
     val tabCount = pages.size
     val colors = LocalDemoColors.current
 
-    // `currentPageOffsetFraction` changes on every frame of a swipe, so it is
-    // only ever read from inside a draw lambda — reading it up here would
-    // rebuild the whole bar sixty times a second. `currentPage` is safe to read
-    // in composition: it flips once, when the swipe crosses the halfway mark.
+    // `currentPageOffsetFraction` changes every frame of a swipe, so it is only
+    // ever read from inside a draw lambda — reading it here would rebuild the
+    // whole bar sixty times a second. `currentPage` is safe to read in
+    // composition: it flips once, when the swipe crosses the halfway mark.
     val scrollPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction }
 
     Row(
@@ -172,8 +172,6 @@ private fun ChartTabBar(
                         fontSize = 14.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                     ),
-                    // Resolved during draw, so the label tracks the swipe
-                    // continuously without recomposing to do it.
                     color = {
                         lerp(
                             start = colors.background,

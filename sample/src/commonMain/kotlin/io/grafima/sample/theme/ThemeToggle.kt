@@ -51,7 +51,7 @@ import kotlin.math.sin
  *
  * The moon is the same circle with a second one punched out of it using
  * [BlendMode.DstOut], so the shape morphs by moving that cut-out rather than
- * cross-fading two icons. The rays retract as it goes.
+ * cross-fading two icons.
  */
 @Composable
 fun ThemeToggle(
@@ -64,7 +64,8 @@ fun ThemeToggle(
     val progress by animateFloatAsState(
         targetValue = if (isDark) 1f else 0f,
         // Spring rather than tween: the overshoot gives the morph a bit of life.
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium)
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium),
+        label = "themeToggle"
     )
 
     Box(
@@ -73,9 +74,8 @@ fun ThemeToggle(
             .onGloballyPositioned { reveal.reportOrigin(it.boundsInRoot().center) }
             .clip(CircleShape)
             .background(colors.surfaceMuted)
-            // `toggleable` rather than `clickable` + a hand-written role: it
-            // publishes the on/off state too, so a screen reader says which way
-            // the switch currently sits instead of only what tapping will do.
+            // Publishes the on/off state, so a screen reader says which way the
+            // switch currently sits and not just what tapping will do.
             .toggleable(
                 value = isDark,
                 role = Role.Switch,
@@ -90,14 +90,16 @@ fun ThemeToggle(
         Canvas(
             modifier = Modifier
                 .size(22.dp)
-                // A quarter turn, eased so it settles rather than stopping dead.
-                .rotate(progress * 90f)
+                // Turns through a quarter and settles at zero, which is where the
+                // cut-out sits on the right and the moon's curve faces left. The
+                // sun's eight rays are 45 degrees apart, so the same turn is
+                // invisible on that end.
+                .rotate((1f - progress) * -90f)
         ) {
             val c = size.minDimension / 2f
             val center = Offset(c, c)
             val p = progress.coerceIn(0f, 1f)
 
-            // Rays retract outward-in across the first 60% of the morph.
             val rayPhase = (1f - p / 0.6f).coerceIn(0f, 1f)
             if (rayPhase > 0f) {
                 val bodyR = c * 0.55f
@@ -117,8 +119,8 @@ fun ThemeToggle(
                 }
             }
 
-            // The disc swells slightly as the rays go, so it reads as one shape
-            // becoming another rather than two icons swapping.
+            // The disc swells as the rays go, so it reads as one shape becoming
+            // another rather than two icons swapping.
             val bodyRadius = c * (0.55f + 0.17f * p)
 
             drawContext.canvas.saveLayer(
@@ -127,8 +129,8 @@ fun ThemeToggle(
             )
             drawCircle(color = colors.onSurface, radius = bodyRadius, center = center, style = Fill)
             if (p > 0f) {
-                // The bite slides in from outside the disc, so early frames show
-                // a full sun rather than a chunk already missing.
+                // The cut-out slides in from outside the disc, so early frames
+                // show a full sun rather than a chunk already missing.
                 val bitePhase = ((p - 0.25f) / 0.75f).coerceIn(0f, 1f)
                 drawCircle(
                     color = Color.Black,

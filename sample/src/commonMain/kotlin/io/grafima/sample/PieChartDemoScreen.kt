@@ -57,10 +57,6 @@ import io.grafima.charts.pie.TooltipPieSelectionRenderer
 import io.grafima.sample.theme.LocalDemoColors
 import kotlin.random.Random
 
-// ==========================================
-// 6. DEMO IMPLEMENTATION
-// ==========================================
-
 private val OceanBrush = SliceBrush.Linear(
     colors = listOf(Color(0xFF00C9FF), Color(0xFF92FE9D))
 )

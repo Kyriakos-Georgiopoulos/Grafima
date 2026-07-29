@@ -38,8 +38,8 @@ import io.grafima.sample.theme.ThemeRevealState
 
 @Composable
 fun GrafimaApp() {
-    // Follows the system on first launch, then whatever the user picked —
-    // and survives rotation, so the theme doesn't snap back mid-demo.
+    // Follows the system on first launch, then whatever the user picked, and
+    // survives rotation so the theme doesn't snap back mid-demo.
     val systemDark = isSystemInDarkTheme()
     var darkTheme by rememberSaveable { mutableStateOf(systemDark) }
 

@@ -60,10 +60,6 @@ import io.grafima.sample.theme.onColorFor
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
-// ==========================================
-// 4. DEMO IMPLEMENTATION
-// ==========================================
-
 private data class GaugePreset(val label: String, val value: Float, val color: Color)
 
 private val GaugePresets = listOf(
@@ -223,7 +219,6 @@ fun GaugeChartDemoScreen() {
 
         Spacer(Modifier.height(20.dp))
 
-        // Preset buttons, painted in the colour of the zone they jump to.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)

@@ -34,12 +34,10 @@ import io.grafima.charts.radar.RadarGridStyle
  * Grafima's defaults are tuned for a light surface. The demo runs in both, so
  * these rebuild the chart configs from the active palette.
  *
- * Each is keyed on the colours, so they follow the theme sweep rather than
- * sticking at whatever was current on first composition — and each is
- * remembered, so a recomposition that *isn't* a theme change (selecting a bar,
- * swiping a page) hands the chart back the identical instance and lets it skip.
- * Every parameter a demo varies is a parameter here for the same reason: a
- * `.copy()` at the call site would allocate a fresh config on every frame.
+ * Each is remembered against the colours, so a recomposition that isn't a theme
+ * change hands the chart back the identical instance and lets it skip. Every
+ * parameter a demo varies is a parameter here for the same reason — a `.copy()`
+ * at the call site would allocate a fresh config on every frame.
  */
 
 @Composable

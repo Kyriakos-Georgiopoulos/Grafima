@@ -31,7 +31,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.hypot
-import kotlin.math.max
 
 /** Where the theme change started, in root coordinates. */
 class ThemeRevealState {
@@ -74,14 +73,11 @@ fun ThemeRevealBackground(darkTheme: Boolean) {
         val origin = reveal.origin.takeIf { it != Offset.Unspecified }
             ?: Offset(size.width * 0.9f, size.height * 0.08f)
 
-        // Furthest corner, so the circle always finishes past the screen edge.
-        val maxRadius = max(
-            max(hypot(origin.x, origin.y), hypot(size.width - origin.x, origin.y)),
-            max(
-                hypot(origin.x, size.height - origin.y),
-                hypot(size.width - origin.x, size.height - origin.y)
-            )
-        )
+        // The full diagonal always overshoots the furthest corner from a point
+        // inside the screen. That headroom is deliberate: the circle covers
+        // everything before the easing reaches its slow tail, so the sweep ends
+        // while it still has pace instead of visibly crawling to a stop.
+        val maxRadius = hypot(size.width, size.height)
 
         drawCircle(
             color = LightBackground,

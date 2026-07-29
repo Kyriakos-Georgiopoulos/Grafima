@@ -16,6 +16,7 @@
 
 package io.grafima.sample.theme
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -106,7 +107,7 @@ fun DemoTheme(
 ) {
     val fraction by animateFloatAsState(
         targetValue = if (darkTheme) 1f else 0f,
-        animationSpec = tween(durationMillis = THEME_SWEEP_MS),
+        animationSpec = tween(durationMillis = THEME_SWEEP_MS, easing = FastOutSlowInEasing),
         label = "themeSweep"
     )
 
@@ -153,4 +154,6 @@ private fun lerp(start: DemoColors, stop: DemoColors, fraction: Float): DemoColo
         )
     }
 
-internal const val THEME_SWEEP_MS = 450
+// Long enough that a circle crossing the whole screen reads as one deliberate
+// sweep; at half this it lands as a flicker.
+internal const val THEME_SWEEP_MS = 800
