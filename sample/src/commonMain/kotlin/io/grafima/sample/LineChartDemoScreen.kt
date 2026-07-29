@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,114 +48,118 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import io.grafima.sample.theme.LocalDemoColors
-import io.grafima.sample.theme.themedCrosshair
-import io.grafima.sample.theme.themedLineAxis
 import androidx.compose.ui.unit.sp
-import kotlin.random.Random
-import io.grafima.charts.line.LineAxisConfig
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineChartStyle
 import io.grafima.charts.line.LineCurveType
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
 import io.grafima.charts.line.LineSeries
+import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.themedCrosshair
+import io.grafima.sample.theme.themedLineAxis
+import kotlin.random.Random
 
 // ==========================================
 // 5. DEMO
 // ==========================================
 
+private val Months = listOf(
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+)
+
+private val SeriesPalette = listOf(
+    Color(0xFF6366F1), Color(0xFFF59E0B), Color(0xFF10B981),
+    Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFFEC4899),
+    Color(0xFF06B6D4), Color(0xFF84CC16)
+)
+
+/**
+ * Each point drifts from the previous one instead of being drawn independently
+ * around a base — independent noise looks like static, not like something you'd
+ * actually plot.
+ */
+private fun randomSeries(
+    id: String,
+    label: String,
+    base: Int,
+    variance: Int
+): LineSeries {
+    val c1 = SeriesPalette.random()
+    val c2 = SeriesPalette.filter { it != c1 }.random()
+    val trend = (-variance / 8f)..(variance / 5f)
+    var value = base.toFloat() + (-variance / 3..variance / 3).random()
+    val values = Months.map {
+        value = (value + trend.start + Random.nextFloat() * (trend.endInclusive - trend.start))
+            .coerceIn(base * 0.35f, base * 1.75f)
+        value
+    }
+    return LineSeries(
+        id = id,
+        label = label,
+        color = c1,
+        fillAlpha = 0.10f,
+        strokeGradientColors = listOf(c1, c2),
+        points = values.mapIndexed { i, v ->
+            LineDataPoint(x = i.toFloat(), y = v, label = Months[i])
+        }
+    )
+}
+
+private fun monthlyDataSet(): LineDataSet = LineDataSet(
+    series = listOf(
+        randomSeries(id = "rev", label = "Revenue", base = 80, variance = 40),
+        randomSeries(id = "exp", label = "Expenses", base = 55, variance = 25)
+    ),
+    contentDescription = "Monthly Revenue vs Expenses"
+)
+
+private fun seededDataSet(): LineDataSet = LineDataSet(
+    series = listOf(
+        LineSeries(
+            id = "rev",
+            label = "Revenue",
+            color = Color(0xFF6366F1),
+            fillAlpha = 0.10f,
+            strokeGradientColors = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
+            points = listOf(42f, 55f, 48f, 72f, 68f, 85f, 90f, 78f, 95f, 110f, 105f, 120f)
+                .mapIndexed { i, v -> LineDataPoint(x = i.toFloat(), y = v, label = Months[i]) }
+        ),
+        LineSeries(
+            id = "exp",
+            label = "Expenses",
+            color = Color(0xFFF59E0B),
+            fillAlpha = 0.08f,
+            strokeGradientColors = listOf(Color(0xFFFBBF24), Color(0xFFD97706)),
+            points = listOf(38f, 42f, 50f, 45f, 55f, 52f, 60f, 58f, 62f, 65f, 70f, 68f)
+                .mapIndexed { i, v -> LineDataPoint(x = i.toFloat(), y = v, label = Months[i]) }
+        )
+    ),
+    contentDescription = "Monthly Revenue vs Expenses"
+)
+
 @Composable
 fun LineChartDemoScreen() {
     val colors = LocalDemoColors.current
-    val months =
-        listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-    val palette = listOf(
-        Color(0xFF6366F1), Color(0xFFF59E0B), Color(0xFF10B981),
-        Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFFEC4899),
-        Color(0xFF06B6D4), Color(0xFF84CC16)
-    )
-
-    // Each point drifts from the previous one instead of being drawn
-    // independently around a base — independent noise looks like static, not
-    // like something you'd actually plot.
-    fun randomSeries(
-        id: String,
-        label: String,
-        base: Int,
-        variance: Int,
-        showFill: Boolean
-    ): LineSeries {
-        val c1 = palette.random()
-        val c2 = palette.filter { it != c1 }.random()
-        val trend = (-variance / 8f)..(variance / 5f)
-        var value = base.toFloat() + (-variance / 3..variance / 3).random()
-        val values = months.map {
-            value = (value + trend.start + Random.nextFloat() * (trend.endInclusive - trend.start))
-                .coerceIn(base * 0.35f, base * 1.75f)
-            value
-        }
-        return LineSeries(
-            id = id, label = label, color = c1, fillAlpha = if (showFill) 0.10f else 0f,
-            strokeGradientColors = listOf(c1, c2),
-            points = values.mapIndexed { i, v ->
-                LineDataPoint(x = i.toFloat(), y = v, label = months[i])
-            }
-        )
-    }
 
     var showFill by remember { mutableStateOf(true) }
     var curveType by remember { mutableStateOf(LineCurveType.MonotoneCubic) }
+    var dataSet by remember { mutableStateOf(seededDataSet()) }
+    var selectedIdx by rememberSaveable { mutableStateOf<Int?>(null) }
 
-    var dataSet by remember {
-        mutableStateOf(
-            LineDataSet(
-                series = listOf(
-                    LineSeries(
-                        id = "rev", label = "Revenue", color = Color(0xFF6366F1), fillAlpha = 0.10f,
-                        strokeGradientColors = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
-                        points = listOf(
-                            42f,
-                            55f,
-                            48f,
-                            72f,
-                            68f,
-                            85f,
-                            90f,
-                            78f,
-                            95f,
-                            110f,
-                            105f,
-                            120f
-                        )
-                            .mapIndexed { i, v ->
-                                LineDataPoint(
-                                    x = i.toFloat(),
-                                    y = v,
-                                    label = months[i]
-                                )
-                            }),
-                    LineSeries(
-                        id = "exp",
-                        label = "Expenses",
-                        color = Color(0xFFF59E0B),
-                        fillAlpha = 0.08f,
-                        strokeGradientColors = listOf(Color(0xFFFBBF24), Color(0xFFD97706)),
-                        points = listOf(38f, 42f, 50f, 45f, 55f, 52f, 60f, 58f, 62f, 65f, 70f, 68f)
-                            .mapIndexed { i, v ->
-                                LineDataPoint(
-                                    x = i.toFloat(),
-                                    y = v,
-                                    label = months[i]
-                                )
-                            })
-                ),
-                contentDescription = "Monthly Revenue vs Expenses"
-            )
-        )
+    // Stripping the area fill rewrites every series, so it is derived once per
+    // change rather than on each recomposition — otherwise the chart is handed a
+    // brand-new dataset each frame and can never skip.
+    val visibleDataSet = remember(dataSet, showFill) {
+        if (showFill) {
+            dataSet
+        } else {
+            dataSet.copy(series = dataSet.series.map { it.copy(fillAlpha = 0f) })
+        }
     }
 
-    var selectedIdx by remember { mutableStateOf<Int?>(null) }
+    val chartStyle = remember(curveType) { LineChartStyle(curveType = curveType) }
 
     Column(
         modifier = Modifier
@@ -184,9 +189,10 @@ fun LineChartDemoScreen() {
                             color = colors.onSurface
                         )
                         Text(
-                            if (selectedIdx != null && selectedIdx!! < months.size) months[selectedIdx!!] else "Drag to explore",
+                            text = selectedIdx?.let { Months.getOrNull(it) }
+                                ?: "Drag to explore",
                             fontSize = 13.sp,
-                            color = Color(0xFF94A3B8),
+                            color = colors.onSurfaceMuted,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -204,19 +210,21 @@ fun LineChartDemoScreen() {
                                 )
                                 Canvas(Modifier.size(width = 18.dp, height = 4.dp)) {
                                     val cy = size.height / 2f
+                                    val start = Offset(x = 0f, y = cy)
+                                    val end = Offset(x = size.width, y = cy)
                                     if (s.strokeGradientColors.size >= 2) {
                                         drawLine(
                                             brush = Brush.horizontalGradient(s.strokeGradientColors),
-                                            start = Offset(x = 0f, y = cy),
-                                            end = Offset(x = size.width, y = cy),
+                                            start = start,
+                                            end = end,
                                             strokeWidth = size.height,
                                             cap = StrokeCap.Round
                                         )
                                     } else {
                                         drawLine(
                                             color = s.color,
-                                            start = Offset(x = 0f, y = cy),
-                                            end = Offset(x = size.width, y = cy),
+                                            start = start,
+                                            end = end,
                                             strokeWidth = size.height,
                                             cap = StrokeCap.Round
                                         )
@@ -232,17 +240,13 @@ fun LineChartDemoScreen() {
                         .weight(1f)
                 ) {
                     LineChart(
-                        dataSet = if (showFill) dataSet else dataSet.copy(series = dataSet.series.map {
-                            it.copy(
-                                fillAlpha = 0f
-                            )
-                        }),
+                        dataSet = visibleDataSet,
                         modifier = Modifier.fillMaxSize(),
-                        style = LineChartStyle(curveType = curveType),
-                        axisConfig = themedLineAxis().copy(
+                        style = chartStyle,
+                        axisConfig = themedLineAxis(
                             yTickCount = 5,
                             dashedGrid = true,
-                            xLabelFormatter = { months.getOrElse(it.toInt()) { "" } }
+                            xLabels = Months
                         ),
                         crosshairConfig = themedCrosshair(),
                         selectedPointIndex = selectedIdx,
@@ -257,12 +261,13 @@ fun LineChartDemoScreen() {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = {
-                    curveType =
-                        if (curveType == LineCurveType.MonotoneCubic) LineCurveType.Linear else LineCurveType.MonotoneCubic
+                    curveType = if (curveType == LineCurveType.MonotoneCubic) {
+                        LineCurveType.Linear
+                    } else LineCurveType.MonotoneCubic
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF6366F1),
-                    contentColor = Color.White
+                    containerColor = colors.accent,
+                    contentColor = colors.onAccent
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -280,8 +285,8 @@ fun LineChartDemoScreen() {
             Button(
                 onClick = { showFill = !showFill },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFF59E0B),
-                    contentColor = Color(0xFF78350F)
+                    containerColor = colors.accentWarm,
+                    contentColor = colors.onAccentWarm
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -292,8 +297,8 @@ fun LineChartDemoScreen() {
                     if (showFill) "No Fill" else "Area Fill",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF78350F),
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -301,27 +306,7 @@ fun LineChartDemoScreen() {
         Spacer(Modifier.height(12.dp))
 
         Button(
-            onClick = {
-                dataSet = LineDataSet(
-                    series = listOf(
-                        randomSeries(
-                            id = "rev",
-                            label = "Revenue",
-                            base = 80,
-                            variance = 40,
-                            showFill = showFill
-                        ),
-                        randomSeries(
-                            id = "exp",
-                            label = "Expenses",
-                            base = 55,
-                            variance = 25,
-                            showFill = showFill
-                        )
-                    ),
-                    contentDescription = "Monthly Revenue vs Expenses"
-                )
-            },
+            onClick = { dataSet = monthlyDataSet() },
             colors = ButtonDefaults.buttonColors(
                 containerColor = colors.onSurface,
                 contentColor = colors.background

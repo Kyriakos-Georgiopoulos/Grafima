@@ -80,10 +80,11 @@ internal fun DrawScope.drawGaugeArcFill(
     }
     if (range <= 0f) return
 
-    zones.forEachIndexed { index, zone ->
-        // Round only the outermost ends so the band covers the rounded track;
-        // interior joins stay butted so neighbours meet cleanly.
-        val cap = if (index == 0 || index == zones.lastIndex) StrokeCap.Round else StrokeCap.Butt
+    // Resolve which bands actually paint before drawing any of them. A zone
+    // collapses to nothing when its range falls outside [minValue, maxValue],
+    // and the rounded ends belong to the first and last *visible* band — not to
+    // whichever zones happen to sit at either end of the list.
+    val bands = zones.mapNotNull { zone ->
         val zoneStartFrac = ((zone.range.start - minValue) / range).coerceIn(0f, 1f)
         val zoneEndFrac = ((zone.range.endInclusive - minValue) / range).coerceIn(0f, 1f)
         val (sf, ef) = if (isRtl) {
@@ -91,32 +92,69 @@ internal fun DrawScope.drawGaugeArcFill(
         } else {
             zoneStartFrac to zoneEndFrac
         }
-        val zoneStart = style.startAngle + style.sweepAngle * sf
         val zoneSweep = style.sweepAngle * (ef - sf)
-        if (zoneSweep <= 0f) return@forEachIndexed
-
-        val gradStops = zoneGradientStops[zone.id]
-        if (gradStops != null) {
-            drawArc(
-                brush = Brush.sweepGradient(*gradStops, center = center),
-                startAngle = zoneStart,
-                sweepAngle = zoneSweep,
-                useCenter = false,
-                topLeft = arcTopLeft,
-                size = arcRect,
-                style = Stroke(width = arcWidthPx, cap = cap)
-            )
+        if (zoneSweep <= 0f) {
+            null
         } else {
-            drawArc(
-                color = zone.color,
-                startAngle = zoneStart,
-                sweepAngle = zoneSweep,
-                useCenter = false,
-                topLeft = arcTopLeft,
-                size = arcRect,
-                style = Stroke(width = arcWidthPx, cap = cap)
+            GaugeBand(
+                zone = zone,
+                startAngle = style.startAngle + style.sweepAngle * sf,
+                sweepAngle = zoneSweep
             )
         }
+    }
+    if (bands.isEmpty()) return
+
+    // A round cap overhangs its end by half the stroke width, so rounding a
+    // shared join spills one zone's colour over its neighbour. Paint the two
+    // outer ends first, then lay every band except the first back down with
+    // butt caps: the outermost curves survive — they have to, to cover the
+    // rounded track beneath — and both overhangs end up buried under the very
+    // bands they were spilling into.
+    drawGaugeBand(bands.last(), StrokeCap.Round, zoneGradientStops, center, arcTopLeft, arcRect, arcWidthPx)
+    drawGaugeBand(bands.first(), StrokeCap.Round, zoneGradientStops, center, arcTopLeft, arcRect, arcWidthPx)
+    for (index in 1..bands.lastIndex) {
+        drawGaugeBand(bands[index], StrokeCap.Butt, zoneGradientStops, center, arcTopLeft, arcRect, arcWidthPx)
+    }
+}
+
+/** One zone's slice of the arc, already resolved to angles. */
+private class GaugeBand(
+    val zone: GaugeZone,
+    val startAngle: Float,
+    val sweepAngle: Float
+)
+
+private fun DrawScope.drawGaugeBand(
+    band: GaugeBand,
+    cap: StrokeCap,
+    zoneGradientStops: Map<String, Array<Pair<Float, Color>>>,
+    center: Offset,
+    arcTopLeft: Offset,
+    arcRect: Size,
+    arcWidthPx: Float
+) {
+    val gradStops = zoneGradientStops[band.zone.id]
+    if (gradStops != null) {
+        drawArc(
+            brush = Brush.sweepGradient(*gradStops, center = center),
+            startAngle = band.startAngle,
+            sweepAngle = band.sweepAngle,
+            useCenter = false,
+            topLeft = arcTopLeft,
+            size = arcRect,
+            style = Stroke(width = arcWidthPx, cap = cap)
+        )
+    } else {
+        drawArc(
+            color = band.zone.color,
+            startAngle = band.startAngle,
+            sweepAngle = band.sweepAngle,
+            useCenter = false,
+            topLeft = arcTopLeft,
+            size = arcRect,
+            style = Stroke(width = arcWidthPx, cap = cap)
+        )
     }
 }
 
