@@ -64,7 +64,7 @@ class BarChartAnimationEngineTest {
 
         // "b" is still drawn while it animates out, so its animatable outlives
         // the swap. Eviction is the exit's job.
-        assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
+        assertEquals(listOf("b"), engine.exiting.map { it.item.id })
         assertEquals(setOf("a", "b", "c"), engine.heightAnimatables.keys)
     }
 
@@ -145,10 +145,10 @@ class BarChartAnimationEngineTest {
             // Sunk, but the slot is still collapsing, so the bar is still drawn.
             harness.advanceFrames(150)
             assertEquals(0f, engine.heightAnimatables.getValue("b").value)
-            assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
+            assertEquals(listOf("b"), engine.exiting.map { it.item.id })
 
             harness.advanceFrames(2000)
-            assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+            assertEquals(emptyList(), engine.exiting.map { it.item.id })
             assertNull(engine.heightAnimatables["b"])
         }
 
@@ -166,11 +166,11 @@ class BarChartAnimationEngineTest {
             // What a cancelled exit leaves behind: at rest, but still listed.
             engine.heightAnimatables.getValue("b").snapTo(0f)
             engine.slotAnimatables.getValue("b").snapTo(0f)
-            assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
+            assertEquals(listOf("b"), engine.exiting.map { it.item.id })
 
             engine.launchExitAnimations(snapConfig, harness.launchScope())
             harness.advanceFrames(100)
-            assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+            assertEquals(emptyList(), engine.exiting.map { it.item.id })
             assertNull(engine.heightAnimatables["b"])
             assertNull(engine.slotAnimatables["b"])
         }
@@ -183,7 +183,7 @@ class BarChartAnimationEngineTest {
 
         // renderEntries runs during composition, before the SideEffect that files
         // "b" under exiting. It must already report "b" or the bar blinks out.
-        assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
         assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
     }
 
@@ -199,7 +199,7 @@ class BarChartAnimationEngineTest {
         engine.syncAnimatables(entries("a" to 10f))
         engine.syncAnimatables(data)
 
-        assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
         assertEquals(listOf("a", "b"), engine.renderEntries(data).map { it.id })
     }
 

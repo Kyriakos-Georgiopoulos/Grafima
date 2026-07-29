@@ -19,10 +19,9 @@ package io.grafima.charts.radar
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.Dp
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -35,10 +34,6 @@ import kotlin.math.min
  */
 @Stable
 internal class AxisTrigCache(val cosA: FloatArray, val sinA: FloatArray)
-
-/** A series dropped from the dataset that is still collapsing to the centre. */
-@Stable
-internal class ExitingSeries(val series: RadarSeries, val index: Int)
 
 /**
  * Resolves the outer radius in pixels for the radar chart.
@@ -74,27 +69,17 @@ internal class RadarChartAnimationEngine {
     internal val alphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()
 
-    /** Series the dataset no longer contains but the chart is still drawing. */
-    var exiting: List<ExitingSeries> by mutableStateOf(emptyList())
-        private set
+    private val exitTracker = ExitTracker<RadarSeries> { it.id }
 
-    private var lastSeries: List<RadarSeries> = emptyList()
+    /** Series the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<RadarSeries>> get() = exitTracker.exiting
 
     /**
      * Ensures Animatable instances exist for all current (series, axis) pairs
      * and removes stale ones. Synchronous and idempotent.
      */
     fun syncAnimatables(axes: List<RadarAxis>, series: List<RadarSeries>) {
-        val currentIds = series.mapTo(mutableSetOf()) { it.id }
-        val exitingIds = exiting.mapTo(mutableSetOf()) { it.series.id }
-
-        val departed = lastSeries.withIndex()
-            .filter { (_, s) -> s.id !in currentIds && s.id !in exitingIds }
-            .map { (index, s) -> ExitingSeries(s, index) }
-        val returned = exiting.filter { it.series.id in currentIds }
-        if (departed.isNotEmpty() || returned.isNotEmpty()) {
-            exiting = exiting - returned.toSet() + departed
-        }
+        exitTracker.sync(series)
 
         val drawn = renderSeries(series)
         val activeValueKeys = mutableSetOf<String>()
@@ -112,7 +97,6 @@ internal class RadarChartAnimationEngine {
         valueAnimatables.keys.removeAll { it !in activeValueKeys }
         alphaAnimatables.keys.removeAll { it !in activeSeriesIds }
         initializedKeys.removeAll { it !in activeValueKeys }
-        lastSeries = series
     }
 
     /** Collapses a departing series to the centre: its entry animation in reverse. */
@@ -121,8 +105,8 @@ internal class RadarChartAnimationEngine {
         config: RadarAnimationConfig,
         scope: CoroutineScope
     ) {
-        exiting.forEach { leaving ->
-            val keys = axes.map { "${leaving.series.id}::${it.id}" }
+        exitTracker.exiting.forEach { leaving ->
+            val keys = axes.map { "${leaving.item.id}::${it.id}" }
             val anims = keys.mapNotNull { valueAnimatables[it] }
             if (anims.isEmpty()) return@forEach
             if (anims.any { it.isRunning }) return@forEach
@@ -143,32 +127,17 @@ internal class RadarChartAnimationEngine {
         }
     }
 
-    private fun forget(leaving: ExitingSeries, keys: List<String>) {
+    private fun forget(leaving: Exiting<RadarSeries>, keys: List<String>) {
         keys.forEach { key ->
             valueAnimatables.remove(key)
             initializedKeys.remove(key)
         }
-        alphaAnimatables.remove(leaving.series.id)
-        exiting = exiting - leaving
+        alphaAnimatables.remove(leaving.item.id)
+        exitTracker.forget(leaving)
     }
 
     /** Draw order only: touch handling and a11y stay on the dataset. */
-    fun renderSeries(series: List<RadarSeries>): List<RadarSeries> {
-        val currentIds = series.mapTo(mutableSetOf()) { it.id }
-
-        // Also reads the previous dataset: on the frame one is dropped the
-        // SideEffect has not run yet, and the series would blink out.
-        val pending = lastSeries.withIndex()
-            .filter { (_, s) -> s.id !in currentIds }
-            .map { (index, s) -> ExitingSeries(s, index) }
-
-        val leaving = (exiting + pending).distinctBy { it.series.id }
-        if (leaving.isEmpty()) return series
-
-        val merged = series.toMutableList()
-        leaving.sortedBy { it.index }.forEach { merged.add(it.index.coerceIn(0, merged.size), it.series) }
-        return merged
-    }
+    fun renderSeries(series: List<RadarSeries>): List<RadarSeries> = exitTracker.render(series)
 
     /**
      * Launches staggered vertex animations. New vertices animate from 0 with

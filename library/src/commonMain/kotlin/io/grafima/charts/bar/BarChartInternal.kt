@@ -19,9 +19,8 @@ package io.grafima.charts.bar
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,48 +95,28 @@ internal fun buildBarChartDescription(
     append(a11yConfig.barCountDescriptionBuilder(dataSet.entries.size))
 }
 
-/** A bar dropped from the dataset that is still shrinking out of its slot. */
-@Stable
-internal class ExitingBar(val entry: BarEntry, val index: Int)
-
 @Stable
 internal class ChartAnimationEngine {
     val heightAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     val selectionAlphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedIds = mutableSetOf<String>()
 
-    /**
-     * Bars the dataset no longer contains but the chart is still drawing.
-     *
-     * Snapshot state, because dropping one at the end of its exit has to bring
-     * the chart back for another frame.
-     */
-    var exiting: List<ExitingBar> by mutableStateOf(emptyList())
-        private set
-
     /** How much of its slot a departing bar still holds: 1 until it has sunk, then to 0. */
     val slotAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
 
-    private var lastEntries: List<BarEntry> = emptyList()
+    private val exitTracker = ExitTracker<BarEntry> { it.id }
+
+    /** Bars the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<BarEntry>> get() = exitTracker.exiting
 
     fun syncAnimatables(entries: List<BarEntry>) {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        val exitingIds = exiting.mapTo(mutableSetOf()) { it.entry.id }
-
-        val departed = lastEntries.withIndex()
-            .filter { (_, e) -> e.id !in currentIds && e.id !in exitingIds }
-            .map { (index, e) -> ExitingBar(e, index) }
-
         // An id that returns mid-exit rejoins the dataset and grows from where it got to.
-        val returned = exiting.filter { it.entry.id in currentIds }
+        val (departed, returned) = exitTracker.sync(entries)
+        departed.forEach { slotAnimatables[it.item.id] = Animatable(1f) }
+        returned.forEach { slotAnimatables.remove(it.item.id) }
 
-        if (departed.isNotEmpty() || returned.isNotEmpty()) {
-            departed.forEach { slotAnimatables[it.entry.id] = Animatable(1f) }
-            returned.forEach { slotAnimatables.remove(it.entry.id) }
-            exiting = exiting - returned.toSet() + departed
-        }
-
-        val drawn = currentIds + exiting.mapTo(mutableSetOf()) { it.entry.id }
+        val drawn = entries.mapTo(mutableSetOf()) { it.id } +
+            exitTracker.exiting.mapTo(mutableSetOf()) { it.item.id }
         heightAnimatables.keys.removeAll { it !in drawn }
         selectionAlphaAnimatables.keys.removeAll { it !in drawn }
         initializedIds.removeAll { it !in drawn }
@@ -146,7 +125,6 @@ internal class ChartAnimationEngine {
             heightAnimatables.getOrPut(entry.id) { Animatable(0f) }
             selectionAlphaAnimatables.getOrPut(entry.id) { Animatable(1f) }
         }
-        lastEntries = entries
     }
 
     /**
@@ -154,9 +132,10 @@ internal class ChartAnimationEngine {
      * it held collapsing on [AnimationConfig.morphSpec] as the survivors widen in.
      */
     fun launchExitAnimations(config: AnimationConfig, scope: CoroutineScope) {
-        exiting.forEach { bar ->
-            val height = heightAnimatables[bar.entry.id] ?: return@forEach
-            val slot = slotAnimatables[bar.entry.id] ?: return@forEach
+        exitTracker.exiting.forEach { bar ->
+            val id = bar.item.id
+            val height = heightAnimatables[id] ?: return@forEach
+            val slot = slotAnimatables[id] ?: return@forEach
             if (height.isRunning || slot.isRunning) return@forEach
 
             // A cancelled coroutine can leave it at rest but still listed.
@@ -173,12 +152,13 @@ internal class ChartAnimationEngine {
         }
     }
 
-    private fun forget(bar: ExitingBar) {
-        heightAnimatables.remove(bar.entry.id)
-        selectionAlphaAnimatables.remove(bar.entry.id)
-        slotAnimatables.remove(bar.entry.id)
-        initializedIds.remove(bar.entry.id)
-        exiting = exiting - bar
+    private fun forget(bar: Exiting<BarEntry>) {
+        val id = bar.item.id
+        heightAnimatables.remove(id)
+        selectionAlphaAnimatables.remove(id)
+        slotAnimatables.remove(id)
+        initializedIds.remove(id)
+        exitTracker.forget(bar)
     }
 
     /**
@@ -186,37 +166,15 @@ internal class ChartAnimationEngine {
      * order only — touch handling and the accessibility description stay on the
      * dataset.
      */
-    fun renderEntries(entries: List<BarEntry>): List<BarEntry> {
-        val leaving = leaving(entries)
-        if (leaving.isEmpty()) return entries
-
-        val merged = entries.toMutableList()
-        leaving.sortedBy { it.index }.forEach { bar ->
-            merged.add(bar.index.coerceIn(0, merged.size), bar.entry)
-        }
-        return merged
-    }
+    fun renderEntries(entries: List<BarEntry>): List<BarEntry> = exitTracker.render(entries)
 
     /** A bar's remaining claim on its slot. Read while drawing: it changes per frame. */
     fun slotOccupancy(id: String): Float = slotAnimatables[id]?.value ?: 1f
 
     /** Slots currently in use, counting a collapsing one as the fraction it still holds. */
     fun slotCount(renderEntries: List<BarEntry>): Float =
-        if (exiting.isEmpty()) renderEntries.size.toFloat()
+        if (exitTracker.exiting.isEmpty()) renderEntries.size.toFloat()
         else renderEntries.fold(0f) { acc, entry -> acc + slotOccupancy(entry.id) }
-
-    /**
-     * Bars on their way out. Also reads the previous dataset: on the frame one is
-     * dropped the SideEffect has not run yet, and the bar would blink out.
-     */
-    private fun leaving(entries: List<BarEntry>): List<ExitingBar> {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        val pending = lastEntries.withIndex()
-            .filter { (_, e) -> e.id !in currentIds }
-            .map { (index, e) -> ExitingBar(e, index) }
-        if (exiting.isEmpty() && pending.isEmpty()) return emptyList()
-        return (exiting + pending).distinctBy { it.entry.id }
-    }
 
     fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
         // Stagger by position among the bars appearing now, not by dataset index.

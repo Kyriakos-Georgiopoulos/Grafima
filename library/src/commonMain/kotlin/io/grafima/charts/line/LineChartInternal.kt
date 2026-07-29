@@ -19,10 +19,9 @@ package io.grafima.charts.line
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Path
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -161,10 +160,6 @@ internal fun Path.buildArea(
     close()
 }
 
-/** A series dropped from the dataset that is still dropping to the baseline. */
-@Stable
-internal class ExitingLineSeries(val series: LineSeries, val index: Int)
-
 /**
  * Manages per-point Y-value [Animatable] instances keyed as `"seriesId::pointIndex"`.
  *
@@ -179,24 +174,14 @@ internal class LineChartAnimationEngine {
     internal val yAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()
 
-    /** Series the dataset no longer contains but the chart is still drawing. */
-    var exiting: List<ExitingLineSeries> by mutableStateOf(emptyList())
-        private set
+    private val exitTracker = ExitTracker<LineSeries> { it.id }
 
-    private var lastSeries: List<LineSeries> = emptyList()
+    /** Series the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<LineSeries>> get() = exitTracker.exiting
 
     /** Ensures animatables exist for all current points. Removes stale entries. */
     fun syncAnimatables(series: List<LineSeries>) {
-        val currentIds = series.mapTo(mutableSetOf()) { it.id }
-        val exitingIds = exiting.mapTo(mutableSetOf()) { it.series.id }
-
-        val departed = lastSeries.withIndex()
-            .filter { (_, s) -> s.id !in currentIds && s.id !in exitingIds }
-            .map { (index, s) -> ExitingLineSeries(s, index) }
-        val returned = exiting.filter { it.series.id in currentIds }
-        if (departed.isNotEmpty() || returned.isNotEmpty()) {
-            exiting = exiting - returned.toSet() + departed
-        }
+        exitTracker.sync(series)
 
         val activeKeys = mutableSetOf<String>()
         renderSeries(series).forEach { s ->
@@ -208,7 +193,6 @@ internal class LineChartAnimationEngine {
         }
         yAnimatables.keys.removeAll { it !in activeKeys }
         initializedKeys.removeAll { it !in activeKeys }
-        lastSeries = series
     }
 
     /** Draws a departing series back to the baseline: its entry animation in reverse. */
@@ -217,8 +201,9 @@ internal class LineChartAnimationEngine {
         yBaseline: Float,
         scope: CoroutineScope
     ) {
-        exiting.forEach { leaving ->
-            val keys = leaving.series.points.indices.map { i -> "${leaving.series.id}::$i" }
+        exitTracker.exiting.forEach { leaving ->
+            val series = leaving.item
+            val keys = series.points.indices.map { i -> "${series.id}::$i" }
             val anims = keys.mapNotNull { yAnimatables[it] }
             if (anims.isEmpty()) return@forEach
             if (anims.any { it.isRunning }) return@forEach
@@ -238,31 +223,16 @@ internal class LineChartAnimationEngine {
         }
     }
 
-    private fun forget(leaving: ExitingLineSeries, keys: List<String>) {
+    private fun forget(leaving: Exiting<LineSeries>, keys: List<String>) {
         keys.forEach { key ->
             yAnimatables.remove(key)
             initializedKeys.remove(key)
         }
-        exiting = exiting - leaving
+        exitTracker.forget(leaving)
     }
 
     /** Draw order only: the crosshair and a11y stay on the dataset. */
-    fun renderSeries(series: List<LineSeries>): List<LineSeries> {
-        val currentIds = series.mapTo(mutableSetOf()) { it.id }
-
-        // Also reads the previous dataset: on the frame one is dropped the
-        // SideEffect has not run yet, and the line would blink out.
-        val pending = lastSeries.withIndex()
-            .filter { (_, s) -> s.id !in currentIds }
-            .map { (index, s) -> ExitingLineSeries(s, index) }
-
-        val leaving = (exiting + pending).distinctBy { it.series.id }
-        if (leaving.isEmpty()) return series
-
-        val merged = series.toMutableList()
-        leaving.sortedBy { it.index }.forEach { merged.add(it.index.coerceIn(0, merged.size), it.series) }
-        return merged
-    }
+    fun renderSeries(series: List<LineSeries>): List<LineSeries> = exitTracker.render(series)
 
     /**
      * Launches staggered entry or morph animations. New points animate from

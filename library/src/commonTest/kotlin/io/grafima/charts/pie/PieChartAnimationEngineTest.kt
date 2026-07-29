@@ -64,7 +64,7 @@ class PieChartAnimationEngineTest {
         assertEquals(midExit, engine.exitingValue(remaining))
 
         harness.advanceFrames(150)
-        assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
         assertNull(engine.valueAnimatables["b"])
         assertEquals(0f, engine.exitingValue(remaining))
     }
@@ -76,7 +76,7 @@ class PieChartAnimationEngineTest {
 
         // renderEntries runs during composition, before the SideEffect files "b"
         // under exiting. It must already report "b" or the slice blinks out.
-        assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
         assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 30f)).map { it.id })
     }
 
@@ -105,7 +105,7 @@ class PieChartAnimationEngineTest {
 
         // "b" left the dataset but is still drawn while it closes, so its
         // animatables outlive the swap. Eviction is the exit's job.
-        assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
+        assertEquals(listOf("b"), engine.exiting.map { it.item.id })
         assertEquals(setOf("a", "b", "c"), engine.valueAnimatables.keys)
     }
 

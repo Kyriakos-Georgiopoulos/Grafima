@@ -19,13 +19,12 @@ package io.grafima.charts.pie
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.Dp
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import io.grafima.charts.toRadians
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -102,10 +101,6 @@ internal fun computeNormalizedSweep(
     return sweep * normalizer
 }
 
-/** A slice dropped from the dataset that is still closing. */
-@Stable
-internal class ExitingSlice(val entry: PieEntry, val index: Int)
-
 /**
  * Manages per-slice [Animatable] instances for value, scale, and alpha.
  *
@@ -126,16 +121,10 @@ internal class PieChartAnimationEngine {
     internal val alphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedIds = mutableSetOf<String>()
 
-    /**
-     * Slices the dataset no longer contains but the chart is still drawing.
-     *
-     * Snapshot state, because dropping one at the end of its exit has to bring the
-     * chart back for another frame.
-     */
-    var exiting: List<ExitingSlice> by mutableStateOf(emptyList())
-        private set
+    private val exitTracker = ExitTracker<PieEntry> { it.id }
 
-    private var lastEntries: List<PieEntry> = emptyList()
+    /** Slices the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<PieEntry>> get() = exitTracker.exiting
 
     /**
      * Ensures Animatable instances exist for all current [entries] and removes stale
@@ -144,19 +133,10 @@ internal class PieChartAnimationEngine {
      * and a single removeAll pass.
      */
     fun syncAnimatables(entries: List<PieEntry>) {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        val exitingIds = exiting.mapTo(mutableSetOf()) { it.entry.id }
+        exitTracker.sync(entries)
 
-        val departed = lastEntries.withIndex()
-            .filter { (_, e) -> e.id !in currentIds && e.id !in exitingIds }
-            .map { (index, e) -> ExitingSlice(e, index) }
-        val returned = exiting.filter { it.entry.id in currentIds }
-
-        if (departed.isNotEmpty() || returned.isNotEmpty()) {
-            exiting = exiting - returned.toSet() + departed
-        }
-
-        val drawn = currentIds + exiting.mapTo(mutableSetOf()) { it.entry.id }
+        val drawn = entries.mapTo(mutableSetOf()) { it.id } +
+            exitTracker.exiting.mapTo(mutableSetOf()) { it.item.id }
         valueAnimatables.keys.removeAll { it !in drawn }
         scaleAnimatables.keys.removeAll { it !in drawn }
         alphaAnimatables.keys.removeAll { it !in drawn }
@@ -167,7 +147,6 @@ internal class PieChartAnimationEngine {
             scaleAnimatables.getOrPut(entry.id) { Animatable(1f) }
             alphaAnimatables.getOrPut(entry.id) { Animatable(1f) }
         }
-        lastEntries = entries
     }
 
     /**
@@ -177,8 +156,8 @@ internal class PieChartAnimationEngine {
      * survivors widen as it closes — provided [exitingValue] keeps counting it.
      */
     fun launchExitAnimations(config: PieAnimationConfig, scope: CoroutineScope) {
-        exiting.forEach { slice ->
-            val value = valueAnimatables[slice.entry.id] ?: return@forEach
+        exitTracker.exiting.forEach { slice ->
+            val value = valueAnimatables[slice.item.id] ?: return@forEach
             if (value.isRunning) return@forEach
 
             // A cancelled coroutine can leave it at rest but still listed.
@@ -194,12 +173,13 @@ internal class PieChartAnimationEngine {
         }
     }
 
-    private fun forget(slice: ExitingSlice) {
-        valueAnimatables.remove(slice.entry.id)
-        scaleAnimatables.remove(slice.entry.id)
-        alphaAnimatables.remove(slice.entry.id)
-        initializedIds.remove(slice.entry.id)
-        exiting = exiting - slice
+    private fun forget(slice: Exiting<PieEntry>) {
+        val id = slice.item.id
+        valueAnimatables.remove(id)
+        scaleAnimatables.remove(id)
+        alphaAnimatables.remove(id)
+        initializedIds.remove(id)
+        exitTracker.forget(slice)
     }
 
     /**
@@ -207,39 +187,17 @@ internal class PieChartAnimationEngine {
      * order only — touch handling and the accessibility description stay on the
      * dataset.
      */
-    fun renderEntries(entries: List<PieEntry>): List<PieEntry> {
-        val leaving = leaving(entries)
-        if (leaving.isEmpty()) return entries
-
-        val merged = entries.toMutableList()
-        leaving.sortedBy { it.index }.forEach { slice ->
-            merged.add(slice.index.coerceIn(0, merged.size), slice.entry)
-        }
-        return merged
-    }
+    fun renderEntries(entries: List<PieEntry>): List<PieEntry> = exitTracker.render(entries)
 
     /**
      * The share the closing slices still hold. Read while drawing, not during
      * composition: it changes every frame.
      */
     fun exitingValue(entries: List<PieEntry>): Float {
-        if (exiting.isEmpty()) return 0f
-        return exiting.fold(0f) { acc, slice ->
-            acc + (valueAnimatables[slice.entry.id]?.value ?: 0f)
+        if (exitTracker.exiting.isEmpty()) return 0f
+        return exitTracker.exiting.fold(0f) { acc, slice ->
+            acc + (valueAnimatables[slice.item.id]?.value ?: 0f)
         }
-    }
-
-    /**
-     * Slices on their way out. Also reads the previous dataset: on the frame one is
-     * dropped the SideEffect has not run yet, and the slice would blink out.
-     */
-    private fun leaving(entries: List<PieEntry>): List<ExitingSlice> {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        val pending = lastEntries.withIndex()
-            .filter { (_, e) -> e.id !in currentIds }
-            .map { (index, e) -> ExitingSlice(e, index) }
-        if (exiting.isEmpty() && pending.isEmpty()) return emptyList()
-        return (exiting + pending).distinctBy { it.entry.id }
     }
 
     /**
