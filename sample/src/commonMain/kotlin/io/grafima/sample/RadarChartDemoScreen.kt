@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -75,6 +76,24 @@ private val ExtraClassColors = listOf(
     Color(0xFFF59E0B), Color(0xFF8B5CF6), Color(0xFFEC4899)
 )
 
+private const val MinClasses = 2
+private const val MaxClasses = 5
+
+private fun RadarDataSet.plusClass(): RadarDataSet {
+    val index = series.size - MinClasses
+    return copy(
+        series = series + RadarSeries(
+            id = "class_${series.size}",
+            label = ExtraClassNames.getOrElse(index) { "Class ${series.size + 1}" },
+            values = axes.associate { a -> a.id to Random.nextInt(20, 95).toFloat() },
+            color = ExtraClassColors.getOrElse(index) { Color(0xFF64748B) },
+            fillAlpha = 0.15f
+        )
+    )
+}
+
+private fun RadarDataSet.minusClass(): RadarDataSet = copy(series = series.dropLast(1))
+
 @Composable
 fun RadarChartDemoScreen() {
     val colors = LocalDemoColors.current
@@ -103,16 +122,6 @@ fun RadarChartDemoScreen() {
                         ),
                         color = Color(0xFF6366F1),
                         fillAlpha = 0.15f
-                    ),
-                    RadarSeries(
-                        id = "rogue",
-                        label = "Rogue",
-                        values = mapOf(
-                            "atk" to 65f, "def" to 30f, "spd" to 92f,
-                            "mag" to 40f, "sta" to 50f, "lck" to 85f
-                        ),
-                        color = Color(0xFF10B981),
-                        fillAlpha = 0.15f
                     )
                 ),
                 contentDescription = "Character Class Comparison"
@@ -129,6 +138,24 @@ fun RadarChartDemoScreen() {
 
     DemoScreenScaffold(
         controls = {
+            DemoControls { buttonModifier ->
+                DemoAddButton(
+                    text = "Add Class",
+                    enabled = dataSet.series.size < MaxClasses,
+                    onClick = { dataSet = dataSet.plusClass() },
+                    modifier = buttonModifier
+                )
+                DemoRemoveButton(
+                    text = "Remove Class",
+                    enabled = dataSet.series.size > MinClasses,
+                    onClick = {
+                        selectedSeriesId = null
+                        dataSet = dataSet.minusClass()
+                    },
+                    modifier = buttonModifier
+                )
+            }
+
             DemoControls { buttonModifier ->
                 Button(
                     onClick = { isPolygonGrid = !isPolygonGrid },
@@ -171,44 +198,6 @@ fun RadarChartDemoScreen() {
                 ) {
                     Text(
                         text = "Randomize",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        val currentSeries = dataSet.series
-                        dataSet = if (currentSeries.size >= 5) {
-                            dataSet.copy(series = currentSeries.dropLast(1))
-                        } else {
-                            val index = currentSeries.size - 3
-                            val newSeries = RadarSeries(
-                                id = "class_${currentSeries.size}",
-                                label = ExtraClassNames.getOrElse(index) {
-                                    "Class ${currentSeries.size + 1}"
-                                },
-                                values = dataSet.axes.associate { a ->
-                                    a.id to Random.nextInt(20, 95).toFloat()
-                                },
-                                color = ExtraClassColors.getOrElse(index) { Color(0xFF64748B) },
-                                fillAlpha = 0.15f
-                            )
-                            dataSet.copy(series = currentSeries + newSeries)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.accentWarm,
-                        contentColor = colors.onAccentWarm
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp),
-                    modifier = buttonModifier.height(50.dp)
-                ) {
-                    Text(
-                        text = if (dataSet.series.size >= 5) "Remove" else "Add Class",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -334,9 +323,12 @@ private fun RadarLegend(
     if (stacked) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { entries() }
     } else {
-        Row(
+        // Wraps rather than squeezing: five classes' worth of labels don't
+        // reliably fit one line on a phone width.
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) { entries() }
     }
 }
