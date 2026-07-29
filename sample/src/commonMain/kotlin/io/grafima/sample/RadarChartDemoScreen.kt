@@ -24,11 +24,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,7 +55,9 @@ import io.grafima.charts.radar.RadarChart
 import io.grafima.charts.radar.RadarDataSet
 import io.grafima.charts.radar.RadarGridStyle
 import io.grafima.charts.radar.RadarSeries
+import io.grafima.sample.theme.DemoColors
 import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.LocalIsWideLayout
 import io.grafima.sample.theme.themedRadarStyle
 import kotlin.random.Random
 
@@ -220,80 +224,148 @@ fun RadarChartDemoScreen() {
                 .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                ) {
-                    Text(
-                        "Character Stats",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = colors.onSurface
-                    )
-                    Text(
-                        text = selectedSeriesData?.let { "Viewing ${it.label} build" }
-                            ?: "Tap a vertex to inspect a class.",
-                        fontSize = 13.sp,
-                        color = colors.onSurfaceMuted,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-
+            // The radar is sized off the card's *shorter* side, which in
+            // landscape is its height — so anything stacked above the chart
+            // comes straight out of the chart's diameter. Standing the caption
+            // and legend beside it instead leaves the full height to the plot.
+            if (LocalIsWideLayout.current) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
+                    modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    dataSet.series.forEach { s ->
-                        // Emphasis rides on weight, not on a paler colour: a grey
-                        // light enough to read as "off" is too light to read.
-                        val emphasised = selectedSeriesData == null ||
-                            selectedSeriesData?.id == s.id
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Canvas(modifier = Modifier.size(10.dp)) {
-                                drawCircle(color = s.color, radius = size.minDimension / 2f)
-                            }
-                            Text(
-                                text = s.label,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(start = 6.dp),
-                                fontWeight = if (selectedSeriesData?.id == s.id) {
-                                    FontWeight.Bold
-                                } else FontWeight.Normal,
-                                color = if (emphasised) {
-                                    colors.onSurface
-                                } else colors.onSurfaceMuted
-                            )
-                        }
+                    Column(
+                        modifier = Modifier.width(148.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        RadarCaption(selectedSeriesData, colors)
+                        Spacer(Modifier.height(16.dp))
+                        RadarLegend(
+                            series = dataSet.series,
+                            selected = selectedSeriesData,
+                            stacked = true,
+                            colors = colors
+                        )
                     }
-                }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    RadarChart(
+                    RadarPlot(
                         dataSet = dataSet,
-                        modifier = Modifier.fillMaxSize(),
-                        style = themedRadarStyle(
-                            gridStyle = if (isPolygonGrid) {
-                                RadarGridStyle.Polygon
-                            } else RadarGridStyle.Circular,
-                            gridLevels = 5,
-                            fillFraction = 0.9f,
-                            dotRadius = 5.dp
-                        ),
-                        selectedSeries = selectedSeriesData,
-                        onSeriesSelected = { s -> selectedSeriesId = s?.id }
+                        isPolygonGrid = isPolygonGrid,
+                        selected = selectedSeriesData,
+                        onSelect = { s -> selectedSeriesId = s?.id },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    )
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    RadarCaption(selectedSeriesData, colors)
+
+                    Spacer(Modifier.height(16.dp))
+
+                    RadarLegend(
+                        series = dataSet.series,
+                        selected = selectedSeriesData,
+                        stacked = false,
+                        colors = colors
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    RadarPlot(
+                        dataSet = dataSet,
+                        isPolygonGrid = isPolygonGrid,
+                        selected = selectedSeriesData,
+                        onSelect = { s -> selectedSeriesId = s?.id },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RadarCaption(selected: RadarSeries?, colors: DemoColors) {
+    Column {
+        Text(
+            "Character Stats",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = colors.onSurface
+        )
+        Text(
+            text = selected?.let { "Viewing ${it.label} build" }
+                ?: "Tap a vertex to inspect a class.",
+            fontSize = 13.sp,
+            color = colors.onSurfaceMuted,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Composable
+private fun RadarLegend(
+    series: List<RadarSeries>,
+    selected: RadarSeries?,
+    stacked: Boolean,
+    colors: DemoColors
+) {
+    val entries: @Composable () -> Unit = {
+        series.forEach { s ->
+            // Emphasis rides on weight, not on a paler colour: a grey light
+            // enough to read as "off" is too light to read.
+            val emphasised = selected == null || selected.id == s.id
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Canvas(modifier = Modifier.size(10.dp)) {
+                    drawCircle(color = s.color, radius = size.minDimension / 2f)
+                }
+                Text(
+                    text = s.label,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 6.dp),
+                    fontWeight = if (selected?.id == s.id) FontWeight.Bold else FontWeight.Normal,
+                    color = if (emphasised) colors.onSurface else colors.onSurfaceMuted
+                )
+            }
+        }
+    }
+
+    if (stacked) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { entries() }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) { entries() }
+    }
+}
+
+@Composable
+private fun RadarPlot(
+    dataSet: RadarDataSet,
+    isPolygonGrid: Boolean,
+    selected: RadarSeries?,
+    onSelect: (RadarSeries?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        RadarChart(
+            dataSet = dataSet,
+            modifier = Modifier.fillMaxSize(),
+            style = themedRadarStyle(
+                gridStyle = if (isPolygonGrid) {
+                    RadarGridStyle.Polygon
+                } else RadarGridStyle.Circular,
+                gridLevels = 5,
+                fillFraction = 0.9f,
+                dotRadius = 5.dp
+            ),
+            selectedSeries = selected,
+            onSeriesSelected = onSelect
+        )
     }
 }
 
