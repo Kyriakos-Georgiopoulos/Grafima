@@ -207,7 +207,7 @@ fun RadarChartDemoScreen() {
                                 RadarGridStyle.Polygon
                             } else RadarGridStyle.Circular,
                             gridLevels = 5,
-                            fillFraction = 0.78f,
+                            fillFraction = 0.9f,
                             dotRadius = 5.dp
                         ),
                         selectedSeries = selectedSeriesData,

@@ -130,7 +130,9 @@ fun PieChartDemoScreen() {
         PieChartStyle(
             donutRatio = if (isDonut) 0.5f else 0f,
             selectedScale = 1.05f,
-            fillFraction = 0.60f
+            // Short of filling the card: the elbow callouts draw outside the
+            // radius, and selectedScale pushes the active slice out further.
+            fillFraction = 0.74f
         )
     }
 

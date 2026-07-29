@@ -111,7 +111,7 @@ fun GaugeChartDemoScreen() {
             arcWidth = 24.dp,
             trackColor = colors.chartTrack,
             arcGradientColors = if (useGradientArc) ArcGradient else emptyList(),
-            fillFraction = 0.82f,
+            fillFraction = 0.92f,
             centerContentOffset = 84.dp
         )
     }
