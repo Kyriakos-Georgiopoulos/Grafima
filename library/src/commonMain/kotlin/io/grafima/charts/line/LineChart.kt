@@ -303,9 +303,8 @@ fun LineChart(
                         // Named, not next/previous: stepping leaves the listener
                         // counting along the axis to work out where they landed.
                         points.forEachIndexed { index, point ->
-                            val label = point.label.ifEmpty { point.x.toInt().toString() }
                             add(
-                                CustomAccessibilityAction(label = "Select $label") {
+                                CustomAccessibilityAction(label = "Select ${point.spokenLabel}") {
                                     onPointSelected(index)
                                     true
                                 }
