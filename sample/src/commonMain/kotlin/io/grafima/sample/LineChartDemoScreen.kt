@@ -157,16 +157,65 @@ fun LineChartDemoScreen() {
 
     val chartStyle = remember(curveType) { LineChartStyle(curveType = curveType) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    DemoScreenScaffold(
+        controls = {
+            DemoControls { buttonModifier ->
+                Button(
+                    onClick = {
+                        curveType = if (curveType == LineCurveType.MonotoneCubic) {
+                            LineCurveType.Linear
+                        } else LineCurveType.MonotoneCubic
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        if (curveType == LineCurveType.MonotoneCubic) "Linear" else "Smooth",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Button(
+                    onClick = { showFill = !showFill },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accentWarm,
+                        contentColor = colors.onAccentWarm
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        if (showFill) "No Fill" else "Area Fill",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Button(
+                onClick = { dataSet = monthlyDataSet() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.onSurface,
+                    contentColor = colors.background
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) { Text("Randomize", fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+        }
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
                 .background(colors.surface, RoundedCornerShape(24.dp))
                 .padding(20.dp)
         ) {
@@ -251,67 +300,6 @@ fun LineChartDemoScreen() {
                 }
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = {
-                    curveType = if (curveType == LineCurveType.MonotoneCubic) {
-                        LineCurveType.Linear
-                    } else LineCurveType.MonotoneCubic
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,
-                    contentColor = colors.onAccent
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    if (curveType == LineCurveType.MonotoneCubic) "Linear" else "Smooth",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Button(
-                onClick = { showFill = !showFill },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accentWarm,
-                    contentColor = colors.onAccentWarm
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    if (showFill) "No Fill" else "Area Fill",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(
-            onClick = { dataSet = monthlyDataSet() },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.onSurface,
-                contentColor = colors.background
-            ),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) { Text("Randomize", fontSize = 15.sp, fontWeight = FontWeight.Bold) }
     }
 }
 

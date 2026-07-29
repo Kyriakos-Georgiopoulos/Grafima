@@ -146,16 +146,74 @@ fun GaugeChartDemoScreen() {
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    DemoScreenScaffold(
+        controls = {
+            DemoControls { buttonModifier ->
+                GaugePresets.forEach { preset ->
+                    Button(
+                        onClick = { currentValue = preset.value },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = preset.color,
+                            contentColor = onColorFor(preset.color)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp),
+                        modifier = buttonModifier.height(50.dp)
+                    ) {
+                        Text(
+                            text = preset.label,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            DemoControls { buttonModifier ->
+                Button(
+                    onClick = { useGradientArc = !useGradientArc },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = if (useGradientArc) "Zone Mode" else "Gradient Mode",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Button(
+                    onClick = { currentValue = Random.nextInt(0, 101).toFloat() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.onSurface,
+                        contentColor = colors.background
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = "Random",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
                 .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
@@ -214,82 +272,6 @@ fun GaugeChartDemoScreen() {
                         }
                     )
                 }
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            GaugePresets.forEach { preset ->
-                Button(
-                    onClick = { currentValue = preset.value },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = preset.color,
-                        contentColor = onColorFor(preset.color)
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(50.dp)
-                ) {
-                    Text(
-                        text = preset.label,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { useGradientArc = !useGradientArc },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,
-                    contentColor = colors.onAccent
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = if (useGradientArc) "Zone Mode" else "Gradient Mode",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Button(
-                onClick = { currentValue = Random.nextInt(0, 101).toFloat() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.onSurface,
-                    contentColor = colors.background
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = "Random",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
     }

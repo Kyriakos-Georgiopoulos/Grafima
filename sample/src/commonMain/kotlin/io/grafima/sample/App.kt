@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import io.grafima.sample.theme.DemoTheme
 import io.grafima.sample.theme.LocalThemeReveal
+import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.SystemBarsEffect
 import io.grafima.sample.theme.ThemeRevealBackground
 import io.grafima.sample.theme.ThemeRevealState
@@ -56,10 +57,12 @@ fun GrafimaApp() {
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     ThemeRevealBackground(darkTheme = darkTheme)
-                    ChartsDemoScreen(
-                        darkTheme = darkTheme,
-                        onToggleTheme = { darkTheme = !darkTheme }
-                    )
+                    ProvideDemoLayout {
+                        ChartsDemoScreen(
+                            darkTheme = darkTheme,
+                            onToggleTheme = { darkTheme = !darkTheme }
+                        )
+                    }
                 }
             }
         }

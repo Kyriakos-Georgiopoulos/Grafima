@@ -134,16 +134,77 @@ fun PieChartDemoScreen() {
 
     val total = remember(dataSet) { dataSet.entries.sumOf { it.value.toInt() } }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    DemoScreenScaffold(
+        controls = {
+            DemoControls { buttonModifier ->
+                Button(
+                    onClick = { isDonut = !isDonut },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = if (isDonut) "Pie Style" else "Donut Style",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Button(
+                    onClick = { useCalloutRenderer = !useCalloutRenderer },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accentWarm,
+                        contentColor = colors.onAccentWarm
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = if (useCalloutRenderer) "Pill Text" else "Callout Line",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        dataSet = dataSet.copy(
+                            entries = dataSet.entries.map { entry ->
+                                entry.copy(value = Random.nextInt(50, 500).toFloat())
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.onSurface,
+                        contentColor = colors.background
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = "Update",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
                 .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(32.dp)
         ) {
@@ -204,82 +265,6 @@ fun PieChartDemoScreen() {
                         } else null
                     )
                 }
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { isDonut = !isDonut },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,
-                    contentColor = colors.onAccent
-                ),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = if (isDonut) "Pie Style" else "Donut Style",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Button(
-                onClick = { useCalloutRenderer = !useCalloutRenderer },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accentWarm,
-                    contentColor = colors.onAccentWarm
-                ),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = if (useCalloutRenderer) "Pill Text" else "Callout Line",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Button(
-                onClick = {
-                    dataSet = dataSet.copy(
-                        entries = dataSet.entries.map { entry ->
-                            entry.copy(value = Random.nextInt(50, 500).toFloat())
-                        }
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.onSurface,
-                    contentColor = colors.background
-                ),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = "Update",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
     }

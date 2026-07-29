@@ -20,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -126,59 +128,73 @@ fun BarChartDemoScreen() {
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            listOf(
-                BarOrientation.Vertical to "Vertical",
-                BarOrientation.Horizontal to "Horizontal"
-            ).forEach { (orient, label) ->
-                val selected = orientation == orient
-                Button(
-                    onClick = {
-                        selectedBarId = null
-                        orientation = orient
-                        dataSet = dataSet.randomized()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (selected) colors.onSurface else Color.Transparent,
-                        contentColor = if (selected) colors.background else colors.onSurfaceMuted
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 0.dp,
-                        pressedElevation = 0.dp,
-                        focusedElevation = 0.dp
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp)
-                ) {
-                    Text(
-                        label,
-                        fontSize = 14.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                    )
+    DemoScreenScaffold(
+        header = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                listOf(
+                    BarOrientation.Vertical to "Vertical",
+                    BarOrientation.Horizontal to "Horizontal"
+                ).forEach { (orient, label) ->
+                    val selected = orientation == orient
+                    Button(
+                        onClick = {
+                            selectedBarId = null
+                            orientation = orient
+                            dataSet = dataSet.randomized()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (selected) colors.onSurface else Color.Transparent,
+                            contentColor = if (selected) colors.background else colors.onSurfaceMuted
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp,
+                            focusedElevation = 0.dp
+                        ),
+                        // Material's default 24dp side padding leaves no room
+                        // for "Horizontal" in the narrow wide-layout column.
+                        contentPadding = PaddingValues(horizontal = 4.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                    ) {
+                        Text(
+                            label,
+                            fontSize = 14.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
+        },
+        controls = {
+            Button(
+                onClick = { dataSet = dataSet.randomized() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.onSurface,
+                    contentColor = colors.background
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+            ) {
+                Text("Update Data", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
         }
-
-        Spacer(Modifier.height(20.dp))
-
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
                 .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(32.dp)
         ) {
@@ -228,22 +244,6 @@ fun BarChartDemoScreen() {
                     a11yConfig = a11yConfig
                 )
             }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Button(
-            onClick = { dataSet = dataSet.randomized() },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colors.onSurface,
-                contentColor = colors.background
-            ),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-        ) {
-            Text("Update Data", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

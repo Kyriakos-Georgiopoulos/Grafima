@@ -123,16 +123,100 @@ fun RadarChartDemoScreen() {
 
     var isPolygonGrid by remember { mutableStateOf(true) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    DemoScreenScaffold(
+        controls = {
+            DemoControls { buttonModifier ->
+                Button(
+                    onClick = { isPolygonGrid = !isPolygonGrid },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = if (isPolygonGrid) "Circle Grid" else "Polygon Grid",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        dataSet = dataSet.copy(
+                            series = dataSet.series.map { s ->
+                                s.copy(
+                                    values = dataSet.axes.associate { a ->
+                                        a.id to Random.nextInt(15, 100).toFloat()
+                                    }
+                                )
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.onSurface,
+                        contentColor = colors.background
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = "Randomize",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        val currentSeries = dataSet.series
+                        dataSet = if (currentSeries.size >= 5) {
+                            dataSet.copy(series = currentSeries.dropLast(1))
+                        } else {
+                            val index = currentSeries.size - 3
+                            val newSeries = RadarSeries(
+                                id = "class_${currentSeries.size}",
+                                label = ExtraClassNames.getOrElse(index) {
+                                    "Class ${currentSeries.size + 1}"
+                                },
+                                values = dataSet.axes.associate { a ->
+                                    a.id to Random.nextInt(20, 95).toFloat()
+                                },
+                                color = ExtraClassColors.getOrElse(index) { Color(0xFF64748B) },
+                                fillAlpha = 0.15f
+                            )
+                            dataSet.copy(series = currentSeries + newSeries)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accentWarm,
+                        contentColor = colors.onAccentWarm
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        text = if (dataSet.series.size >= 5) "Remove" else "Add Class",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
                 .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
@@ -208,105 +292,6 @@ fun RadarChartDemoScreen() {
                         onSeriesSelected = { s -> selectedSeriesId = s?.id }
                     )
                 }
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { isPolygonGrid = !isPolygonGrid },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accent,
-                    contentColor = colors.onAccent
-                ),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = if (isPolygonGrid) "Circle Grid" else "Polygon Grid",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Button(
-                onClick = {
-                    dataSet = dataSet.copy(
-                        series = dataSet.series.map { s ->
-                            s.copy(
-                                values = dataSet.axes.associate { a ->
-                                    a.id to Random.nextInt(15, 100).toFloat()
-                                }
-                            )
-                        }
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.onSurface,
-                    contentColor = colors.background
-                ),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = "Randomize",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Button(
-                onClick = {
-                    val currentSeries = dataSet.series
-                    dataSet = if (currentSeries.size >= 5) {
-                        dataSet.copy(series = currentSeries.dropLast(1))
-                    } else {
-                        val index = currentSeries.size - 3
-                        val newSeries = RadarSeries(
-                            id = "class_${currentSeries.size}",
-                            label = ExtraClassNames.getOrElse(index) {
-                                "Class ${currentSeries.size + 1}"
-                            },
-                            values = dataSet.axes.associate { a ->
-                                a.id to Random.nextInt(20, 95).toFloat()
-                            },
-                            color = ExtraClassColors.getOrElse(index) { Color(0xFF64748B) },
-                            fillAlpha = 0.15f
-                        )
-                        dataSet.copy(series = currentSeries + newSeries)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.accentWarm,
-                    contentColor = colors.onAccentWarm
-                ),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) {
-                Text(
-                    text = if (dataSet.series.size >= 5) "Remove" else "Add Class",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
     }
