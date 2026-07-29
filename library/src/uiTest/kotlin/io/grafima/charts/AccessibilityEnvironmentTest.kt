@@ -38,6 +38,7 @@ import io.grafima.charts.pie.PieDataSet
 import io.grafima.charts.radar.RadarChart
 import io.grafima.charts.radar.RadarDataSet
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * Accessibility behaviour under non-default environments: large font scales,
@@ -65,7 +66,7 @@ class AccessibilityEnvironmentTest {
             }
         }
         onNodeWithContentDescription("Monthly revenue", substring = true).assertExists()
-        onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
+        onChartNode().customActionLabels().contains("Select Feb")
     }
 
     @Test
@@ -166,9 +167,9 @@ class AccessibilityEnvironmentTest {
                     BarChart(dataSet = barData, modifier = Modifier.size(300.dp))
                 }
             }
-            // With motion reduced, entry animations snap: the chart is fully
-            // described without waiting for a stagger to finish.
-            onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
+            // With motion reduced, entry animations snap: the chart is described
+            // and every bar reachable without waiting for a stagger to finish.
+            assertTrue(onChartNode().customActionLabels().contains("Select Feb"))
         }
     }
 

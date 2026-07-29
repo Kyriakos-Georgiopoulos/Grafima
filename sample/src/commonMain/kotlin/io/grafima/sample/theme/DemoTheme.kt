@@ -132,8 +132,8 @@ fun onColorFor(background: Color): Color =
 
 private fun lerp(start: DemoColors, stop: DemoColors, fraction: Float): DemoColors =
     when (fraction) {
-        // Hand back the constants at the ends so a settled theme keeps one
-        // stable palette instance for downstream `remember` keys.
+        // The constants at the ends, so a settled theme keeps one stable instance
+        // for downstream `remember` keys.
         0f -> start
         1f -> stop
         else -> DemoColors(
@@ -154,6 +154,5 @@ private fun lerp(start: DemoColors, stop: DemoColors, fraction: Float): DemoColo
         )
     }
 
-// Long enough that a circle crossing the whole screen reads as one deliberate
-// sweep; at half this it lands as a flicker.
+// Long enough for a circle crossing the screen to read as a sweep, not a flicker.
 internal const val THEME_SWEEP_MS = 800

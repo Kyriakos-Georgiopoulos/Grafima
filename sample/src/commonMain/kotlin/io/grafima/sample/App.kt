@@ -39,8 +39,7 @@ import io.grafima.sample.theme.ThemeRevealState
 
 @Composable
 fun GrafimaApp() {
-    // Follows the system on first launch, then whatever the user picked, and
-    // survives rotation so the theme doesn't snap back mid-demo.
+    // System on first launch, then the user's choice, surviving rotation.
     val systemDark = isSystemInDarkTheme()
     var darkTheme by rememberSaveable { mutableStateOf(systemDark) }
 
@@ -50,8 +49,8 @@ fun GrafimaApp() {
 
     CompositionLocalProvider(LocalThemeReveal provides reveal) {
         DemoTheme(darkTheme = darkTheme) {
-            // Material only shows through in ripples and other component
-            // defaults here, but it still has to agree with the palette.
+            // Only ripples and component defaults show through, but they still
+            // have to agree with the palette.
             MaterialTheme(
                 colorScheme = if (darkTheme) darkColorScheme() else lightColorScheme()
             ) {

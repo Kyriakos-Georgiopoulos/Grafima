@@ -48,6 +48,7 @@ import io.grafima.charts.radar.RadarDataSet
 import io.grafima.charts.radar.RadarSeries
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -108,6 +109,8 @@ class AccessibilityContractTest {
     fun every_chart_exposes_exactly_one_described_accessibility_node() {
         // mergeDescendants keeps screen readers from walking chart internals,
         // so each chart must surface one described node — never zero, never many.
+        // A second described node is not a harmless extra: a screen reader can
+        // land on it, and it carries none of the chart's select actions.
         for ((name, chart) in allCharts) {
             runComposeUiTest {
                 setContent { chart() }
@@ -132,6 +135,26 @@ class AccessibilityContractTest {
                         LiveRegionMode.Polite
                     ),
                     messagePrefixOnError = { "$name is not a polite live region" }
+                )
+            }
+        }
+    }
+
+    @Test
+    fun a_chart_description_does_not_read_out_every_entry() {
+        // The description is re-announced on every selection because the node is a
+        // live region. Enumerating the data here means hearing the whole chart
+        // again just to learn which bar is now selected.
+        runComposeUiTest {
+            setContent { BarChart(dataSet = barData, modifier = Modifier.size(300.dp)) }
+            val description = onChartNode()
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.ContentDescription]
+                .joinToString(" ")
+            barData.entries.forEach { entry ->
+                assertFalse(
+                    description.contains("value is ${entry.y.toInt()}"),
+                    "the description reads out ${entry.xLabel}"
                 )
             }
         }
@@ -167,13 +190,14 @@ class AccessibilityContractTest {
     }
 
     @Test
-    fun the_description_changes_when_the_data_changes() = runComposeUiTest {
+    fun the_announced_text_changes_when_the_data_changes() = runComposeUiTest {
         // The charts are polite live regions; that only helps if the announced
-        // text actually differs after an update.
+        // text actually differs after an update. The description summarises, so
+        // what tracks the data is the set of select actions.
         var data by mutableStateOf(barData)
         setContent { BarChart(dataSet = data, modifier = Modifier.size(300.dp)) }
         waitForIdle()
-        onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
+        assertTrue(onChartNode().customActionLabels().contains("Select Feb"))
 
         data = BarDataSet(
             entries = listOf(BarEntry(id = "jan", xLabel = "Jan", y = 999f)),
@@ -181,8 +205,10 @@ class AccessibilityContractTest {
         )
         waitForIdle()
 
-        onNodeWithContentDescription("Jan value is 999", substring = true).assertExists()
-        onNodeWithContentDescription("Feb value is 80", substring = true).assertDoesNotExist()
+        val labels = onChartNode().customActionLabels()
+        assertTrue(labels.contains("Select Jan"))
+        assertFalse(labels.contains("Select Feb"))
+        onNodeWithContentDescription("1 bars", substring = true).assertExists()
     }
 
     @Test

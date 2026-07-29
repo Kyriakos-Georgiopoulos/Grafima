@@ -184,9 +184,24 @@ data class PieA11yConfig(
         "Pie Chart representing ${ds.contentDescription}"
     },
     val sliceDescriptionBuilder: (PieEntry, Float) -> String = { entry, percentage ->
-        "${entry.label}, ${entry.value.toInt()} (${percentage.toInt()}% of total)."
+        "${entry.label}, ${entry.value.toInt()}, ${percentage.toInt()} percent of total."
     },
-    val selectedStateDescription: (PieEntry?) -> String = { entry ->
-        entry?.let { "Currently selected: ${it.label}." } ?: "No slice selected."
+    val sliceCountDescriptionBuilder: (Int) -> String = { count ->
+        "$count slices. Use the actions menu to select one."
+    },
+    /**
+     * Announced on its own when the selection changes, so it carries the value and
+     * the share as well as the label — the share is passed in because a single
+     * entry cannot know the total.
+     *
+     * The unselected state names the way in: custom actions are announced only as
+     * "actions available", which does not tell a listener that they are how you
+     * pick a slice.
+     */
+    val selectedStateDescription: (PieEntry?, Float) -> String = { entry, percentage ->
+        entry?.let {
+            "Currently selected: ${it.label}. Value ${it.value.toInt()}, " +
+                "${percentage.toInt()} percent of total."
+        } ?: "No slice selected. Use the actions menu to choose a slice."
     }
 )

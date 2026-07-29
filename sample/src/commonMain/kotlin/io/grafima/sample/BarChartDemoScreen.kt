@@ -70,11 +70,6 @@ private val AmethystGradient = listOf(Color(0xFF8A2387), Color(0xFFE94057), Colo
 private val BarGradients =
     listOf(SunsetGradient, OceanGradient, AmethystGradient, EmeraldGradient)
 
-private val MonthLabels = listOf(
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-)
-
 private const val MinBars = 2
 private const val MaxBars = 12
 
@@ -142,8 +137,8 @@ fun BarChartDemoScreen() {
         )
     }
 
-    // Tighter than the library defaults: a bar arriving on a chart already on
-    // screen should land promptly rather than grow at opening-cascade pace.
+    // Tighter than the defaults: a bar added to a chart already on screen should
+    // land promptly, not at opening-cascade pace.
     val animationConfig = remember {
         AnimationConfig(
             initialEntrySpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
@@ -155,10 +150,14 @@ fun BarChartDemoScreen() {
     val a11yConfig = remember {
         A11yConfig(
             chartDescriptionBuilder = { "Financial Revenue Chart for ${it.contentDescription}." },
-            barDescriptionBuilder = { "In ${it.xLabel}, revenue was $${it.y.toInt()} thousand dollars." },
+            barDescriptionBuilder = {
+                "In ${spokenMonth(it.xLabel)}, revenue was $${it.y.toInt()} thousand dollars."
+            },
+            // Spoken alone on a selection change, so it names the value too.
             selectedStateDescription = { entry ->
-                entry?.let { "You are inspecting ${it.xLabel}." }
-                    ?: "Double tap and drag to explore metrics."
+                entry?.let {
+                    "${spokenMonth(it.xLabel)}: revenue $${it.y.toInt()} thousand dollars."
+                } ?: "No bar selected. Use the actions menu to choose a month."
             }
         )
     }
@@ -193,8 +192,8 @@ fun BarChartDemoScreen() {
                             pressedElevation = 0.dp,
                             focusedElevation = 0.dp
                         ),
-                        // Material's default 24dp side padding leaves no room
-                        // for "Horizontal" in the narrow wide-layout column.
+                        // Material's 24dp default leaves no room for "Horizontal"
+                        // in the narrow wide-layout column.
                         contentPadding = PaddingValues(horizontal = 4.dp),
                         modifier = Modifier
                             .weight(1f)

@@ -83,8 +83,7 @@ fun DemoScreenScaffold(
                 modifier = Modifier
                     .width(ControlsWidth)
                     .fillMaxHeight()
-                    // The gauge stacks six buttons; on a short landscape phone
-                    // that overruns the height.
+                    // The gauge stacks six buttons, which overruns a landscape phone.
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -109,20 +108,12 @@ fun DemoScreenScaffold(
                     .weight(1f)
             ) { chart() }
             Spacer(Modifier.height(20.dp))
-            // Same spacing the wide column uses, so a screen with more than one
-            // group of buttons gets a gap between them either way round.
+            // Matches the wide column, so multiple button groups are spaced either way.
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
         }
     }
 }
 
-/**
- * Lays buttons out in a row under the chart, or stacked beside it when wide.
- *
- * [content] receives the modifier its buttons should carry — `weight` in the
- * row, `fillMaxWidth` in the column. Passing it down is what lets one block of
- * buttons serve both, since `weight` is only callable inside a `RowScope`.
- */
 /** Grows the dataset. Disabled at the cap rather than silently doing nothing. */
 @Composable
 fun DemoAddButton(
@@ -177,8 +168,7 @@ private fun DatasetButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = container,
             contentColor = content,
-            // Material's defaults tint the container against its own surface,
-            // which reads as a smudge over the demo palette.
+            // Material's defaults tint against its own surface and smudge this palette.
             disabledContainerColor = colors.surfaceMuted,
             disabledContentColor = colors.onSurfaceMuted
         ),
@@ -196,6 +186,13 @@ private fun DatasetButton(
     }
 }
 
+/**
+ * Lays buttons out in a row under the chart, or stacked beside it when wide.
+ *
+ * [content] receives the modifier its buttons should carry — `weight` in the
+ * row, `fillMaxWidth` in the column. Passing it down is what lets one block of
+ * buttons serve both, since `weight` is only callable inside a `RowScope`.
+ */
 @Composable
 fun DemoControls(
     modifier: Modifier = Modifier,

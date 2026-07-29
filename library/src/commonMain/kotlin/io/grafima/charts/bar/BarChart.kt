@@ -20,6 +20,8 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -92,11 +94,8 @@ fun BarChart(
     // first draw unsubscribed and the bars never painted on iOS.
     SideEffect { animationEngine.syncAnimatables(entries) }
 
-    // Bars still animating out are drawn but are not part of the dataset: they
-    // stay out of hit testing and out of the accessibility description below.
-    val renderSlots = animationEngine.renderSlots(entries)
-    val renderEntries = renderSlots.map { it.first }
-    val slotCount = renderSlots.fold(0f) { acc, slot -> acc + slot.second }
+    // Drawn, but not in the dataset: exiting bars stay out of hit testing and a11y.
+    val renderEntries = animationEngine.renderEntries(entries)
 
     val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
@@ -122,8 +121,8 @@ fun BarChart(
     val currentOnBarSelected by rememberUpdatedState(onBarSelected)
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
 
-    // Scaled over what is drawn, not just the dataset, so removing the tallest bar
-    // doesn't rescale the axis out from under it while it is still shrinking.
+    // Over what is drawn, so removing the tallest bar doesn't rescale the axis
+    // out from under it mid-exit.
     val maxBarValue = remember(renderEntries) { computeBarAxisMax(renderEntries) }
 
     val maxLabelResult = remember(maxBarValue, axisConfig.axisLabelTextStyle) {
@@ -228,10 +227,10 @@ fun BarChart(
     Canvas(
         modifier = modifier
             .semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
                 role = Role.Image
                 contentDescription = chartDescription
                 stateDescription = chartStateDescription
-                liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     entries.forEach { entry ->
                         add(
@@ -364,7 +363,7 @@ fun BarChart(
             val chartBottom = size.height - bottomSpacePx
             val hChartWidth = chartRight - chartLeft
             val (barThickness, barGap) = barThicknessAndGap(
-                chartBottom - horizontalTopPadPx, slotCount, style.barSpacingFactor
+                chartBottom - horizontalTopPadPx, animationEngine.slotCount(renderEntries), style.barSpacingFactor
             )
 
             drawHorizontalGrid(
@@ -379,7 +378,7 @@ fun BarChart(
             )
             drawHorizontalBars(
                 dataSet = dataSet,
-                slots = renderSlots,
+                renderEntries = renderEntries,
                 style = style,
                 animationEngine = animationEngine,
                 colorStopArrays = colorStopArrays,
@@ -424,7 +423,7 @@ fun BarChart(
         val chartWidth = size.width - yAxisWidthPx
         val chartHeight = size.height - bottomSpacePx - topSpacePx
         val (barWidth, barSpacing) = barThicknessAndGap(
-            chartWidth, slotCount, style.barSpacingFactor
+            chartWidth, animationEngine.slotCount(renderEntries), style.barSpacingFactor
         )
 
         drawVerticalGrid(
@@ -438,7 +437,7 @@ fun BarChart(
         )
         drawVerticalBars(
             dataSet = dataSet,
-            slots = renderSlots,
+            renderEntries = renderEntries,
             style = style,
             animationEngine = animationEngine,
             colorStopArrays = colorStopArrays,

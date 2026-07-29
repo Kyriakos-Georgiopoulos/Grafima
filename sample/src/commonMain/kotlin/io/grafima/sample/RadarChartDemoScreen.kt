@@ -224,10 +224,8 @@ fun RadarChartDemoScreen() {
                 .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
-            // The radar is sized off the card's *shorter* side, which in
-            // landscape is its height — so anything stacked above the chart
-            // comes straight out of the chart's diameter. Standing the caption
-            // and legend beside it instead leaves the full height to the plot.
+            // The radar is sized off the card's shorter side — its height in
+            // landscape — so anything stacked above it costs diameter.
             if (LocalIsWideLayout.current) {
                 Row(
                     modifier = Modifier.fillMaxSize(),

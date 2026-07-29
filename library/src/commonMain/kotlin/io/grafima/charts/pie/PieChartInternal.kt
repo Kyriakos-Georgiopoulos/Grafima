@@ -171,12 +171,10 @@ internal class PieChartAnimationEngine {
     }
 
     /**
-     * Closes a departing slice by running its entry animation backwards, then
-     * forgets it.
+     * Closes a departing slice by running its entry animation backwards.
      *
-     * A pie needs no second movement the way a bar does: a slice's value *is* its
-     * angle, so the survivors widen continuously as it closes — provided the total
-     * keeps counting it while it does, which is what [exitingValue] is for.
+     * No second movement, unlike a bar: a slice's value is its angle, so the
+     * survivors widen as it closes — provided [exitingValue] keeps counting it.
      */
     fun launchExitAnimations(config: PieAnimationConfig, scope: CoroutineScope) {
         exiting.forEach { slice ->
@@ -200,17 +198,7 @@ internal class PieChartAnimationEngine {
      * dataset.
      */
     fun renderEntries(entries: List<PieEntry>): List<PieEntry> {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-
-        // renderEntries runs during composition but slices only move into `exiting`
-        // from the SideEffect after it, so on the frame one is dropped pick the
-        // departure up from the previous dataset too — otherwise it blinks out for
-        // a frame before starting to close.
-        val pending = lastEntries.withIndex()
-            .filter { (_, e) -> e.id !in currentIds }
-            .map { (index, e) -> ExitingSlice(e, index) }
-
-        val leaving = (exiting + pending).distinctBy { it.entry.id }
+        val leaving = leaving(entries)
         if (leaving.isEmpty()) return entries
 
         val merged = entries.toMutableList()
@@ -221,15 +209,27 @@ internal class PieChartAnimationEngine {
     }
 
     /**
-     * How much of the total the closing slices still account for. Added to the
-     * dataset total so the survivors expand as that share is given up, instead of
-     * jumping the moment the slice left the data.
+     * The share the closing slices still hold. Read while drawing, not during
+     * composition: it changes every frame.
      */
     fun exitingValue(entries: List<PieEntry>): Float {
+        if (exiting.isEmpty()) return 0f
+        return exiting.fold(0f) { acc, slice ->
+            acc + (valueAnimatables[slice.entry.id]?.value ?: 0f)
+        }
+    }
+
+    /**
+     * Slices on their way out. Also reads the previous dataset: on the frame one is
+     * dropped the SideEffect has not run yet, and the slice would blink out.
+     */
+    private fun leaving(entries: List<PieEntry>): List<ExitingSlice> {
         val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        return renderEntries(entries)
-            .filter { it.id !in currentIds }
-            .fold(0f) { acc, e -> acc + (valueAnimatables[e.id]?.value ?: e.value) }
+        val pending = lastEntries.withIndex()
+            .filter { (_, e) -> e.id !in currentIds }
+            .map { (index, e) -> ExitingSlice(e, index) }
+        if (exiting.isEmpty() && pending.isEmpty()) return emptyList()
+        return (exiting + pending).distinctBy { it.entry.id }
     }
 
     /**

@@ -34,14 +34,22 @@ class PieA11yDefaultsTest {
     @Test
     fun `a slice description includes its value and percentage`() {
         assertEquals(
-            "Design, 30 (33% of total).",
+            "Design, 30, 33 percent of total.",
             config.sliceDescriptionBuilder(entry, 33.7f)
         )
     }
 
     @Test
     fun `the selected state description covers both states`() {
-        assertEquals("Currently selected: Design.", config.selectedStateDescription(entry))
-        assertEquals("No slice selected.", config.selectedStateDescription(null))
+        // Spoken on its own when the selection changes, so it carries the value and
+        // the share rather than just the label.
+        assertEquals(
+            "Currently selected: Design. Value 30, 33 percent of total.",
+            config.selectedStateDescription(entry, 33.7f)
+        )
+        assertEquals(
+            "No slice selected. Use the actions menu to choose a slice.",
+            config.selectedStateDescription(null, 0f)
+        )
     }
 }

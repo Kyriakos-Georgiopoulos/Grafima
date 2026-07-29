@@ -53,8 +53,20 @@ class RadarA11yDefaultsTest {
 
     @Test
     fun `the selected state description covers both states`() {
-        val series = RadarSeries(id = "s1", label = "Model A", values = emptyMap())
-        assertEquals("Currently selected: Model A.", config.selectedStateDescription(series))
-        assertEquals("No series selected.", config.selectedStateDescription(null))
+        // Spoken on its own when the selection changes, so it names every axis
+        // value rather than just the series.
+        val series = RadarSeries(
+            id = "s1",
+            label = "Model A",
+            values = mapOf("speed" to 100f, "power" to 40f)
+        )
+        assertEquals(
+            "Currently selected: Model A. Speed 100, Power 40.",
+            config.selectedStateDescription(series, axes)
+        )
+        assertEquals(
+            "No series selected. Use the actions menu to choose a series.",
+            config.selectedStateDescription(null, axes)
+        )
     }
 }

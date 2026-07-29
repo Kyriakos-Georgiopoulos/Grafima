@@ -183,7 +183,17 @@ data class RadarA11yConfig(
         }
         "${series.label} ($valueText)"
     },
-    val selectedStateDescription: (RadarSeries?) -> String = { series ->
-        series?.let { "Currently selected: ${it.label}." } ?: "No series selected."
+    /**
+     * Announced on its own when the selection changes, so it has to carry the
+     * whole story — the axes are passed in because a series' values are keyed by
+     * axis id and mean nothing without the labels.
+     */
+    val selectedStateDescription: (RadarSeries?, List<RadarAxis>) -> String = { series, axes ->
+        series?.let { s ->
+            val valueText = axes.joinToString(", ") { axis ->
+                "${axis.label} ${(s.values[axis.id] ?: 0f).toInt()}"
+            }
+            "Currently selected: ${s.label}. $valueText."
+        } ?: "No series selected. Use the actions menu to choose a series."
     }
 )

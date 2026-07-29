@@ -84,18 +84,16 @@ internal fun mirrorForRtl(
 ): Float = if (isRtl) totalExtent - ltrOffset - thickness else ltrOffset
 
 /**
- * The chart's accessibility description: summary plus one sentence per bar.
- *
- * Selection is deliberately excluded — it is exposed as a separate
- * `stateDescription`, so a screen reader announces only what changed on
- * selection instead of re-reading every bar.
+ * A summary, not a reading of the data: this node is a live region, so anything
+ * here is repeated on every selection. Per-bar values live in the select actions
+ * and in `stateDescription`.
  */
 internal fun buildBarChartDescription(
     dataSet: BarDataSet,
     a11yConfig: A11yConfig
 ): String = buildString {
     append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-    dataSet.entries.forEach { append(a11yConfig.barDescriptionBuilder(it)).append(". ") }
+    append(a11yConfig.barCountDescriptionBuilder(dataSet.entries.size))
 }
 
 /** A bar dropped from the dataset that is still shrinking out of its slot. */
@@ -130,8 +128,7 @@ internal class ChartAnimationEngine {
             .filter { (_, e) -> e.id !in currentIds && e.id !in exitingIds }
             .map { (index, e) -> ExitingBar(e, index) }
 
-        // An id that comes back before its exit finishes simply rejoins the
-        // dataset; launchEntryAnimations then grows it from wherever it had got to.
+        // An id that returns mid-exit rejoins the dataset and grows from where it got to.
         val returned = exiting.filter { it.entry.id in currentIds }
 
         if (departed.isNotEmpty() || returned.isNotEmpty()) {
@@ -153,18 +150,15 @@ internal class ChartAnimationEngine {
     }
 
     /**
-     * Removes a bar in two movements. First its entry animation runs backwards —
-     * the same curve that grew it, back down to zero. Then the slot it was holding
-     * collapses on [AnimationConfig.morphSpec], the spec that already carries bars
-     * to new geometry, so the survivors widen into the gap rather than snapping
-     * across it once the bar is gone.
+     * Removes a bar in two movements: its entry animation in reverse, then the slot
+     * it held collapsing on [AnimationConfig.morphSpec] as the survivors widen in.
      */
     fun launchExitAnimations(config: AnimationConfig, scope: CoroutineScope) {
         exiting.forEach { bar ->
             val height = heightAnimatables[bar.entry.id] ?: return@forEach
             val slot = slotAnimatables[bar.entry.id] ?: return@forEach
-            // Nothing running and a slot still held means either a fresh removal or
-            // one whose coroutine was cancelled by a dataset swap; both should run.
+            // Idle with a slot still held: either a fresh removal, or one whose
+            // coroutine a dataset swap cancelled. Both need running.
             if (height.isRunning || slot.isRunning || slot.value == 0f) return@forEach
 
             scope.launch {
@@ -181,39 +175,46 @@ internal class ChartAnimationEngine {
     }
 
     /**
-     * Dataset bars with the departing ones still in the positions they held, each
-     * paired with the share of a slot it still holds. Draw order only — touch
-     * handling and the accessibility description stay on the dataset.
+     * Dataset bars with the departing ones back in the positions they held. Draw
+     * order only — touch handling and the accessibility description stay on the
+     * dataset.
      */
-    fun renderSlots(entries: List<BarEntry>): List<Pair<BarEntry, Float>> {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
+    fun renderEntries(entries: List<BarEntry>): List<BarEntry> {
+        val leaving = leaving(entries)
+        if (leaving.isEmpty()) return entries
 
-        // This runs during composition, but bars only move into `exiting` from the
-        // SideEffect that follows it. On the frame a bar is dropped the list is
-        // therefore still empty, so pick the departure up from the previous
-        // dataset as well — otherwise the bar blinks out for one frame and comes
-        // back the next to start shrinking.
-        val pending = lastEntries.withIndex()
-            .filter { (_, e) -> e.id !in currentIds }
-            .map { (index, e) -> ExitingBar(e, index) }
-
-        val leaving = (exiting + pending).distinctBy { it.entry.id }
-        if (leaving.isEmpty()) return entries.map { it to 1f }
-
-        val merged = entries.mapTo(mutableListOf()) { it to 1f }
+        val merged = entries.toMutableList()
         leaving.sortedBy { it.index }.forEach { bar ->
-            val occupancy = slotAnimatables[bar.entry.id]?.value ?: 1f
-            merged.add(bar.index.coerceIn(0, merged.size), bar.entry to occupancy)
+            merged.add(bar.index.coerceIn(0, merged.size), bar.entry)
         }
         return merged
     }
 
+    /** A bar's remaining claim on its slot. Read while drawing: it changes per frame. */
+    fun slotOccupancy(id: String): Float = slotAnimatables[id]?.value ?: 1f
+
+    /** Slots currently in use, counting a collapsing one as the fraction it still holds. */
+    fun slotCount(renderEntries: List<BarEntry>): Float =
+        if (exiting.isEmpty()) renderEntries.size.toFloat()
+        else renderEntries.fold(0f) { acc, entry -> acc + slotOccupancy(entry.id) }
+
+    /**
+     * Bars on their way out. Also reads the previous dataset: on the frame one is
+     * dropped the SideEffect has not run yet, and the bar would blink out.
+     */
+    private fun leaving(entries: List<BarEntry>): List<ExitingBar> {
+        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
+        val pending = lastEntries.withIndex()
+            .filter { (_, e) -> e.id !in currentIds }
+            .map { (index, e) -> ExitingBar(e, index) }
+        if (exiting.isEmpty() && pending.isEmpty()) return emptyList()
+        return (exiting + pending).distinctBy { it.entry.id }
+    }
+
     fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
-        // Stagger by position among the bars appearing *now*, not by position in
-        // the dataset. Both are the same on first load, where the cascade is the
-        // point. They diverge once a bar is appended to a chart already on
-        // screen: keyed on the dataset index, the newcomer would sit idle for
-        // one stagger step per bar already drawn before it began to grow.
+        // Stagger by position among the bars appearing now, not by dataset index.
+        // Identical on first load; on a later append it saves the newcomer waiting
+        // one stagger step per bar already drawn.
         var appearing = 0
         entries.forEach { entry ->
             val heightAnim = heightAnimatables[entry.id] ?: return@forEach

@@ -20,7 +20,9 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -150,8 +152,7 @@ fun LineChart(
     val isRtl = layoutDirection == LayoutDirection.Rtl
     val animationEngine = remember { LineChartAnimationEngine() }
 
-    // Series still dropping to the baseline are drawn but are not part of the
-    // dataset: the crosshair and the accessibility description stay on `series`.
+    // Drawn, but not in the dataset: the crosshair and a11y stay on `series`.
     val renderSeries = animationEngine.renderSeries(series)
 
     // ── Stable state refs for pointerInput(Unit) ──
@@ -292,25 +293,24 @@ fun LineChart(
         modifier = modifier
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
             .semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
                 role = Role.Image
                 contentDescription = chartDescription
                 stateDescription = chartStateDescription
-                liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     val points = series.firstOrNull()?.points.orEmpty()
                     if (points.isNotEmpty()) {
-                        add(
-                            CustomAccessibilityAction(label = "Select next point") {
-                                onPointSelected(((selectedPointIndex ?: -1) + 1).coerceAtMost(points.size - 1))
-                                true
-                            }
-                        )
-                        add(
-                            CustomAccessibilityAction(label = "Select previous point") {
-                                onPointSelected(((selectedPointIndex ?: points.size) - 1).coerceAtLeast(0))
-                                true
-                            }
-                        )
+                        // Named, not next/previous: stepping leaves the listener
+                        // counting along the axis to work out where they landed.
+                        points.forEachIndexed { index, point ->
+                            val label = point.label.ifEmpty { point.x.toInt().toString() }
+                            add(
+                                CustomAccessibilityAction(label = "Select $label") {
+                                    onPointSelected(index)
+                                    true
+                                }
+                            )
+                        }
                         if (selectedPointIndex != null) {
                             add(
                                 CustomAccessibilityAction(label = "Clear selection") {

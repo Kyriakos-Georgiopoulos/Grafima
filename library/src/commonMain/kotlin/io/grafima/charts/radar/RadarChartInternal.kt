@@ -115,10 +115,7 @@ internal class RadarChartAnimationEngine {
         lastSeries = series
     }
 
-    /**
-     * Collapses a departing series back to the centre — the reverse of the entry
-     * that grew its vertices out of it — then forgets it.
-     */
+    /** Collapses a departing series to the centre: its entry animation in reverse. */
     fun launchExitAnimations(
         axes: List<RadarAxis>,
         config: RadarAnimationConfig,
@@ -131,8 +128,7 @@ internal class RadarChartAnimationEngine {
             if (anims.any { it.isRunning } || anims.all { it.value == 0f }) return@forEach
 
             scope.launch {
-                // Every vertex collapses together, so the shape closes inward as
-                // one rather than unwinding axis by axis.
+                // Together, so the shape closes inward rather than unwinding axis by axis.
                 anims.map { anim ->
                     launch { anim.animateTo(0f, config.initialEntrySpec) }
                 }.joinAll()
@@ -147,17 +143,12 @@ internal class RadarChartAnimationEngine {
         }
     }
 
-    /**
-     * Dataset series with the departing ones back in the places they held. Draw
-     * order only — touch handling and the accessibility description stay on the
-     * dataset.
-     */
+    /** Draw order only: touch handling and a11y stay on the dataset. */
     fun renderSeries(series: List<RadarSeries>): List<RadarSeries> {
         val currentIds = series.mapTo(mutableSetOf()) { it.id }
 
-        // Runs during composition, before the SideEffect that files a departure
-        // under `exiting`, so pick it up from the previous dataset too — otherwise
-        // the series blinks out for a frame before it starts collapsing.
+        // Also reads the previous dataset: on the frame one is dropped the
+        // SideEffect has not run yet, and the series would blink out.
         val pending = lastSeries.withIndex()
             .filter { (_, s) -> s.id !in currentIds }
             .map { (index, s) -> ExitingSeries(s, index) }

@@ -89,8 +89,7 @@ private val LimeBrush = SliceBrush.Linear(
     angleDegrees = 45f
 )
 
-// One brush per slice the demo can reach, so an added slice never repeats a
-// colour already on the chart.
+// One per reachable slice, so an added slice never repeats a colour on screen.
 private val SliceBrushes = listOf(
     OceanBrush, SunsetBrush, AmethystBrush, EmeraldBrush,
     RoyalBrush, CoralBrush, VioletBrush, LimeBrush
@@ -167,14 +166,14 @@ fun PieChartDemoScreen() {
         PieChartStyle(
             donutRatio = if (isDonut) 0.5f else 0f,
             selectedScale = 1.05f,
-            // Short of filling the card: the elbow callouts draw outside the
-            // radius, and selectedScale pushes the active slice out further.
+            // Short of the card: callouts draw outside the radius, and
+            // selectedScale pushes the active slice further out.
             fillFraction = 0.74f
         )
     }
 
-    // Tighter than the library defaults: a slice arriving on a chart already on
-    // screen should land promptly rather than unfold at opening-cascade pace.
+    // Tighter than the defaults: a slice added to a chart already on screen should
+    // land promptly, not at opening-cascade pace.
     val animationConfig = remember {
         PieAnimationConfig(
             initialEntrySpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),

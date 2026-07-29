@@ -61,7 +61,7 @@ class BarChartUiTest {
     )
 
     @Test
-    fun the_chart_description_contains_the_dataset_and_every_bar() = runComposeUiTest {
+    fun the_chart_description_summarises_the_dataset() = runComposeUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet,
@@ -69,9 +69,11 @@ class BarChartUiTest {
                 animationConfig = snapAnimations
             )
         }
+        // A summary, not a reading of the data — the node is a live region and
+        // would otherwise repeat every bar on each selection.
         onNodeWithContentDescription("Monthly revenue", substring = true).assertExists()
-        onNodeWithContentDescription("Jan value is 45", substring = true).assertExists()
-        onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
+        onNodeWithContentDescription("2 bars", substring = true).assertExists()
+        onNodeWithContentDescription("Jan value is 45", substring = true).assertDoesNotExist()
     }
 
 

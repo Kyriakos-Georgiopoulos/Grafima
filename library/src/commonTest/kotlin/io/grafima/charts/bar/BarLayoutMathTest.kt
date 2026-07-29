@@ -99,9 +99,11 @@ class BarLayoutMathTest {
     }
 
     @Test
-    fun `the description covers the chart summary and every bar`() {
-        // Selection is deliberately absent: it lives in stateDescription so a
-        // screen reader announces only the change, not the whole chart again.
+    fun `the description summarises the chart rather than reading every bar`() {
+        // The node is a live region, so this is re-announced on every selection.
+        // Enumerating the bars here meant hearing the whole chart again just to
+        // learn which one is now selected; the values live behind the select
+        // actions and in stateDescription instead.
         val dataSet = BarDataSet(
             entries = listOf(
                 BarEntry(id = "jan", xLabel = "Jan", y = 45f),
@@ -110,7 +112,7 @@ class BarLayoutMathTest {
             contentDescription = "Monthly revenue"
         )
         assertEquals(
-            "Bar Chart representing Monthly revenue. Jan value is 45. Feb value is 80. ",
+            "Bar Chart representing Monthly revenue. 2 bars. Use the actions menu to select one.",
             buildBarChartDescription(dataSet, A11yConfig())
         )
     }

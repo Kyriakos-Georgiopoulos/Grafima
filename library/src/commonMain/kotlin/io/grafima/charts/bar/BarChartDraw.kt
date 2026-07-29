@@ -147,7 +147,7 @@ internal fun DrawScope.drawHorizontalGrid(
 
 internal fun DrawScope.drawVerticalBars(
     dataSet: BarDataSet,
-    slots: List<Pair<BarEntry, Float>>,
+    renderEntries: List<BarEntry>,
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
@@ -166,10 +166,11 @@ internal fun DrawScope.drawVerticalBars(
     cornerRadiusPx: Float,
     isRtl: Boolean
 ) {
-    // `position` is the running total of slots to the left, so a collapsing slot
-    // slides the bars after it across instead of teleporting them.
+    // Running total of the slots to the left, so a collapsing slot slides the
+    // bars after it across rather than teleporting them.
     var position = 0f
-    slots.forEach { (entry, occupancy) ->
+    renderEntries.forEach { entry ->
+        val occupancy = animationEngine.slotOccupancy(entry.id)
         val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
         val selectionAlpha =
             (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
@@ -239,7 +240,7 @@ internal fun DrawScope.drawVerticalBars(
 
 internal fun DrawScope.drawHorizontalBars(
     dataSet: BarDataSet,
-    slots: List<Pair<BarEntry, Float>>,
+    renderEntries: List<BarEntry>,
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
@@ -259,9 +260,9 @@ internal fun DrawScope.drawHorizontalBars(
     cornerRadiusPx: Float,
     isRtl: Boolean
 ) {
-    // See drawVerticalBars.
     var position = 0f
-    slots.forEach { (entry, occupancy) ->
+    renderEntries.forEach { entry ->
+        val occupancy = animationEngine.slotOccupancy(entry.id)
         val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
         val selectionAlpha =
             (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy

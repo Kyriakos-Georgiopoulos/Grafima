@@ -141,7 +141,7 @@ class BarChartAnimationEngineTest {
             harness.advanceFrames(100)
             val midExit = engine.heightAnimatables.getValue("b").value
             assertTrue(midExit > 0f && midExit < 20f, "expected a partial shrink, got ${'$'}midExit")
-            assertEquals(listOf("a", "b"), engine.renderSlots(entries("a" to 10f)).map { it.first.id })
+            assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
 
             // Sunk to zero, but the slot is still collapsing, so the bar is drawn
             // until the survivors have finished widening into its place.
@@ -160,10 +160,10 @@ class BarChartAnimationEngineTest {
         val data = entries("a" to 10f, "b" to 20f)
         engine.syncAnimatables(data)
 
-        // renderSlots runs during composition, before the SideEffect that files
+        // renderEntries runs during composition, before the SideEffect that files
         // "b" under exiting. It must already report "b" or the bar blinks out.
         assertEquals(emptyList(), engine.exiting.map { it.entry.id })
-        assertEquals(listOf("a", "b"), engine.renderSlots(entries("a" to 10f)).map { it.first.id })
+        assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
     }
 
     @Test
@@ -179,11 +179,11 @@ class BarChartAnimationEngineTest {
         engine.syncAnimatables(data)
 
         assertEquals(emptyList(), engine.exiting.map { it.entry.id })
-        assertEquals(listOf("a", "b"), engine.renderSlots(data).map { it.first.id })
+        assertEquals(listOf("a", "b"), engine.renderEntries(data).map { it.id })
     }
 
     @Test
-    fun `a bar appended later waits only the start delay, not the whole cascade`() =
+    fun `a bar appended later waits only the start delay and not the whole cascade`() =
         runEngineTest { harness ->
             val engine = ChartAnimationEngine()
             val config = snapConfig.copy(startDelayMs = 100L, staggerDelayMs = 100L)

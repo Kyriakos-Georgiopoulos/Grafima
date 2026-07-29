@@ -211,10 +211,7 @@ internal class LineChartAnimationEngine {
         lastSeries = series
     }
 
-    /**
-     * Draws a departing series back down to the baseline it rose from, then forgets
-     * it — the reverse of its entry animation.
-     */
+    /** Draws a departing series back to the baseline: its entry animation in reverse. */
     fun launchExitAnimations(
         config: LineAnimationConfig,
         yBaseline: Float,
@@ -240,17 +237,12 @@ internal class LineChartAnimationEngine {
         }
     }
 
-    /**
-     * Dataset series with the departing ones back in the places they held. Draw
-     * order only — the crosshair and the accessibility description stay on the
-     * dataset.
-     */
+    /** Draw order only: the crosshair and a11y stay on the dataset. */
     fun renderSeries(series: List<LineSeries>): List<LineSeries> {
         val currentIds = series.mapTo(mutableSetOf()) { it.id }
 
-        // Runs during composition, before the SideEffect that files a departure
-        // under `exiting`, so pick it up from the previous dataset too — otherwise
-        // the line blinks out for a frame before it starts dropping.
+        // Also reads the previous dataset: on the frame one is dropped the
+        // SideEffect has not run yet, and the line would blink out.
         val pending = lastSeries.withIndex()
             .filter { (_, s) -> s.id !in currentIds }
             .map { (index, s) -> ExitingLineSeries(s, index) }

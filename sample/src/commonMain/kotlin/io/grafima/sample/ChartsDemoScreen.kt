@@ -81,9 +81,8 @@ fun ChartsDemoScreen(
         coroutineScope.launch { pagerState.animateScrollToPage(index) }
     }
 
-    // safeDrawing rather than status + navigation bars: in landscape the display
-    // cutout sits on a *side*, and the rail or the controls column would run
-    // underneath it.
+    // safeDrawing, not system bars: in landscape the display cutout is on a side,
+    // and the rail or the controls would run under it.
     val insets = Modifier
         .fillMaxSize()
         .safeDrawingPadding()
@@ -149,10 +148,8 @@ private fun ChartPager(
     }
 }
 
-// `currentPageOffsetFraction` changes every frame of a swipe, so both bars read
-// it only from inside a draw lambda — reading it in composition would rebuild
-// the whole bar sixty times a second. `currentPage` is safe to read up front:
-// it flips once, when the swipe crosses the halfway mark.
+// `currentPageOffsetFraction` changes every frame of a swipe, so both bars read it
+// only inside a draw lambda. `currentPage` is safe up front: it flips once.
 
 @Composable
 private fun ChartTabBar(
@@ -222,9 +219,8 @@ private fun ChartRail(
 
         Spacer(Modifier.height(16.dp))
 
-        // Tabs keep a fixed height and sit at the top. Dividing the rail's full
-        // height between them instead would leave them stranded far apart on a
-        // tall screen.
+        // Fixed height, packed at the top: splitting the rail's full height between
+        // them strands them far apart on a tall screen.
         Column(
             modifier = Modifier
                 .fillMaxWidth()

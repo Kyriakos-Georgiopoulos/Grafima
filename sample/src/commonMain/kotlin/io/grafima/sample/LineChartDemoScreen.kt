@@ -60,11 +60,6 @@ import io.grafima.sample.theme.themedCrosshair
 import io.grafima.sample.theme.themedLineAxis
 import kotlin.random.Random
 
-private val Months = listOf(
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-)
-
 private val SeriesPalette = listOf(
     Color(0xFF6366F1), Color(0xFFF59E0B), Color(0xFF10B981),
     Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFFEC4899),
@@ -86,7 +81,7 @@ private fun randomSeries(
     val c2 = SeriesPalette.filter { it != c1 }.random()
     val trend = (-variance / 8f)..(variance / 5f)
     var value = base.toFloat() + (-variance / 3..variance / 3).random()
-    val values = Months.map {
+    val values = MonthLabels.map {
         value = (value + trend.start + Random.nextFloat() * (trend.endInclusive - trend.start))
             .coerceIn(base * 0.35f, base * 1.75f)
         value
@@ -98,7 +93,12 @@ private fun randomSeries(
         fillAlpha = 0.10f,
         strokeGradientColors = listOf(c1, c2),
         points = values.mapIndexed { i, v ->
-            LineDataPoint(x = i.toFloat(), y = v, label = Months[i])
+            LineDataPoint(
+                x = i.toFloat(),
+                y = v,
+                label = MonthLabels[i],
+                contentDescription = SpokenMonths[i]
+            )
         }
     )
 }
@@ -136,7 +136,12 @@ private fun seededDataSet(): LineDataSet = LineDataSet(
             fillAlpha = 0.10f,
             strokeGradientColors = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
             points = listOf(42f, 55f, 48f, 72f, 68f, 85f, 90f, 78f, 95f, 110f, 105f, 120f)
-                .mapIndexed { i, v -> LineDataPoint(x = i.toFloat(), y = v, label = Months[i]) }
+                .mapIndexed { i, v -> LineDataPoint(
+                x = i.toFloat(),
+                y = v,
+                label = MonthLabels[i],
+                contentDescription = SpokenMonths[i]
+            ) }
         ),
         LineSeries(
             id = "exp",
@@ -145,7 +150,12 @@ private fun seededDataSet(): LineDataSet = LineDataSet(
             fillAlpha = 0.08f,
             strokeGradientColors = listOf(Color(0xFFFBBF24), Color(0xFFD97706)),
             points = listOf(38f, 42f, 50f, 45f, 55f, 52f, 60f, 58f, 62f, 65f, 70f, 68f)
-                .mapIndexed { i, v -> LineDataPoint(x = i.toFloat(), y = v, label = Months[i]) }
+                .mapIndexed { i, v -> LineDataPoint(
+                x = i.toFloat(),
+                y = v,
+                label = MonthLabels[i],
+                contentDescription = SpokenMonths[i]
+            ) }
         )
     ),
     contentDescription = "Monthly Revenue vs Expenses"
@@ -265,7 +275,7 @@ fun LineChartDemoScreen() {
                             color = colors.onSurface
                         )
                         Text(
-                            text = selectedIdx?.let { Months.getOrNull(it) }
+                            text = selectedIdx?.let { MonthLabels.getOrNull(it) }
                                 ?: "Drag to explore",
                             fontSize = 13.sp,
                             color = colors.onSurfaceMuted,
@@ -322,7 +332,7 @@ fun LineChartDemoScreen() {
                         axisConfig = themedLineAxis(
                             yTickCount = 5,
                             dashedGrid = true,
-                            xLabels = Months
+                            xLabels = MonthLabels
                         ),
                         crosshairConfig = themedCrosshair(),
                         selectedPointIndex = selectedIdx,

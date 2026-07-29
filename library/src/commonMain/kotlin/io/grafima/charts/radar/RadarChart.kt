@@ -20,7 +20,9 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -218,7 +220,7 @@ fun RadarChart(
     val currentMaxLabelDim by rememberUpdatedState(maxLabelDim)
 
     val chartStateDescription = remember(selectedSeries, a11yConfig) {
-        a11yConfig.selectedStateDescription(selectedSeries)
+        a11yConfig.selectedStateDescription(selectedSeries, axes)
     }
 
     val chartDescription = remember(dataSet, a11yConfig) {
@@ -257,10 +259,10 @@ fun RadarChart(
         modifier = modifier
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
             .semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
                 role = Role.Image
                 contentDescription = chartDescription
                 stateDescription = chartStateDescription
-                liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     series.forEach { s ->
                         add(
