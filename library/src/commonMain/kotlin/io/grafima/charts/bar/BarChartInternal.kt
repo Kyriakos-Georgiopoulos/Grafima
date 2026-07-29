@@ -157,21 +157,28 @@ internal class ChartAnimationEngine {
         exiting.forEach { bar ->
             val height = heightAnimatables[bar.entry.id] ?: return@forEach
             val slot = slotAnimatables[bar.entry.id] ?: return@forEach
-            // Idle with a slot still held: either a fresh removal, or one whose
-            // coroutine a dataset swap cancelled. Both need running.
-            if (height.isRunning || slot.isRunning || slot.value == 0f) return@forEach
+            if (height.isRunning || slot.isRunning) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (slot.value == 0f) {
+                forget(bar)
+                return@forEach
+            }
 
             scope.launch {
                 height.animateTo(0f, config.initialEntrySpec)
                 slot.animateTo(0f, config.morphSpec)
-
-                heightAnimatables.remove(bar.entry.id)
-                selectionAlphaAnimatables.remove(bar.entry.id)
-                slotAnimatables.remove(bar.entry.id)
-                initializedIds.remove(bar.entry.id)
-                exiting = exiting - bar
+                forget(bar)
             }
         }
+    }
+
+    private fun forget(bar: ExitingBar) {
+        heightAnimatables.remove(bar.entry.id)
+        selectionAlphaAnimatables.remove(bar.entry.id)
+        slotAnimatables.remove(bar.entry.id)
+        initializedIds.remove(bar.entry.id)
+        exiting = exiting - bar
     }
 
     /**

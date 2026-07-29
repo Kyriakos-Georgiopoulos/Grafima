@@ -186,9 +186,6 @@ data class PieA11yConfig(
     val sliceDescriptionBuilder: (PieEntry, Float) -> String = { entry, percentage ->
         "${entry.label}, ${entry.value.toInt()}, ${percentage.toInt()} percent of total."
     },
-    val sliceCountDescriptionBuilder: (Int) -> String = { count ->
-        "$count slices. Use the actions menu to select one."
-    },
     /**
      * Announced on its own when the selection changes, so it carries the value and
      * the share as well as the label — the share is passed in because a single
@@ -203,5 +200,8 @@ data class PieA11yConfig(
             "Currently selected: ${it.label}. Value ${it.value.toInt()}, " +
                 "${percentage.toInt()} percent of total."
         } ?: "No slice selected. Use the actions menu to choose a slice."
+    },
+    val sliceCountDescriptionBuilder: (Int) -> String = { count ->
+        "$count slices. Use the actions menu to select one."
     }
 )

@@ -62,8 +62,8 @@ class BarChartAnimationEngineTest {
         // Same instance survives — that's what keeps morphs continuous across data swaps.
         assertSame(survivor, engine.heightAnimatables.getValue("a"))
 
-        // "b" is no longer in the dataset but is still drawn while it animates
-        // out, so its animatable outlives the swap. Eviction is the exit's job.
+        // "b" is still drawn while it animates out, so its animatable outlives
+        // the swap. Eviction is the exit's job.
         assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
         assertEquals(setOf("a", "b", "c"), engine.heightAnimatables.keys)
     }
@@ -137,14 +137,12 @@ class BarChartAnimationEngineTest {
             engine.syncAnimatables(entries("a" to 10f))
             engine.launchExitAnimations(config, harness.launchScope())
 
-            // Part way down, and still in the render list so it keeps its place.
             harness.advanceFrames(100)
             val midExit = engine.heightAnimatables.getValue("b").value
             assertTrue(midExit > 0f && midExit < 20f, "expected a partial shrink, got ${'$'}midExit")
             assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
 
-            // Sunk to zero, but the slot is still collapsing, so the bar is drawn
-            // until the survivors have finished widening into its place.
+            // Sunk, but the slot is still collapsing, so the bar is still drawn.
             harness.advanceFrames(150)
             assertEquals(0f, engine.heightAnimatables.getValue("b").value)
             assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
@@ -152,6 +150,29 @@ class BarChartAnimationEngineTest {
             harness.advanceFrames(2000)
             assertEquals(emptyList(), engine.exiting.map { it.entry.id })
             assertNull(engine.heightAnimatables["b"])
+        }
+
+    @Test
+    fun `an exit left at rest by a cancelled coroutine is finished on the next pass`() =
+        runEngineTest { harness ->
+            val engine = ChartAnimationEngine()
+            val data = entries("a" to 10f, "b" to 20f)
+            engine.syncAnimatables(data)
+            engine.launchEntryAnimations(data, snapConfig, harness.launchScope())
+            harness.advanceFrames(100)
+
+            engine.syncAnimatables(entries("a" to 10f))
+
+            // What a cancelled exit leaves behind: at rest, but still listed.
+            engine.heightAnimatables.getValue("b").snapTo(0f)
+            engine.slotAnimatables.getValue("b").snapTo(0f)
+            assertEquals(listOf("b"), engine.exiting.map { it.entry.id })
+
+            engine.launchExitAnimations(snapConfig, harness.launchScope())
+            harness.advanceFrames(100)
+            assertEquals(emptyList(), engine.exiting.map { it.entry.id })
+            assertNull(engine.heightAnimatables["b"])
+            assertNull(engine.slotAnimatables["b"])
         }
 
     @Test

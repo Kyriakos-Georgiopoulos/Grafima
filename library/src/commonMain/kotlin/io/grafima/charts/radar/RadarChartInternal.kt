@@ -125,22 +125,31 @@ internal class RadarChartAnimationEngine {
             val keys = axes.map { "${leaving.series.id}::${it.id}" }
             val anims = keys.mapNotNull { valueAnimatables[it] }
             if (anims.isEmpty()) return@forEach
-            if (anims.any { it.isRunning } || anims.all { it.value == 0f }) return@forEach
+            if (anims.any { it.isRunning }) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (anims.all { it.value == 0f }) {
+                forget(leaving, keys)
+                return@forEach
+            }
 
             scope.launch {
                 // Together, so the shape closes inward rather than unwinding axis by axis.
                 anims.map { anim ->
                     launch { anim.animateTo(0f, config.initialEntrySpec) }
                 }.joinAll()
-
-                keys.forEach { key ->
-                    valueAnimatables.remove(key)
-                    initializedKeys.remove(key)
-                }
-                alphaAnimatables.remove(leaving.series.id)
-                exiting = exiting - leaving
+                forget(leaving, keys)
             }
         }
+    }
+
+    private fun forget(leaving: ExitingSeries, keys: List<String>) {
+        keys.forEach { key ->
+            valueAnimatables.remove(key)
+            initializedKeys.remove(key)
+        }
+        alphaAnimatables.remove(leaving.series.id)
+        exiting = exiting - leaving
     }
 
     /** Draw order only: touch handling and a11y stay on the dataset. */

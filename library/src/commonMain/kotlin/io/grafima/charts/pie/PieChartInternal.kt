@@ -179,17 +179,27 @@ internal class PieChartAnimationEngine {
     fun launchExitAnimations(config: PieAnimationConfig, scope: CoroutineScope) {
         exiting.forEach { slice ->
             val value = valueAnimatables[slice.entry.id] ?: return@forEach
-            if (value.isRunning || value.value == 0f) return@forEach
+            if (value.isRunning) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (value.value == 0f) {
+                forget(slice)
+                return@forEach
+            }
 
             scope.launch {
                 value.animateTo(0f, config.initialEntrySpec)
-                valueAnimatables.remove(slice.entry.id)
-                scaleAnimatables.remove(slice.entry.id)
-                alphaAnimatables.remove(slice.entry.id)
-                initializedIds.remove(slice.entry.id)
-                exiting = exiting - slice
+                forget(slice)
             }
         }
+    }
+
+    private fun forget(slice: ExitingSlice) {
+        valueAnimatables.remove(slice.entry.id)
+        scaleAnimatables.remove(slice.entry.id)
+        alphaAnimatables.remove(slice.entry.id)
+        initializedIds.remove(slice.entry.id)
+        exiting = exiting - slice
     }
 
     /**
@@ -244,11 +254,9 @@ internal class PieChartAnimationEngine {
         config: PieAnimationConfig,
         scope: CoroutineScope
     ) {
-        // Stagger by position among the slices appearing *now*, not by position
-        // in the dataset. The two agree on first load, where the cascade is the
-        // point, and diverge once a slice is added to a chart already on screen:
-        // keyed on the dataset index, the newcomer would sit idle for one
-        // stagger step per slice already drawn before it began to sweep.
+        // Stagger by position among the slices appearing now, not by dataset index.
+        // Identical on first load; on a later addition it saves the newcomer waiting
+        // one stagger step per slice already drawn.
         var appearing = 0
         entries.forEach { entry ->
             val valueAnim = valueAnimatables[entry.id] ?: return@forEach

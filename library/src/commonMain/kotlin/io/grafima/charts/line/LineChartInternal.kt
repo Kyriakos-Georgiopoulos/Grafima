@@ -221,20 +221,29 @@ internal class LineChartAnimationEngine {
             val keys = leaving.series.points.indices.map { i -> "${leaving.series.id}::$i" }
             val anims = keys.mapNotNull { yAnimatables[it] }
             if (anims.isEmpty()) return@forEach
-            if (anims.any { it.isRunning } || anims.all { it.value == yBaseline }) return@forEach
+            if (anims.any { it.isRunning }) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (anims.all { it.value == yBaseline }) {
+                forget(leaving, keys)
+                return@forEach
+            }
 
             scope.launch {
                 anims.map { anim ->
                     launch { anim.animateTo(yBaseline, config.entrySpec) }
                 }.joinAll()
-
-                keys.forEach { key ->
-                    yAnimatables.remove(key)
-                    initializedKeys.remove(key)
-                }
-                exiting = exiting - leaving
+                forget(leaving, keys)
             }
         }
+    }
+
+    private fun forget(leaving: ExitingLineSeries, keys: List<String>) {
+        keys.forEach { key ->
+            yAnimatables.remove(key)
+            initializedKeys.remove(key)
+        }
+        exiting = exiting - leaving
     }
 
     /** Draw order only: the crosshair and a11y stay on the dataset. */
