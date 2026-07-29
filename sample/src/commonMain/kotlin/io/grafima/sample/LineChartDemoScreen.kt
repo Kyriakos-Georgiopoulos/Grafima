@@ -47,7 +47,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.themedCrosshair
+import io.grafima.sample.theme.themedLineAxis
 import androidx.compose.ui.unit.sp
+import kotlin.random.Random
 import io.grafima.charts.line.LineAxisConfig
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineChartStyle
@@ -62,6 +66,7 @@ import io.grafima.charts.line.LineSeries
 
 @Composable
 fun LineChartDemoScreen() {
+    val colors = LocalDemoColors.current
     val months =
         listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
     val palette = listOf(
@@ -70,6 +75,9 @@ fun LineChartDemoScreen() {
         Color(0xFF06B6D4), Color(0xFF84CC16)
     )
 
+    // Each point drifts from the previous one instead of being drawn
+    // independently around a base — independent noise looks like static, not
+    // like something you'd actually plot.
     fun randomSeries(
         id: String,
         label: String,
@@ -79,15 +87,18 @@ fun LineChartDemoScreen() {
     ): LineSeries {
         val c1 = palette.random()
         val c2 = palette.filter { it != c1 }.random()
+        val trend = (-variance / 8f)..(variance / 5f)
+        var value = base.toFloat() + (-variance / 3..variance / 3).random()
+        val values = months.map {
+            value = (value + trend.start + Random.nextFloat() * (trend.endInclusive - trend.start))
+                .coerceIn(base * 0.35f, base * 1.75f)
+            value
+        }
         return LineSeries(
             id = id, label = label, color = c1, fillAlpha = if (showFill) 0.10f else 0f,
             strokeGradientColors = listOf(c1, c2),
-            points = months.mapIndexed { i, m ->
-                LineDataPoint(
-                    x = i.toFloat(),
-                    y = (base + (-variance..variance).random()).toFloat(),
-                    label = m
-                )
+            points = values.mapIndexed { i, v ->
+                LineDataPoint(x = i.toFloat(), y = v, label = months[i])
             }
         )
     }
@@ -148,16 +159,14 @@ fun LineChartDemoScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(440.dp)
-                .background(Color.White, RoundedCornerShape(24.dp))
+                .weight(1f)
+                .background(colors.surface, RoundedCornerShape(24.dp))
                 .padding(20.dp)
         ) {
             Column(Modifier.fillMaxSize()) {
@@ -172,7 +181,7 @@ fun LineChartDemoScreen() {
                             "Revenue & Expenses",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF111827)
+                            color = colors.onSurface
                         )
                         Text(
                             if (selectedIdx != null && selectedIdx!! < months.size) months[selectedIdx!!] else "Drag to explore",
@@ -190,7 +199,7 @@ fun LineChartDemoScreen() {
                                 Text(
                                     s.label,
                                     fontSize = 11.sp,
-                                    color = Color(0xFF6B7280),
+                                    color = colors.onSurfaceMuted,
                                     modifier = Modifier.padding(end = 6.dp)
                                 )
                                 Canvas(Modifier.size(width = 18.dp, height = 4.dp)) {
@@ -230,10 +239,12 @@ fun LineChartDemoScreen() {
                         }),
                         modifier = Modifier.fillMaxSize(),
                         style = LineChartStyle(curveType = curveType),
-                        axisConfig = LineAxisConfig(
+                        axisConfig = themedLineAxis().copy(
                             yTickCount = 5,
                             dashedGrid = true,
-                            xLabelFormatter = { months.getOrElse(it.toInt()) { "" } }),
+                            xLabelFormatter = { months.getOrElse(it.toInt()) { "" } }
+                        ),
+                        crosshairConfig = themedCrosshair(),
                         selectedPointIndex = selectedIdx,
                         onPointSelected = { selectedIdx = it }
                     )
@@ -249,7 +260,10 @@ fun LineChartDemoScreen() {
                     curveType =
                         if (curveType == LineCurveType.MonotoneCubic) LineCurveType.Linear else LineCurveType.MonotoneCubic
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6366F1),
+                    contentColor = Color.White
+                ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .weight(1f)
@@ -265,7 +279,10 @@ fun LineChartDemoScreen() {
             }
             Button(
                 onClick = { showFill = !showFill },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFF59E0B),
+                    contentColor = Color(0xFF78350F)
+                ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .weight(1f)
@@ -279,35 +296,41 @@ fun LineChartDemoScreen() {
                     maxLines = 1
                 )
             }
-            Button(
-                onClick = {
-                    dataSet = LineDataSet(
-                        series = listOf(
-                            randomSeries(
-                                id = "rev",
-                                label = "Revenue",
-                                base = 80,
-                                variance = 40,
-                                showFill = showFill
-                            ),
-                            randomSeries(
-                                id = "exp",
-                                label = "Expenses",
-                                base = 55,
-                                variance = 25,
-                                showFill = showFill
-                            )
-                        ),
-                        contentDescription = "Monthly Revenue vs Expenses"
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp)
-            ) { Text("Randomize", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = {
+                dataSet = LineDataSet(
+                    series = listOf(
+                        randomSeries(
+                            id = "rev",
+                            label = "Revenue",
+                            base = 80,
+                            variance = 40,
+                            showFill = showFill
+                        ),
+                        randomSeries(
+                            id = "exp",
+                            label = "Expenses",
+                            base = 55,
+                            variance = 25,
+                            showFill = showFill
+                        )
+                    ),
+                    contentDescription = "Monthly Revenue vs Expenses"
+                )
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.onSurface,
+                contentColor = colors.background
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) { Text("Randomize", fontSize = 15.sp, fontWeight = FontWeight.Bold) }
     }
 }
 

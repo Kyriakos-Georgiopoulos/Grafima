@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,37 +54,44 @@ import io.grafima.charts.pie.PieDataSet
 import io.grafima.charts.pie.PieEntry
 import io.grafima.charts.pie.SliceBrush
 import io.grafima.charts.pie.TooltipPieSelectionRenderer
+import io.grafima.sample.theme.LocalDemoColors
 import kotlin.random.Random
 
 // ==========================================
 // 6. DEMO IMPLEMENTATION
 // ==========================================
 
+private val OceanBrush = SliceBrush.Linear(
+    colors = listOf(Color(0xFF00C9FF), Color(0xFF92FE9D))
+)
+private val EmeraldBrush = SliceBrush.Radial(
+    colors = listOf(Color(0xFF11998E), Color(0xFF38EF7D))
+)
+private val SunsetBrush = SliceBrush.Linear(
+    colors = listOf(Color(0xFFFF512F), Color(0xFFF09819), Color(0xFFFFB75E)),
+    angleDegrees = 90f
+)
+private val AmethystBrush = SliceBrush.Sweep(
+    colors = listOf(Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121))
+)
+private val RoyalBrush = SliceBrush.Linear(
+    colors = listOf(Color(0xFF536976), Color(0xFF292E49)),
+    angleDegrees = 135f
+)
+
 @Composable
 fun PieChartDemoScreen() {
-    val oceanBrush = SliceBrush.Linear(colors = listOf(Color(0xFF00C9FF), Color(0xFF92FE9D)))
-    val emeraldBrush = SliceBrush.Radial(colors = listOf(Color(0xFF11998E), Color(0xFF38EF7D)))
-    val sunsetBrush = SliceBrush.Linear(
-        colors = listOf(Color(0xFFFF512F), Color(0xFFF09819), Color(0xFFFFB75E)),
-        angleDegrees = 90f
-    )
-    val amethystBrush = SliceBrush.Sweep(
-        colors = listOf(Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121))
-    )
-    val royalBrush = SliceBrush.Linear(
-        colors = listOf(Color(0xFF536976), Color(0xFF292E49)),
-        angleDegrees = 135f
-    )
+    val colors = LocalDemoColors.current
 
     var dataSet by remember {
         mutableStateOf(
             PieDataSet(
                 entries = listOf(
-                    PieEntry(id = "A", label = "Product A", value = 300f, brush = oceanBrush),
-                    PieEntry(id = "B", label = "Product B", value = 250f, brush = sunsetBrush),
-                    PieEntry(id = "C", label = "Product C", value = 400f, brush = amethystBrush),
-                    PieEntry(id = "D", label = "Product D", value = 150f, brush = emeraldBrush),
-                    PieEntry(id = "E", label = "Product E", value = 200f, brush = royalBrush)
+                    PieEntry(id = "A", label = "Product A", value = 300f, brush = OceanBrush),
+                    PieEntry(id = "B", label = "Product B", value = 250f, brush = SunsetBrush),
+                    PieEntry(id = "C", label = "Product C", value = 400f, brush = AmethystBrush),
+                    PieEntry(id = "D", label = "Product D", value = 150f, brush = EmeraldBrush),
+                    PieEntry(id = "E", label = "Product E", value = 200f, brush = RoyalBrush)
                 ),
                 contentDescription = "Market Share Distribution"
             )
@@ -98,8 +106,32 @@ fun PieChartDemoScreen() {
     var isDonut by remember { mutableStateOf(true) }
     var useCalloutRenderer by remember { mutableStateOf(true) }
 
-    val activeRenderer = remember(useCalloutRenderer) {
-        if (useCalloutRenderer) ElbowCalloutPieSelectionRenderer() else TooltipPieSelectionRenderer()
+    val activeRenderer = remember(useCalloutRenderer, colors) {
+        val labelStyle = TextStyle(
+            color = colors.tooltipText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+        if (useCalloutRenderer) {
+            ElbowCalloutPieSelectionRenderer(
+                lineColor = colors.onSurfaceMuted,
+                pillBackgroundColor = colors.tooltipBackground,
+                textStyle = labelStyle
+            )
+        } else {
+            TooltipPieSelectionRenderer(
+                backgroundColor = colors.tooltipBackground,
+                textStyle = labelStyle
+            )
+        }
+    }
+
+    val chartStyle = remember(isDonut) {
+        PieChartStyle(
+            donutRatio = if (isDonut) 0.5f else 0f,
+            selectedScale = 1.05f,
+            fillFraction = 0.60f
+        )
     }
 
     val total = remember(dataSet) { dataSet.entries.sumOf { it.value.toInt() } }
@@ -107,16 +139,14 @@ fun PieChartDemoScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF3F4F6))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(480.dp)
-                .background(Color.White, shape = RoundedCornerShape(24.dp))
+                .weight(1f)
+                .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(32.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -132,14 +162,13 @@ fun PieChartDemoScreen() {
                             "Market Share",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF111827)
+                            color = colors.onSurface
                         )
                         Text(
-                            text = if (selectedSliceData != null) {
-                                "Viewing metrics for ${selectedSliceData?.label}"
-                            } else "Tap a slice to inspect.",
+                            text = selectedSliceData?.let { "Viewing metrics for ${it.label}" }
+                                ?: "Tap a slice to inspect.",
                             fontSize = 13.sp,
-                            color = Color(0xFF6B7280),
+                            color = colors.onSurfaceMuted,
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
@@ -154,11 +183,7 @@ fun PieChartDemoScreen() {
                     PieChart(
                         dataSet = dataSet,
                         modifier = Modifier.fillMaxSize(),
-                        style = PieChartStyle(
-                            donutRatio = if (isDonut) 0.5f else 0f,
-                            selectedScale = 1.05f,
-                            fillFraction = 0.60f
-                        ),
+                        style = chartStyle,
                         selectionRenderer = activeRenderer,
                         selectedEntry = selectedSliceData,
                         onSliceSelected = { entry -> selectedSliceId = entry?.id },
@@ -169,12 +194,12 @@ fun PieChartDemoScreen() {
                                         text = "$total",
                                         fontSize = 22.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = Color(0xFF111827)
+                                        color = colors.onSurface
                                     )
                                     Text(
                                         text = "Total",
                                         fontSize = 12.sp,
-                                        color = Color(0xFF6B7280)
+                                        color = colors.onSurfaceMuted
                                     )
                                 }
                             }
@@ -184,7 +209,7 @@ fun PieChartDemoScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(20.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -192,7 +217,10 @@ fun PieChartDemoScreen() {
         ) {
             Button(
                 onClick = { isDonut = !isDonut },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accent,
+                    contentColor = colors.onAccent
+                ),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier
@@ -210,7 +238,10 @@ fun PieChartDemoScreen() {
 
             Button(
                 onClick = { useCalloutRenderer = !useCalloutRenderer },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accentWarm,
+                    contentColor = colors.onAccentWarm
+                ),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier
@@ -228,12 +259,16 @@ fun PieChartDemoScreen() {
 
             Button(
                 onClick = {
-                    val newEntries = dataSet.entries.map { entry ->
-                        entry.copy(value = Random.nextInt(50, 500).toFloat())
-                    }
-                    dataSet = dataSet.copy(entries = newEntries)
+                    dataSet = dataSet.copy(
+                        entries = dataSet.entries.map { entry ->
+                            entry.copy(value = Random.nextInt(50, 500).toFloat())
+                        }
+                    )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.onSurface,
+                    contentColor = colors.background
+                ),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier

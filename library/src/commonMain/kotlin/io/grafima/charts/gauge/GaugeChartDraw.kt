@@ -80,7 +80,10 @@ internal fun DrawScope.drawGaugeArcFill(
     }
     if (range <= 0f) return
 
-    zones.forEach { zone ->
+    zones.forEachIndexed { index, zone ->
+        // Round only the outermost ends so the band covers the rounded track;
+        // interior joins stay butted so neighbours meet cleanly.
+        val cap = if (index == 0 || index == zones.lastIndex) StrokeCap.Round else StrokeCap.Butt
         val zoneStartFrac = ((zone.range.start - minValue) / range).coerceIn(0f, 1f)
         val zoneEndFrac = ((zone.range.endInclusive - minValue) / range).coerceIn(0f, 1f)
         val (sf, ef) = if (isRtl) {
@@ -90,7 +93,7 @@ internal fun DrawScope.drawGaugeArcFill(
         }
         val zoneStart = style.startAngle + style.sweepAngle * sf
         val zoneSweep = style.sweepAngle * (ef - sf)
-        if (zoneSweep <= 0f) return@forEach
+        if (zoneSweep <= 0f) return@forEachIndexed
 
         val gradStops = zoneGradientStops[zone.id]
         if (gradStops != null) {
@@ -101,7 +104,7 @@ internal fun DrawScope.drawGaugeArcFill(
                 useCenter = false,
                 topLeft = arcTopLeft,
                 size = arcRect,
-                style = Stroke(width = arcWidthPx, cap = StrokeCap.Butt)
+                style = Stroke(width = arcWidthPx, cap = cap)
             )
         } else {
             drawArc(
@@ -111,7 +114,7 @@ internal fun DrawScope.drawGaugeArcFill(
                 useCenter = false,
                 topLeft = arcTopLeft,
                 size = arcRect,
-                style = Stroke(width = arcWidthPx, cap = StrokeCap.Butt)
+                style = Stroke(width = arcWidthPx, cap = cap)
             )
         }
     }

@@ -17,22 +17,23 @@
 package io.grafima.sample
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,12 +42,15 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.ThemeToggle
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -59,17 +63,37 @@ private enum class ChartPage(val title: String) {
 }
 
 @Composable
-fun ChartsDemoScreen() {
+fun ChartsDemoScreen(
+    darkTheme: Boolean = false,
+    onToggleTheme: () -> Unit = {}
+) {
     val pages = ChartPage.entries
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val coroutineScope = rememberCoroutineScope()
+    val colors = LocalDemoColors.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF3F4F6))
             .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 16.dp, top = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Grafima",
+                color = colors.onSurface,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 26.sp,
+                modifier = Modifier.weight(1f)
+            )
+            ThemeToggle(isDark = darkTheme, onToggle = onToggleTheme)
+        }
+
         ChartTabBar(
             pages = pages,
             pagerState = pagerState,
@@ -101,50 +125,62 @@ private fun ChartTabBar(
     modifier: Modifier = Modifier
 ) {
     val tabCount = pages.size
+    val colors = LocalDemoColors.current
+
+    // `currentPageOffsetFraction` changes on every frame of a swipe, so it is
+    // only ever read from inside a draw lambda — reading it up here would
+    // rebuild the whole bar sixty times a second. `currentPage` is safe to read
+    // in composition: it flips once, when the swipe crosses the halfway mark.
+    val scrollPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xFFF3F4F6))
             .padding(horizontal = 24.dp, vertical = 16.dp)
-            .background(Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+            .background(colors.surfaceMuted, RoundedCornerShape(16.dp))
             .padding(4.dp)
             .drawBehind {
                 val tabWidth = size.width / tabCount
-                val scrollPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
                 drawRoundRect(
-                    color = Color(0xFF111827),
-                    topLeft = Offset(x = tabWidth * scrollPosition, y = 0f),
+                    color = colors.onSurface,
+                    topLeft = Offset(x = tabWidth * scrollPosition(), y = 0f),
                     size = Size(width = tabWidth, height = size.height),
                     cornerRadius = CornerRadius(12.dp.toPx())
                 )
-            },
+            }
+            .selectableGroup(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         pages.forEachIndexed { index, page ->
-            val scrollPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
-            val distance = abs(scrollPosition - index).coerceIn(0f, 1f)
+            val selected = pagerState.currentPage == index
 
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onTabClick(index) }
+                    .selectable(
+                        selected = selected,
+                        role = Role.Tab,
+                        onClick = { onTabClick(index) }
+                    )
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
+                BasicText(
                     text = page.title,
-                    color = lerp(
-                        start = Color.White,
-                        stop = Color(0xFF6B7280),
-                        fraction = distance
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                     ),
-                    fontWeight = if (distance < 0.5f) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 14.sp
+                    // Resolved during draw, so the label tracks the swipe
+                    // continuously without recomposing to do it.
+                    color = {
+                        lerp(
+                            start = colors.background,
+                            stop = colors.onSurfaceMuted,
+                            fraction = abs(scrollPosition() - index).coerceIn(0f, 1f)
+                        )
+                    }
                 )
             }
         }

@@ -52,18 +52,35 @@ import io.grafima.charts.bar.BarDataSet
 import io.grafima.charts.bar.BarEntry
 import io.grafima.charts.bar.BarOrientation
 import io.grafima.charts.bar.TooltipSelectionRenderer
+import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.themedBarAxis
+import io.grafima.sample.theme.themedBarStyle
 import kotlin.random.Random
 
 // ==========================================
 // 5. DEMO IMPLEMENTATION
 // ==========================================
 
+private val OceanGradient = listOf(Color(0xFF00C9FF), Color(0xFF92FE9D))
+private val EmeraldGradient = listOf(Color(0xFF11998E), Color(0xFF38EF7D))
+private val SunsetGradient = listOf(Color(0xFFFF512F), Color(0xFFF09819), Color(0xFFFFB75E))
+private val AmethystGradient = listOf(Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121))
+
+private val BarGradients =
+    listOf(SunsetGradient, OceanGradient, AmethystGradient, EmeraldGradient)
+
+private fun BarDataSet.randomized(): BarDataSet = copy(
+    entries = entries.map { entry ->
+        entry.copy(
+            y = Random.nextInt(20, 110).toFloat(),
+            gradientColors = BarGradients.random()
+        )
+    }
+)
+
 @Composable
 fun BarChartDemoScreen() {
-    val oceanGradient = listOf(Color(0xFF00C9FF), Color(0xFF92FE9D))
-    val emeraldGradient = listOf(Color(0xFF11998E), Color(0xFF38EF7D))
-    val sunsetGradient = listOf(Color(0xFFFF512F), Color(0xFFF09819), Color(0xFFFFB75E))
-    val amethystGradient = listOf(Color(0xFF8A2387), Color(0xFFE94057), Color(0xFFF27121))
+    val colors = LocalDemoColors.current
 
     var orientation by remember { mutableStateOf(BarOrientation.Horizontal) }
 
@@ -71,16 +88,11 @@ fun BarChartDemoScreen() {
         mutableStateOf(
             BarDataSet(
                 entries = listOf(
-                    BarEntry(id = "JAN", xLabel = "Jan", y = 45f, gradientColors = oceanGradient),
-                    BarEntry(id = "FEB", xLabel = "Feb", y = 80f, gradientColors = sunsetGradient),
-                    BarEntry(
-                        id = "MAR",
-                        xLabel = "Mar",
-                        y = 55f,
-                        gradientColors = amethystGradient
-                    ),
-                    BarEntry(id = "APR", xLabel = "Apr", y = 95f, gradientColors = sunsetGradient),
-                    BarEntry(id = "MAY", xLabel = "May", y = 65f, gradientColors = emeraldGradient)
+                    BarEntry(id = "JAN", xLabel = "Jan", y = 45f, gradientColors = OceanGradient),
+                    BarEntry(id = "FEB", xLabel = "Feb", y = 80f, gradientColors = SunsetGradient),
+                    BarEntry(id = "MAR", xLabel = "Mar", y = 55f, gradientColors = AmethystGradient),
+                    BarEntry(id = "APR", xLabel = "Apr", y = 95f, gradientColors = SunsetGradient),
+                    BarEntry(id = "MAY", xLabel = "May", y = 65f, gradientColors = EmeraldGradient)
                 ),
                 contentDescription = "Q1 and Q2 Revenue Trends"
             )
@@ -92,11 +104,11 @@ fun BarChartDemoScreen() {
         derivedStateOf { dataSet.entries.find { it.id == selectedBarId } }
     }
 
-    val customPillRenderer = remember {
+    val customPillRenderer = remember(colors) {
         TooltipSelectionRenderer(
-            backgroundColor = Color(0xFF4F46E5),
+            backgroundColor = colors.accent,
             textStyle = TextStyle(
-                color = Color.White,
+                color = colors.onAccent,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center
@@ -107,18 +119,27 @@ fun BarChartDemoScreen() {
         )
     }
 
+    val a11yConfig = remember {
+        A11yConfig(
+            chartDescriptionBuilder = { "Financial Revenue Chart for ${it.contentDescription}." },
+            barDescriptionBuilder = { "In ${it.xLabel}, revenue was $${it.y.toInt()} thousand dollars." },
+            selectedStateDescription = { entry ->
+                entry?.let { "You are inspecting ${it.xLabel}." }
+                    ?: "Double tap and drag to explore metrics."
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF3F4F6))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFE5E7EB), RoundedCornerShape(12.dp))
+                .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.Center
         ) {
@@ -131,23 +152,11 @@ fun BarChartDemoScreen() {
                     onClick = {
                         selectedBarId = null
                         orientation = orient
-                        dataSet = dataSet.copy(
-                            entries = dataSet.entries.map { entry ->
-                                entry.copy(
-                                    y = Random.nextInt(20, 110).toFloat(),
-                                    gradientColors = listOf(
-                                        sunsetGradient,
-                                        oceanGradient,
-                                        amethystGradient,
-                                        emeraldGradient
-                                    ).random()
-                                )
-                            }
-                        )
+                        dataSet = dataSet.randomized()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (selected) Color(0xFF111827) else Color.Transparent,
-                        contentColor = if (selected) Color.White else Color(0xFF6B7280)
+                        containerColor = if (selected) colors.onSurface else Color.Transparent,
+                        contentColor = if (selected) colors.background else colors.onSurfaceMuted
                     ),
                     shape = RoundedCornerShape(10.dp),
                     elevation = ButtonDefaults.buttonElevation(
@@ -168,13 +177,13 @@ fun BarChartDemoScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(480.dp)
-                .background(Color.White, shape = RoundedCornerShape(24.dp))
+                .weight(1f)
+                .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(32.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -190,22 +199,23 @@ fun BarChartDemoScreen() {
                             "Revenue Overview",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFF111827)
+                            color = colors.onSurface
                         )
                         Text(
-                            text = if (selectedBarData != null) "Viewing metrics for ${selectedBarData?.xLabel}" else "Tap a bar to inspect metrics.",
+                            text = selectedBarData?.let { "Viewing metrics for ${it.xLabel}" }
+                                ?: "Tap a bar to inspect metrics.",
                             fontSize = 13.sp,
-                            color = Color(0xFF6B7280),
+                            color = colors.onSurfaceMuted,
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
 
-                    if (selectedBarData != null) {
+                    selectedBarData?.let { entry ->
                         Text(
-                            text = "$${selectedBarData?.y?.toInt()}k",
+                            text = "$${entry.y.toInt()}k",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color(0xFF111827)
+                            color = colors.onSurface
                         )
                     }
                 }
@@ -214,41 +224,24 @@ fun BarChartDemoScreen() {
                     dataSet = dataSet,
                     modifier = Modifier.fillMaxSize(),
                     orientation = orientation,
+                    style = themedBarStyle(),
+                    axisConfig = themedBarAxis(),
                     selectionRenderer = customPillRenderer,
                     selectedEntry = selectedBarData,
                     onBarSelected = { entry -> selectedBarId = entry?.id },
-                    a11yConfig = A11yConfig(
-                        chartDescriptionBuilder = { "Financial Revenue Chart for ${it.contentDescription}." },
-                        barDescriptionBuilder = { "In ${it.xLabel}, revenue was $${it.y.toInt()} thousand dollars." },
-                        selectedStateDescription = { entry ->
-                            entry?.let { "You are inspecting ${it.xLabel}." }
-                                ?: "Double tap and drag to explore metrics."
-                        }
-                    )
+                    a11yConfig = a11yConfig
                 )
             }
         }
 
-        // The HorizontalDivider and one Spacer were removed here.
-        // A single Spacer is kept to maintain a clean gap between the chart and button.
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(Modifier.height(20.dp))
 
         Button(
-            onClick = {
-                val newEntries = dataSet.entries.map { entry ->
-                    entry.copy(
-                        y = Random.nextInt(20, 110).toFloat(),
-                        gradientColors = listOf(
-                            sunsetGradient,
-                            oceanGradient,
-                            amethystGradient,
-                            emeraldGradient
-                        ).random()
-                    )
-                }
-                dataSet = dataSet.copy(entries = newEntries)
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
+            onClick = { dataSet = dataSet.randomized() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.onSurface,
+                contentColor = colors.background
+            ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()

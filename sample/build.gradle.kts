@@ -33,6 +33,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.compose.ui.tooling)
+            implementation(libs.androidx.core.ktx)
         }
     }
 }

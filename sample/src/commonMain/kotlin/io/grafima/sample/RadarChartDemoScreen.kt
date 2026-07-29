@@ -50,31 +50,39 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.radar.RadarAxis
 import io.grafima.charts.radar.RadarChart
-import io.grafima.charts.radar.RadarChartStyle
 import io.grafima.charts.radar.RadarDataSet
 import io.grafima.charts.radar.RadarGridStyle
 import io.grafima.charts.radar.RadarSeries
+import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.themedRadarStyle
 import kotlin.random.Random
 
 // ==========================================
 // 6. DEMO IMPLEMENTATION
 // ==========================================
 
+private val DefaultAxes = listOf(
+    RadarAxis(id = "atk", label = "Attack"),
+    RadarAxis(id = "def", label = "Defense"),
+    RadarAxis(id = "spd", label = "Speed"),
+    RadarAxis(id = "mag", label = "Magic"),
+    RadarAxis(id = "sta", label = "Stamina"),
+    RadarAxis(id = "lck", label = "Luck")
+)
+
+private val ExtraClassNames = listOf("Paladin", "Ranger", "Bard")
+private val ExtraClassColors = listOf(
+    Color(0xFFF59E0B), Color(0xFF8B5CF6), Color(0xFFEC4899)
+)
+
 @Composable
 fun RadarChartDemoScreen() {
-    val defaultAxes = listOf(
-        RadarAxis(id = "atk", label = "Attack"),
-        RadarAxis(id = "def", label = "Defense"),
-        RadarAxis(id = "spd", label = "Speed"),
-        RadarAxis(id = "mag", label = "Magic"),
-        RadarAxis(id = "sta", label = "Stamina"),
-        RadarAxis(id = "lck", label = "Luck")
-    )
+    val colors = LocalDemoColors.current
 
     var dataSet by remember {
         mutableStateOf(
             RadarDataSet(
-                axes = defaultAxes,
+                axes = DefaultAxes,
                 series = listOf(
                     RadarSeries(
                         id = "warrior",
@@ -114,9 +122,7 @@ fun RadarChartDemoScreen() {
 
     var selectedSeriesId by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedSeriesData by remember {
-        derivedStateOf {
-            dataSet.series.find { it.id == selectedSeriesId }
-        }
+        derivedStateOf { dataSet.series.find { it.id == selectedSeriesId } }
     }
 
     var isPolygonGrid by remember { mutableStateOf(true) }
@@ -124,16 +130,14 @@ fun RadarChartDemoScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF3F4F6))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(560.dp)
-                .background(Color.White, shape = RoundedCornerShape(24.dp))
+                .weight(1f)
+                .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -146,14 +150,13 @@ fun RadarChartDemoScreen() {
                         "Character Stats",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF111827)
+                        color = colors.onSurface
                     )
                     Text(
-                        text = if (selectedSeriesData != null) {
-                            "Viewing ${selectedSeriesData?.label} build"
-                        } else "Tap a vertex to inspect a class.",
+                        text = selectedSeriesData?.let { "Viewing ${it.label} build" }
+                            ?: "Tap a vertex to inspect a class.",
                         fontSize = 13.sp,
-                        color = Color(0xFF6B7280),
+                        color = colors.onSurfaceMuted,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -166,6 +169,11 @@ fun RadarChartDemoScreen() {
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     dataSet.series.forEach { s ->
+                        // Dimming the unselected entries carries the emphasis by
+                        // weight rather than by fading the colour — a grey light
+                        // enough to read as "off" is too light to read at all.
+                        val emphasised = selectedSeriesData == null ||
+                            selectedSeriesData?.id == s.id
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Canvas(modifier = Modifier.size(10.dp)) {
                                 drawCircle(color = s.color, radius = size.minDimension / 2f)
@@ -177,9 +185,9 @@ fun RadarChartDemoScreen() {
                                 fontWeight = if (selectedSeriesData?.id == s.id) {
                                     FontWeight.Bold
                                 } else FontWeight.Normal,
-                                color = if (selectedSeriesData == null || selectedSeriesData?.id == s.id) {
-                                    Color(0xFF374151)
-                                } else Color(0xFFD1D5DB)
+                                color = if (emphasised) {
+                                    colors.onSurface
+                                } else colors.onSurfaceMuted
                             )
                         }
                     }
@@ -194,12 +202,12 @@ fun RadarChartDemoScreen() {
                     RadarChart(
                         dataSet = dataSet,
                         modifier = Modifier.fillMaxSize(),
-                        style = RadarChartStyle(
+                        style = themedRadarStyle(
                             gridStyle = if (isPolygonGrid) {
                                 RadarGridStyle.Polygon
                             } else RadarGridStyle.Circular,
-                            fillFraction = 0.78f,
                             gridLevels = 5,
+                            fillFraction = 0.78f,
                             dotRadius = 5.dp
                         ),
                         selectedSeries = selectedSeriesData,
@@ -209,7 +217,7 @@ fun RadarChartDemoScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(20.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -217,7 +225,10 @@ fun RadarChartDemoScreen() {
         ) {
             Button(
                 onClick = { isPolygonGrid = !isPolygonGrid },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accent,
+                    contentColor = colors.onAccent
+                ),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier
@@ -235,16 +246,20 @@ fun RadarChartDemoScreen() {
 
             Button(
                 onClick = {
-                    val newSeries = dataSet.series.map { s ->
-                        s.copy(
-                            values = dataSet.axes.associate { a ->
-                                a.id to Random.nextInt(15, 100).toFloat()
-                            }
-                        )
-                    }
-                    dataSet = dataSet.copy(series = newSeries)
+                    dataSet = dataSet.copy(
+                        series = dataSet.series.map { s ->
+                            s.copy(
+                                values = dataSet.axes.associate { a ->
+                                    a.id to Random.nextInt(15, 100).toFloat()
+                                }
+                            )
+                        }
+                    )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.onSurface,
+                    contentColor = colors.background
+                ),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier
@@ -263,28 +278,28 @@ fun RadarChartDemoScreen() {
             Button(
                 onClick = {
                     val currentSeries = dataSet.series
-                    if (currentSeries.size >= 5) {
-                        dataSet = dataSet.copy(series = currentSeries.dropLast(1))
+                    dataSet = if (currentSeries.size >= 5) {
+                        dataSet.copy(series = currentSeries.dropLast(1))
                     } else {
-                        val colors = listOf(
-                            Color(0xFFF59E0B), Color(0xFF8B5CF6), Color(0xFFEC4899)
-                        )
-                        val names = listOf("Paladin", "Ranger", "Bard")
                         val index = currentSeries.size - 3
-                        val newId = "class_${currentSeries.size}"
                         val newSeries = RadarSeries(
-                            id = newId,
-                            label = names.getOrElse(index) { "Class ${currentSeries.size + 1}" },
+                            id = "class_${currentSeries.size}",
+                            label = ExtraClassNames.getOrElse(index) {
+                                "Class ${currentSeries.size + 1}"
+                            },
                             values = dataSet.axes.associate { a ->
                                 a.id to Random.nextInt(20, 95).toFloat()
                             },
-                            color = colors.getOrElse(index) { Color(0xFF64748B) },
+                            color = ExtraClassColors.getOrElse(index) { Color(0xFF64748B) },
                             fillAlpha = 0.15f
                         )
-                        dataSet = dataSet.copy(series = currentSeries + newSeries)
+                        dataSet.copy(series = currentSeries + newSeries)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.accentWarm,
+                    contentColor = colors.onAccentWarm
+                ),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 modifier = Modifier

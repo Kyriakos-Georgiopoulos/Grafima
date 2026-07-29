@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import io.grafima.sample.theme.LocalDemoColors
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.gauge.GaugeAnimationConfig
 import io.grafima.charts.gauge.GaugeChart
@@ -73,6 +74,7 @@ private val GaugePresets = listOf(
 
 @Composable
 fun GaugeChartDemoScreen() {
+    val colors = LocalDemoColors.current
     val zones = remember {
         listOf(
             GaugeZone(id = "low", label = "Low", range = 0f..30f, color = Color(0xFF22C55E)),
@@ -103,16 +105,14 @@ fun GaugeChartDemoScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(480.dp)
-                .background(Color.White, shape = RoundedCornerShape(24.dp))
+                .weight(1f)
+                .background(colors.surface, shape = RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
             Column(
@@ -123,13 +123,13 @@ fun GaugeChartDemoScreen() {
                     "Performance",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF111827),
+                    color = colors.onSurface,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
                     text = activeZone?.let { "Status: ${it.label}" } ?: "Initializing...",
                     fontSize = 13.sp,
-                    color = Color(0xFF6B7280),
+                    color = colors.onSurfaceMuted,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
@@ -166,13 +166,13 @@ fun GaugeChartDemoScreen() {
                             minorTickLength = 5.dp,
                             majorTickColor = Color(0xFF9CA3AF),
                             minorTickColor = Color(0xFFD1D5DB),
-                            labelColor = Color(0xFF6B7280),
+                            labelColor = colors.onSurfaceMuted,
                             labelFontSize = 10.sp
                         ),
                         needleConfig = GaugeNeedleConfig(
                             style = GaugeNeedleStyle.Tapered,
                             color = activeZone?.color ?: Color(0xFFDC2626),
-                            baseColor = Color(0xFF374151),
+                            baseColor = colors.onSurfaceMuted,
                             baseRadius = 10.dp,
                             width = 5.dp,
                             lengthFraction = 0.78f,
@@ -193,7 +193,7 @@ fun GaugeChartDemoScreen() {
                                     text = "${currentValue.toInt()}",
                                     fontSize = 40.sp,
                                     fontWeight = FontWeight.Black,
-                                    color = activeZone?.color ?: Color(0xFF111827)
+                                    color = activeZone?.color ?: colors.onSurface
                                 )
                                 Text(
                                     text = "percent",
@@ -208,7 +208,7 @@ fun GaugeChartDemoScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(20.dp))
 
         // Preset buttons
         Row(
@@ -231,7 +231,7 @@ fun GaugeChartDemoScreen() {
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (preset.color == 0xFFFBBF24) Color(0xFF78350F) else Color.White
+                        color = if (preset.color == 0xFFFBBF24) Color(0xFF78350F) else colors.surface
                     )
                 }
             }
@@ -245,7 +245,10 @@ fun GaugeChartDemoScreen() {
         ) {
             Button(
                 onClick = { useGradientArc = !useGradientArc },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6366F1),
+                    contentColor = Color.White
+                ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .weight(1f)
@@ -255,12 +258,15 @@ fun GaugeChartDemoScreen() {
                     text = if (useGradientArc) "Zone Mode" else "Gradient Mode",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = colors.surface
                 )
             }
             Button(
                 onClick = { currentValue = Random.nextInt(0, 101).toFloat() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF111827)),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.onSurface,
+                    contentColor = colors.background
+                ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .weight(1f)
@@ -270,7 +276,7 @@ fun GaugeChartDemoScreen() {
                     text = "Random",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = colors.surface
                 )
             }
         }
