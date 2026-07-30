@@ -5,4 +5,15 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.compose.multiplatform) apply false
+    alias(libs.plugins.ktlint) apply false
+}
+
+subprojects {
+    apply(plugin = "org.jlleitschuh.gradle.ktlint")
+    extensions.configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
+        version.set(rootProject.libs.versions.ktlint.get())
+        filter {
+            exclude { it.file.path.contains("/build/") }
+        }
+    }
 }

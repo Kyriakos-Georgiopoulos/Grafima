@@ -72,7 +72,6 @@ class BarChartUiTest {
         onNodeWithContentDescription("Jan value is 45", substring = true).assertDoesNotExist()
     }
 
-
     @Test
     fun the_select_accessibility_action_reports_the_entry_to_the_callback() = runComposeUiTest {
         var selected: BarEntry? = null

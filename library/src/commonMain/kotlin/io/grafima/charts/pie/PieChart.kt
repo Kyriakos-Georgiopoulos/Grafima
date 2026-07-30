@@ -253,7 +253,7 @@ fun PieChart(
                 .fillMaxSize()
                 .semantics(mergeDescendants = true) {
                     liveRegion = LiveRegionMode.Polite
-                role = Role.Image
+                    role = Role.Image
                     contentDescription = chartDescription
                     stateDescription = chartStateDescription
                     customActions = buildList {

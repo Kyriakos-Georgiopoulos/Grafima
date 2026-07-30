@@ -19,6 +19,12 @@ kotlin {
         namespace = "io.grafima.charts"
         compileSdk = 37
         minSdk = 24
+        optimization {
+            // Published inside the AAR so a consumer's R8 picks the rules up
+            // without them having to copy anything.
+            consumerKeepRules.file("consumer-rules.pro")
+            consumerKeepRules.publish = true
+        }
         // JVM unit tests for commonTest (pure logic + animation engines).
         withHostTest {}
         // Instrumented tests for the shared uiTest source set.

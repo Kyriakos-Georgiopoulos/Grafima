@@ -20,8 +20,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
-import io.grafima.charts.Exiting
 import io.grafima.charts.ExitTracker
+import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -160,8 +160,8 @@ internal class RadarChartAnimationEngine {
                 scope.launch {
                     if (isInitial) {
                         val totalDelay = config.startDelayMs +
-                                (seriesIndex * config.seriesStaggerMs) +
-                                (axisIndex * config.vertexStaggerMs)
+                            (seriesIndex * config.seriesStaggerMs) +
+                            (axisIndex * config.vertexStaggerMs)
                         delay(totalDelay)
                         anim.animateTo(target, config.initialEntrySpec)
                     } else if (anim.targetValue != target) {

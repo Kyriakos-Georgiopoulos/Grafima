@@ -47,8 +47,8 @@ class ColorContrastTest {
             return if (c <= 0.03928) c / 12.92 else ((c + 0.055) / 1.055).pow(2.4)
         }
         return 0.2126 * channel(color.red) +
-                0.7152 * channel(color.green) +
-                0.0722 * channel(color.blue)
+            0.7152 * channel(color.green) +
+            0.0722 * channel(color.blue)
     }
 
     /** WCAG 2.1 contrast ratio, 1.0 (identical) to 21.0 (black on white). */

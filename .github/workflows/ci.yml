@@ -36,6 +36,10 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@v6
+      # Style first: it is the cheapest signal, so a formatting slip fails in
+      # seconds instead of after the full build and test run.
+      - name: Check formatting
+        run: ./gradlew ktlintCheck
       - name: Build, lint, and run JVM tests
         run: ./gradlew build
       # Fails if the public API drifts from library/api/. Run
@@ -49,6 +53,7 @@ jobs:
           name: android-reports
           path: |
             **/build/reports/tests/**
+            **/build/reports/ktlint/**
             **/build/reports/*.html
 
   # The shared uiTest suite as Android instrumented tests. GitHub-hosted

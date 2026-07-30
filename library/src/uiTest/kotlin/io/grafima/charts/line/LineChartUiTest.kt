@@ -158,5 +158,4 @@ class LineChartUiTest {
         waitForIdle()
         onChartNode().assertExists()
     }
-
 }

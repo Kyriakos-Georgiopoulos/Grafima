@@ -242,7 +242,9 @@ fun LineChart(
     // ── Pre-computed key matrix + draw buffers (zero allocation in draw) ──
     val seriesStructure = remember(renderSeries) { renderSeries.map { it.id to it.points.size } }
     val keyMatrix =
-        remember(seriesStructure) { renderSeries.associate { s -> s.id to Array(s.points.size) { i -> "${s.id}::$i" } } }
+        remember(seriesStructure) {
+            renderSeries.associate { s -> s.id to Array(s.points.size) { i -> "${s.id}::$i" } }
+        }
     val xBuffers =
         remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val yBuffers =
@@ -366,7 +368,11 @@ fun LineChart(
         val chartLeft =
             if (isRtl) labelGapPx else (if (axisConfig.showYLabels) maxYLabelWidth + labelGapPx else labelGapPx)
         val chartRight =
-            if (isRtl) (if (axisConfig.showYLabels) size.width - maxYLabelWidth - labelGapPx else size.width - labelGapPx) else size.width - labelGapPx
+            if (isRtl && axisConfig.showYLabels) {
+                size.width - maxYLabelWidth - labelGapPx
+            } else {
+                size.width - labelGapPx
+            }
         val chartBottom =
             size.height - (if (axisConfig.showXLabels) maxXLabelHeight + labelGapPx else labelGapPx)
         val chartTop = labelGapPx
@@ -445,7 +451,7 @@ fun LineChart(
         }
 
         // ── 4. Series: area fills, line strokes, dots ──
-        renderSeries.forEachIndexed { si, s ->
+        renderSeries.forEachIndexed { _, s ->
             val n = s.points.size
             if (n == 0) return@forEachIndexed
             val keys = keyMatrix[s.id] ?: return@forEachIndexed
@@ -617,4 +623,3 @@ fun LineChart(
         }
     }
 }
-
