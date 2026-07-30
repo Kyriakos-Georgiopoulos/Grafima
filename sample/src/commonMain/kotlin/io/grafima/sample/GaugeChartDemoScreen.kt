@@ -87,7 +87,9 @@ private val ArcGradient = listOf(
 )
 
 internal class GaugeChartViewModel : ViewModel() {
+    var currentValue by mutableFloatStateOf(0f)
     var useGradientArc by mutableStateOf(false)
+    var introPlayed = false
 }
 
 @Composable
@@ -96,18 +98,20 @@ internal fun GaugeChartDemoScreen(
 ) {
     val colors = LocalDemoColors.current
 
-    var currentValue by remember { mutableFloatStateOf(0f) }
+    var currentValue by viewModel::currentValue
+    var useGradientArc by viewModel::useGradientArc
 
     LaunchedEffect(Unit) {
-        delay(400)
-        currentValue = 42f
+        if (!viewModel.introPlayed) {
+            delay(400)
+            currentValue = 42f
+            viewModel.introPlayed = true
+        }
     }
 
     val activeZone = remember(currentValue) {
         GaugeZones.find { currentValue in it.range }
     }
-
-    var useGradientArc by viewModel::useGradientArc
 
     val chartStyle = remember(useGradientArc, colors) {
         GaugeChartStyle(
