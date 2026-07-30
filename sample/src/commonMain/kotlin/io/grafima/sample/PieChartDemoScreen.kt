@@ -140,13 +140,12 @@ internal fun PieChartDemoScreen(
 ) {
     val colors = LocalDemoColors.current
 
-    var dataSet by viewModel::dataSet
-    var selectedSliceId by viewModel::selectedSliceId
-    var isDonut by viewModel::isDonut
-    var useCalloutRenderer by viewModel::useCalloutRenderer
+    val dataSet = viewModel.dataSet
+    val isDonut = viewModel.isDonut
+    val useCalloutRenderer = viewModel.useCalloutRenderer
 
-    val selectedSliceData by remember {
-        derivedStateOf { dataSet.entries.find { it.id == selectedSliceId } }
+    val selectedSliceData by remember(viewModel) {
+        derivedStateOf { viewModel.dataSet.entries.find { it.id == viewModel.selectedSliceId } }
     }
 
     val activeRenderer = remember(useCalloutRenderer, colors) {
@@ -197,15 +196,15 @@ internal fun PieChartDemoScreen(
                 DemoAddButton(
                     text = "Add Slice",
                     enabled = dataSet.entries.size < MaxSlices,
-                    onClick = { dataSet = dataSet.plusEntry() },
+                    onClick = { viewModel.dataSet = dataSet.plusEntry() },
                     modifier = buttonModifier
                 )
                 DemoRemoveButton(
                     text = "Remove Slice",
                     enabled = dataSet.entries.size > MinSlices,
                     onClick = {
-                        selectedSliceId = null
-                        dataSet = dataSet.minusEntry()
+                        viewModel.selectedSliceId = null
+                        viewModel.dataSet = dataSet.minusEntry()
                     },
                     modifier = buttonModifier
                 )
@@ -213,7 +212,7 @@ internal fun PieChartDemoScreen(
 
             DemoControls { buttonModifier ->
                 Button(
-                    onClick = { isDonut = !isDonut },
+                    onClick = { viewModel.isDonut = !isDonut },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accent,
                         contentColor = colors.onAccent
@@ -232,7 +231,7 @@ internal fun PieChartDemoScreen(
                 }
 
                 Button(
-                    onClick = { useCalloutRenderer = !useCalloutRenderer },
+                    onClick = { viewModel.useCalloutRenderer = !useCalloutRenderer },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accentWarm,
                         contentColor = colors.onAccentWarm
@@ -252,7 +251,7 @@ internal fun PieChartDemoScreen(
 
                 Button(
                     onClick = {
-                        dataSet = dataSet.copy(
+                        viewModel.dataSet = dataSet.copy(
                             entries = dataSet.entries.map { entry ->
                                 entry.copy(value = Random.nextInt(50, 500).toFloat())
                             }
@@ -321,7 +320,7 @@ internal fun PieChartDemoScreen(
                         animationConfig = animationConfig,
                         selectionRenderer = activeRenderer,
                         selectedEntry = selectedSliceData,
-                        onSliceSelected = { entry -> selectedSliceId = entry?.id },
+                        onSliceSelected = { entry -> viewModel.selectedSliceId = entry?.id },
                         centerContent = if (isDonut) {
                             {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

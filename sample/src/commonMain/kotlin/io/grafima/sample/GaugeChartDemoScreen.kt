@@ -98,13 +98,13 @@ internal fun GaugeChartDemoScreen(
 ) {
     val colors = LocalDemoColors.current
 
-    var currentValue by viewModel::currentValue
-    var useGradientArc by viewModel::useGradientArc
+    val currentValue = viewModel.currentValue
+    val useGradientArc = viewModel.useGradientArc
 
     LaunchedEffect(Unit) {
         if (!viewModel.introPlayed) {
             delay(400)
-            currentValue = 42f
+            viewModel.currentValue = 42f
             viewModel.introPlayed = true
         }
     }
@@ -164,7 +164,7 @@ internal fun GaugeChartDemoScreen(
             DemoControls { buttonModifier ->
                 GaugePresets.forEach { preset ->
                     Button(
-                        onClick = { currentValue = preset.value },
+                        onClick = { viewModel.currentValue = preset.value },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = preset.color,
                             contentColor = onColorFor(preset.color)
@@ -186,7 +186,7 @@ internal fun GaugeChartDemoScreen(
 
             DemoControls { buttonModifier ->
                 Button(
-                    onClick = { useGradientArc = !useGradientArc },
+                    onClick = { viewModel.useGradientArc = !useGradientArc },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accent,
                         contentColor = colors.onAccent
@@ -204,7 +204,7 @@ internal fun GaugeChartDemoScreen(
                     )
                 }
                 Button(
-                    onClick = { currentValue = Random.nextInt(0, 101).toFloat() },
+                    onClick = { viewModel.currentValue = Random.nextInt(0, 101).toFloat() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.onSurface,
                         contentColor = colors.background

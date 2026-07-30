@@ -176,10 +176,10 @@ internal fun LineChartDemoScreen(
 ) {
     val colors = LocalDemoColors.current
 
-    var showFill by viewModel::showFill
-    var curveType by viewModel::curveType
-    var dataSet by viewModel::dataSet
-    var selectedIdx by viewModel::selectedIdx
+    val dataSet = viewModel.dataSet
+    val showFill = viewModel.showFill
+    val curveType = viewModel.curveType
+    val selectedIdx = viewModel.selectedIdx
 
     // Stripping the fill rewrites every series, so derive it once per change:
     // rebuilding inline hands the chart a new dataset on every recomposition and
@@ -200,13 +200,13 @@ internal fun LineChartDemoScreen(
                 DemoAddButton(
                     text = "Add Series",
                     enabled = dataSet.series.size < MaxSeries,
-                    onClick = { dataSet = dataSet.plusSeries() },
+                    onClick = { viewModel.dataSet = dataSet.plusSeries() },
                     modifier = buttonModifier
                 )
                 DemoRemoveButton(
                     text = "Remove Series",
                     enabled = dataSet.series.size > MinSeries,
-                    onClick = { dataSet = dataSet.minusSeries() },
+                    onClick = { viewModel.dataSet = dataSet.minusSeries() },
                     modifier = buttonModifier
                 )
             }
@@ -214,7 +214,7 @@ internal fun LineChartDemoScreen(
             DemoControls { buttonModifier ->
                 Button(
                     onClick = {
-                        curveType = if (curveType == LineCurveType.MonotoneCubic) {
+                        viewModel.curveType = if (curveType == LineCurveType.MonotoneCubic) {
                             LineCurveType.Linear
                         } else LineCurveType.MonotoneCubic
                     },
@@ -234,7 +234,7 @@ internal fun LineChartDemoScreen(
                     )
                 }
                 Button(
-                    onClick = { showFill = !showFill },
+                    onClick = { viewModel.showFill = !showFill },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accentWarm,
                         contentColor = colors.onAccentWarm
@@ -253,7 +253,7 @@ internal fun LineChartDemoScreen(
             }
 
             Button(
-                onClick = { dataSet = dataSet.randomized() },
+                onClick = { viewModel.dataSet = dataSet.randomized() },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.onSurface,
                     contentColor = colors.background
@@ -347,7 +347,7 @@ internal fun LineChartDemoScreen(
                         ),
                         crosshairConfig = themedCrosshair(),
                         selectedPointIndex = selectedIdx,
-                        onPointSelected = { selectedIdx = it }
+                        onPointSelected = { viewModel.selectedIdx = it }
                     )
                 }
             }

@@ -123,12 +123,11 @@ internal fun BarChartDemoScreen(
 ) {
     val colors = LocalDemoColors.current
 
-    var orientation by viewModel::orientation
-    var dataSet by viewModel::dataSet
-    var selectedBarId by viewModel::selectedBarId
+    val dataSet = viewModel.dataSet
+    val orientation = viewModel.orientation
 
-    val selectedBarData by remember {
-        derivedStateOf { dataSet.entries.find { it.id == selectedBarId } }
+    val selectedBarData by remember(viewModel) {
+        derivedStateOf { viewModel.dataSet.entries.find { it.id == viewModel.selectedBarId } }
     }
 
     val customPillRenderer = remember(colors) {
@@ -198,9 +197,9 @@ internal fun BarChartDemoScreen(
                                 selected = isSelected,
                                 role = Role.Tab,
                                 onClick = {
-                                    selectedBarId = null
-                                    orientation = orient
-                                    dataSet = dataSet.randomized()
+                                    viewModel.selectedBarId = null
+                                    viewModel.orientation = orient
+                                    viewModel.dataSet = dataSet.randomized()
                                 }
                             ),
                         contentAlignment = Alignment.Center
@@ -222,22 +221,22 @@ internal fun BarChartDemoScreen(
                 DemoAddButton(
                     text = "Add Bar",
                     enabled = dataSet.entries.size < MaxBars,
-                    onClick = { dataSet = dataSet.plusEntry() },
+                    onClick = { viewModel.dataSet = dataSet.plusEntry() },
                     modifier = buttonModifier
                 )
                 DemoRemoveButton(
                     text = "Remove Bar",
                     enabled = dataSet.entries.size > MinBars,
                     onClick = {
-                        selectedBarId = null
-                        dataSet = dataSet.minusEntry()
+                        viewModel.selectedBarId = null
+                        viewModel.dataSet = dataSet.minusEntry()
                     },
                     modifier = buttonModifier
                 )
             }
 
             Button(
-                onClick = { dataSet = dataSet.randomized() },
+                onClick = { viewModel.dataSet = dataSet.randomized() },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.onSurface,
                     contentColor = colors.background
@@ -299,7 +298,7 @@ internal fun BarChartDemoScreen(
                     axisConfig = themedBarAxis(),
                     selectionRenderer = customPillRenderer,
                     selectedEntry = selectedBarData,
-                    onBarSelected = { entry -> selectedBarId = entry?.id },
+                    onBarSelected = { entry -> viewModel.selectedBarId = entry?.id },
                     animationConfig = animationConfig,
                     a11yConfig = a11yConfig
                 )

@@ -135,12 +135,11 @@ internal fun RadarChartDemoScreen(
 ) {
     val colors = LocalDemoColors.current
 
-    var dataSet by viewModel::dataSet
-    var selectedSeriesId by viewModel::selectedSeriesId
-    var isPolygonGrid by viewModel::isPolygonGrid
+    val dataSet = viewModel.dataSet
+    val isPolygonGrid = viewModel.isPolygonGrid
 
-    val selectedSeriesData by remember {
-        derivedStateOf { dataSet.series.find { it.id == selectedSeriesId } }
+    val selectedSeriesData by remember(viewModel) {
+        derivedStateOf { viewModel.dataSet.series.find { it.id == viewModel.selectedSeriesId } }
     }
 
     DemoScreenScaffold(
@@ -149,15 +148,15 @@ internal fun RadarChartDemoScreen(
                 DemoAddButton(
                     text = "Add Class",
                     enabled = dataSet.series.size < MaxClasses,
-                    onClick = { dataSet = dataSet.plusClass() },
+                    onClick = { viewModel.dataSet = dataSet.plusClass() },
                     modifier = buttonModifier
                 )
                 DemoRemoveButton(
                     text = "Remove Class",
                     enabled = dataSet.series.size > MinClasses,
                     onClick = {
-                        selectedSeriesId = null
-                        dataSet = dataSet.minusClass()
+                        viewModel.selectedSeriesId = null
+                        viewModel.dataSet = dataSet.minusClass()
                     },
                     modifier = buttonModifier
                 )
@@ -165,7 +164,7 @@ internal fun RadarChartDemoScreen(
 
             DemoControls { buttonModifier ->
                 Button(
-                    onClick = { isPolygonGrid = !isPolygonGrid },
+                    onClick = { viewModel.isPolygonGrid = !isPolygonGrid },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accent,
                         contentColor = colors.onAccent
@@ -185,7 +184,7 @@ internal fun RadarChartDemoScreen(
 
                 Button(
                     onClick = {
-                        dataSet = dataSet.copy(
+                        viewModel.dataSet = dataSet.copy(
                             series = dataSet.series.map { s ->
                                 s.copy(
                                     values = dataSet.axes.associate { a ->
@@ -245,7 +244,7 @@ internal fun RadarChartDemoScreen(
                         dataSet = dataSet,
                         isPolygonGrid = isPolygonGrid,
                         selected = selectedSeriesData,
-                        onSelect = { s -> selectedSeriesId = s?.id },
+                        onSelect = { s -> viewModel.selectedSeriesId = s?.id },
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
@@ -270,7 +269,7 @@ internal fun RadarChartDemoScreen(
                         dataSet = dataSet,
                         isPolygonGrid = isPolygonGrid,
                         selected = selectedSeriesData,
-                        onSelect = { s -> selectedSeriesId = s?.id },
+                        onSelect = { s -> viewModel.selectedSeriesId = s?.id },
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
