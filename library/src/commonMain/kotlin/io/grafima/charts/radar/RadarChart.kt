@@ -224,9 +224,7 @@ fun RadarChart(
     val chartDescription = remember(dataSet, a11yConfig) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-            series.forEach { s ->
-                append(a11yConfig.seriesDescriptionBuilder(s, axes)).append(". ")
-            }
+            append(a11yConfig.seriesCountDescriptionBuilder(series.size))
         }
     }
 

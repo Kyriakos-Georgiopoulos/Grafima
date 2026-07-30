@@ -195,5 +195,8 @@ data class RadarA11yConfig(
             }
             "Currently selected: ${s.label}. $valueText."
         } ?: "No series selected. Use the actions menu to choose a series."
+    },
+    val seriesCountDescriptionBuilder: (Int) -> String = { count ->
+        "$count series. Use the actions menu to select one."
     }
 )

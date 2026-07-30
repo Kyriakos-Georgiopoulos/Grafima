@@ -31,17 +31,21 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.bar.A11yConfig
 import io.grafima.charts.bar.BarChart
 import io.grafima.charts.bar.BarDataSet
 import io.grafima.charts.bar.BarEntry
 import io.grafima.charts.gauge.GaugeChart
+import io.grafima.charts.line.LineA11yConfig
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
 import io.grafima.charts.line.LineSeries
+import io.grafima.charts.pie.PieA11yConfig
 import io.grafima.charts.pie.PieChart
 import io.grafima.charts.pie.PieDataSet
 import io.grafima.charts.pie.PieEntry
+import io.grafima.charts.radar.RadarA11yConfig
 import io.grafima.charts.radar.RadarAxis
 import io.grafima.charts.radar.RadarChart
 import io.grafima.charts.radar.RadarDataSet
@@ -107,10 +111,6 @@ class AccessibilityContractTest {
 
     @Test
     fun every_chart_exposes_exactly_one_described_accessibility_node() {
-        // mergeDescendants keeps screen readers from walking chart internals,
-        // so each chart must surface one described node — never zero, never many.
-        // A second described node is not a harmless extra: a screen reader can
-        // land on it, and it carries none of the chart's select actions.
         for ((name, chart) in allCharts) {
             runComposeUiTest {
                 setContent { chart() }
@@ -124,8 +124,6 @@ class AccessibilityContractTest {
 
     @Test
     fun interactive_charts_announce_updates_as_polite_live_regions() {
-        // GaugeChart is excluded deliberately: it is non-interactive and
-        // exposes ProgressBarRangeInfo instead of a live region.
         for ((name, chart) in allCharts.filterNot { it.first == "GaugeChart" }) {
             runComposeUiTest {
                 setContent { chart() }
@@ -140,30 +138,50 @@ class AccessibilityContractTest {
         }
     }
 
+    /**
+     * Per-item text each chart must keep out of its description, taken from the
+     * config builder that legitimately produces it elsewhere (a select action or
+     * `stateDescription`), so these stay exact as the defaults change.
+     */
+    private fun forbiddenPerItemText(): Map<String, List<String>> {
+        val pieTotal = pieData.entries.sumOf { it.value.toDouble() }.toFloat()
+        return mapOf(
+            "BarChart" to barData.entries.map { A11yConfig().barDescriptionBuilder(it) },
+            "PieChart" to pieData.entries.map {
+                PieA11yConfig().sliceDescriptionBuilder(it, it.value / pieTotal * 100f)
+            },
+            "RadarChart" to radarData.series.map {
+                RadarA11yConfig().seriesDescriptionBuilder(it, radarData.axes)
+            },
+            "LineChart" to lineData.series.first().points.indices.map {
+                LineA11yConfig().selectedPointDescriptionBuilder(it, lineData.series)
+            }
+        )
+    }
+
     @Test
     fun a_chart_description_does_not_read_out_every_entry() {
-        // The description is re-announced on every selection because the node is a
-        // live region. Enumerating the data here means hearing the whole chart
-        // again just to learn which bar is now selected.
-        runComposeUiTest {
-            setContent { BarChart(dataSet = barData, modifier = Modifier.size(300.dp)) }
-            val description = onChartNode()
-                .fetchSemanticsNode()
-                .config[SemanticsProperties.ContentDescription]
-                .joinToString(" ")
-            barData.entries.forEach { entry ->
-                assertFalse(
-                    description.contains("value is ${entry.y.toInt()}"),
-                    "the description reads out ${entry.xLabel}"
-                )
+        val forbidden = forbiddenPerItemText()
+        for ((name, chart) in allCharts) {
+            val banned = forbidden[name] ?: continue
+            runComposeUiTest {
+                setContent { chart() }
+                val description = onChartNode()
+                    .fetchSemanticsNode()
+                    .config[SemanticsProperties.ContentDescription]
+                    .joinToString(" ")
+                banned.forEach { text ->
+                    assertFalse(
+                        description.contains(text.trim()),
+                        "$name reads out \"${text.trim()}\" in its live-region description"
+                    )
+                }
             }
         }
     }
 
     @Test
     fun custom_action_labels_are_unique_within_a_chart() {
-        // Duplicate labels collapse in the TalkBack action menu, making
-        // entries unreachable.
         for ((name, chart) in listOf(allCharts[0], allCharts[1], allCharts[2], allCharts[3])) {
             runComposeUiTest {
                 setContent { chart() }
@@ -191,9 +209,6 @@ class AccessibilityContractTest {
 
     @Test
     fun the_announced_text_changes_when_the_data_changes() = runComposeUiTest {
-        // The charts are polite live regions; that only helps if the announced
-        // text actually differs after an update. The description summarises, so
-        // what tracks the data is the set of select actions.
         var data by mutableStateOf(barData)
         setContent { BarChart(dataSet = data, modifier = Modifier.size(300.dp)) }
         waitForIdle()
@@ -213,8 +228,6 @@ class AccessibilityContractTest {
 
     @Test
     fun selection_is_reported_as_state_rather_than_in_the_description() {
-        // Keeping selection out of contentDescription means a screen reader
-        // announces just the state change, not the whole chart again.
         runComposeUiTest {
             var selected by mutableStateOf<BarEntry?>(null)
             setContent {
@@ -240,7 +253,6 @@ class AccessibilityContractTest {
                     SemanticsProperties.StateDescription, "Currently selected: Feb, 80."
                 )
             )
-            // The bar list itself must not repeat the selection.
             onNodeWithContentDescription("Currently selected", substring = true)
                 .assertDoesNotExist()
         }
@@ -248,8 +260,6 @@ class AccessibilityContractTest {
 
     @Test
     fun every_chart_declares_an_image_role() {
-        // Mirrors the ARIA role="img" convention for data visualisations, so a
-        // screen reader can tell the user they are on a graphic.
         for ((name, chart) in allCharts) {
             runComposeUiTest {
                 setContent { chart() }
