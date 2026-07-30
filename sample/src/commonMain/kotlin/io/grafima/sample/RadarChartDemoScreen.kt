@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,7 +46,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -236,7 +240,8 @@ internal fun RadarChartDemoScreen(
                             series = dataSet.series,
                             selected = selectedSeriesData,
                             stacked = true,
-                            colors = colors
+                            colors = colors,
+                            onSelect = { s -> viewModel.selectedSeriesId = s?.id }
                         )
                     }
 
@@ -260,7 +265,8 @@ internal fun RadarChartDemoScreen(
                         series = dataSet.series,
                         selected = selectedSeriesData,
                         stacked = false,
-                        colors = colors
+                        colors = colors,
+                        onSelect = { s -> viewModel.selectedSeriesId = s?.id }
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -304,14 +310,27 @@ private fun RadarLegend(
     series: List<RadarSeries>,
     selected: RadarSeries?,
     stacked: Boolean,
-    colors: DemoColors
+    colors: DemoColors,
+    onSelect: (RadarSeries?) -> Unit
 ) {
     val entries: @Composable () -> Unit = {
         series.forEach { s ->
+            val isSelected = selected?.id == s.id
             // Emphasis rides on weight, not on a paler colour: a grey light
             // enough to read as "off" is too light to read.
-            val emphasised = selected == null || selected.id == s.id
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            val emphasised = selected == null || isSelected
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.Tab,
+                        onClick = { onSelect(if (isSelected) null else s) }
+                    )
+                    .background(if (isSelected) colors.surfaceMuted else Color.Transparent)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Canvas(modifier = Modifier.size(10.dp)) {
                     drawCircle(color = s.color, radius = size.minDimension / 2f)
                 }
@@ -319,7 +338,7 @@ private fun RadarLegend(
                     text = s.label,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(start = 6.dp),
-                    fontWeight = if (selected?.id == s.id) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     color = if (emphasised) colors.onSurface else colors.onSurfaceMuted
                 )
             }
@@ -327,14 +346,19 @@ private fun RadarLegend(
     }
 
     if (stacked) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { entries() }
+        Column(
+            modifier = Modifier.selectableGroup(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) { entries() }
     } else {
         // Wraps rather than squeezing: five classes' worth of labels don't
         // reliably fit one line on a phone width.
         FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) { entries() }
     }
 }
