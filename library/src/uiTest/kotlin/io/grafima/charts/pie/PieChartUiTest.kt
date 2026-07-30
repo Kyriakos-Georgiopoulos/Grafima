@@ -18,15 +18,12 @@ package io.grafima.charts.pie
 
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.onChartNode
@@ -53,6 +50,29 @@ class PieChartUiTest {
         staggerDelayMs = 0L,
         startDelayMs = 0L
     )
+
+    @Test
+    fun a_donut_with_centre_content_still_exposes_one_node_that_can_select() =
+        runComposeUiTest {
+            var selected: PieEntry? = null
+            setContent {
+                PieChart(
+                    dataSet = dataSet,
+                    modifier = Modifier.size(300.dp),
+                    style = PieChartStyle(donutRatio = 0.5f),
+                    animationConfig = snapAnimations,
+                    onSliceSelected = { selected = it },
+                    centerContent = { BasicText("Total 100") }
+                )
+            }
+
+            // The centre content is the Canvas's sibling. Merging on the Canvas left
+            // it as a second focusable node competing with the chart, and only one of
+            // them carried the select actions.
+            onChartNode().performCustomAction("Select Development")
+            waitForIdle()
+            assertEquals("dev", selected?.id)
+        }
 
     @Test
     fun the_select_accessibility_action_reports_the_slice_to_the_callback() = runComposeUiTest {

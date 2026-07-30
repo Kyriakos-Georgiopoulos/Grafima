@@ -19,6 +19,8 @@ package io.grafima.charts.bar
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -43,14 +45,34 @@ internal fun barThicknessAndGap(
     extent: Float,
     count: Int,
     spacingFactor: Float
+): Pair<Float, Float> = barThicknessAndGap(extent, count.toFloat(), spacingFactor)
+
+/**
+ * The same split over a fractional [count], which is what a slot collapsing after
+ * a removal produces: the survivors widen across the collapse instead of jumping
+ * once it completes.
+ */
+internal fun barThicknessAndGap(
+    extent: Float,
+    count: Float,
+    spacingFactor: Float
 ): Pair<Float, Float> {
+    val slots = count.coerceAtLeast(0.01f)
     val totalSpacing = extent * spacingFactor.coerceIn(0f, 0.9f)
-    return (extent - totalSpacing) / count to totalSpacing / (count + 1)
+    return (extent - totalSpacing) / slots to totalSpacing / (slots + 1f)
 }
 
 /** LTR offset of bar [index] along the layout axis, measured from [leadingInset]. */
 internal fun barSlotOffset(index: Int, leadingInset: Float, thickness: Float, gap: Float): Float =
-    leadingInset + gap + index * (thickness + gap)
+    barSlotOffset(index.toFloat(), leadingInset, thickness, gap)
+
+/** The same offset for a fractional slot [position] — the slots ahead of this bar. */
+internal fun barSlotOffset(
+    position: Float,
+    leadingInset: Float,
+    thickness: Float,
+    gap: Float
+): Float = leadingInset + gap + position * (thickness + gap)
 
 /** Mirrors an LTR offset across [totalExtent] for RTL layouts. */
 internal fun mirrorForRtl(
@@ -61,18 +83,16 @@ internal fun mirrorForRtl(
 ): Float = if (isRtl) totalExtent - ltrOffset - thickness else ltrOffset
 
 /**
- * The chart's accessibility description: summary plus one sentence per bar.
- *
- * Selection is deliberately excluded — it is exposed as a separate
- * `stateDescription`, so a screen reader announces only what changed on
- * selection instead of re-reading every bar.
+ * A summary, not a reading of the data: this node is a live region, so anything
+ * here is repeated on every selection. Per-bar values live in the select actions
+ * and in `stateDescription`.
  */
 internal fun buildBarChartDescription(
     dataSet: BarDataSet,
     a11yConfig: A11yConfig
 ): String = buildString {
     append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-    dataSet.entries.forEach { append(a11yConfig.barDescriptionBuilder(it)).append(". ") }
+    append(a11yConfig.barCountDescriptionBuilder(dataSet.entries.size))
 }
 
 @Stable
@@ -81,11 +101,25 @@ internal class ChartAnimationEngine {
     val selectionAlphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedIds = mutableSetOf<String>()
 
+    /** How much of its slot a departing bar still holds: 1 until it has sunk, then to 0. */
+    val slotAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
+
+    private val exitTracker = ExitTracker<BarEntry> { it.id }
+
+    /** Bars the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<BarEntry>> get() = exitTracker.exiting
+
     fun syncAnimatables(entries: List<BarEntry>) {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        heightAnimatables.keys.removeAll { it !in currentIds }
-        selectionAlphaAnimatables.keys.removeAll { it !in currentIds }
-        initializedIds.removeAll { it !in currentIds }
+        // An id that returns mid-exit rejoins the dataset and grows from where it got to.
+        val (departed, returned) = exitTracker.sync(entries)
+        departed.forEach { slotAnimatables[it.item.id] = Animatable(1f) }
+        returned.forEach { slotAnimatables.remove(it.item.id) }
+
+        val drawn = entries.mapTo(mutableSetOf()) { it.id } +
+            exitTracker.exiting.mapTo(mutableSetOf()) { it.item.id }
+        heightAnimatables.keys.removeAll { it !in drawn }
+        selectionAlphaAnimatables.keys.removeAll { it !in drawn }
+        initializedIds.removeAll { it !in drawn }
 
         entries.forEach { entry ->
             heightAnimatables.getOrPut(entry.id) { Animatable(0f) }
@@ -93,18 +127,71 @@ internal class ChartAnimationEngine {
         }
     }
 
-    fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
-        entries.forEachIndexed { index, entry ->
-            val heightAnim = heightAnimatables[entry.id] ?: return@forEachIndexed
-            val isInitialLoad = initializedIds.add(entry.id)
+    /**
+     * Removes a bar in two movements: its entry animation in reverse, then the slot
+     * it held collapsing on [AnimationConfig.morphSpec] as the survivors widen in.
+     */
+    fun launchExitAnimations(config: AnimationConfig, scope: CoroutineScope) {
+        exitTracker.exiting.forEach { bar ->
+            val id = bar.item.id
+            val height = heightAnimatables[id] ?: return@forEach
+            val slot = slotAnimatables[id] ?: return@forEach
+            if (height.isRunning || slot.isRunning) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (slot.value == 0f) {
+                forget(bar)
+                return@forEach
+            }
 
             scope.launch {
-                if (isInitialLoad) {
-                    delay(config.startDelayMs + (index * config.staggerDelayMs))
+                height.animateTo(0f, config.initialEntrySpec)
+                slot.animateTo(0f, config.morphSpec)
+                forget(bar)
+            }
+        }
+    }
+
+    private fun forget(bar: Exiting<BarEntry>) {
+        val id = bar.item.id
+        heightAnimatables.remove(id)
+        selectionAlphaAnimatables.remove(id)
+        slotAnimatables.remove(id)
+        initializedIds.remove(id)
+        exitTracker.forget(bar)
+    }
+
+    /**
+     * Dataset bars with the departing ones back in the positions they held. Draw
+     * order only — touch handling and the accessibility description stay on the
+     * dataset.
+     */
+    fun renderEntries(entries: List<BarEntry>): List<BarEntry> = exitTracker.render(entries)
+
+    /** A bar's remaining claim on its slot. Read while drawing: it changes per frame. */
+    fun slotOccupancy(id: String): Float = slotAnimatables[id]?.value ?: 1f
+
+    /** Slots currently in use, counting a collapsing one as the fraction it still holds. */
+    fun slotCount(renderEntries: List<BarEntry>): Float =
+        if (exitTracker.exiting.isEmpty()) renderEntries.size.toFloat()
+        else renderEntries.fold(0f) { acc, entry -> acc + slotOccupancy(entry.id) }
+
+    fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
+        // Stagger by position among the bars appearing now, not by dataset index.
+        // Identical on first load; on a later append it saves the newcomer waiting
+        // one stagger step per bar already drawn.
+        var appearing = 0
+        entries.forEach { entry ->
+            val heightAnim = heightAnimatables[entry.id] ?: return@forEach
+
+            if (initializedIds.add(entry.id)) {
+                val position = appearing++
+                scope.launch {
+                    delay(config.startDelayMs + (position * config.staggerDelayMs))
                     heightAnim.animateTo(entry.y, config.initialEntrySpec)
-                } else if (heightAnim.targetValue != entry.y) {
-                    heightAnim.animateTo(entry.y, config.morphSpec)
                 }
+            } else if (heightAnim.targetValue != entry.y) {
+                scope.launch { heightAnim.animateTo(entry.y, config.morphSpec) }
             }
         }
     }

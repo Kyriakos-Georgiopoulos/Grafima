@@ -29,32 +29,21 @@ class RadarA11yDefaultsTest {
     )
 
     @Test
-    fun `series percentages are relative to each axis maximum`() {
+    fun `the selected state description covers both states`() {
+        // Spoken on its own when the selection changes, so it names every axis
+        // value rather than just the series.
         val series = RadarSeries(
             id = "s1",
             label = "Model A",
-            values = mapOf("speed" to 100f, "power" to 60f)
+            values = mapOf("speed" to 100f, "power" to 40f)
         )
-        // speed: 100/200 → 50%; power: 60/100 → 60%.
         assertEquals(
-            "Model A (Speed: 50%, Power: 60%)",
-            config.seriesDescriptionBuilder(series, axes)
+            "Currently selected: Model A. Speed 100, Power 40.",
+            config.selectedStateDescription(series, axes)
         )
-    }
-
-    @Test
-    fun `a missing axis value reads as zero percent`() {
-        val series = RadarSeries(id = "s1", label = "Model A", values = mapOf("speed" to 100f))
         assertEquals(
-            "Model A (Speed: 50%, Power: 0%)",
-            config.seriesDescriptionBuilder(series, axes)
+            "No series selected. Use the actions menu to choose a series.",
+            config.selectedStateDescription(null, axes)
         )
-    }
-
-    @Test
-    fun `the selected state description covers both states`() {
-        val series = RadarSeries(id = "s1", label = "Model A", values = emptyMap())
-        assertEquals("Currently selected: Model A.", config.selectedStateDescription(series))
-        assertEquals("No series selected.", config.selectedStateDescription(null))
     }
 }

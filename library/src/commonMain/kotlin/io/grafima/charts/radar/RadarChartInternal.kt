@@ -20,8 +20,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlin.math.min
 
@@ -66,15 +69,23 @@ internal class RadarChartAnimationEngine {
     internal val alphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()
 
+    private val exitTracker = ExitTracker<RadarSeries> { it.id }
+
+    /** Series the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<RadarSeries>> get() = exitTracker.exiting
+
     /**
      * Ensures Animatable instances exist for all current (series, axis) pairs
      * and removes stale ones. Synchronous and idempotent.
      */
     fun syncAnimatables(axes: List<RadarAxis>, series: List<RadarSeries>) {
-        val activeValueKeys = mutableSetOf<String>()
-        val activeSeriesIds = series.mapTo(mutableSetOf()) { it.id }
+        exitTracker.sync(series)
 
-        series.forEach { s ->
+        val drawn = renderSeries(series)
+        val activeValueKeys = mutableSetOf<String>()
+        val activeSeriesIds = drawn.mapTo(mutableSetOf()) { it.id }
+
+        drawn.forEach { s ->
             axes.forEach { a ->
                 val key = "${s.id}::${a.id}"
                 activeValueKeys.add(key)
@@ -87,6 +98,46 @@ internal class RadarChartAnimationEngine {
         alphaAnimatables.keys.removeAll { it !in activeSeriesIds }
         initializedKeys.removeAll { it !in activeValueKeys }
     }
+
+    /** Collapses a departing series to the centre: its entry animation in reverse. */
+    fun launchExitAnimations(
+        axes: List<RadarAxis>,
+        config: RadarAnimationConfig,
+        scope: CoroutineScope
+    ) {
+        exitTracker.exiting.forEach { leaving ->
+            val keys = axes.map { "${leaving.item.id}::${it.id}" }
+            val anims = keys.mapNotNull { valueAnimatables[it] }
+            if (anims.isEmpty()) return@forEach
+            if (anims.any { it.isRunning }) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (anims.all { it.value == 0f }) {
+                forget(leaving, keys)
+                return@forEach
+            }
+
+            scope.launch {
+                // Together, so the shape closes inward rather than unwinding axis by axis.
+                anims.map { anim ->
+                    launch { anim.animateTo(0f, config.initialEntrySpec) }
+                }.joinAll()
+                forget(leaving, keys)
+            }
+        }
+    }
+
+    private fun forget(leaving: Exiting<RadarSeries>, keys: List<String>) {
+        keys.forEach { key ->
+            valueAnimatables.remove(key)
+            initializedKeys.remove(key)
+        }
+        alphaAnimatables.remove(leaving.item.id)
+        exitTracker.forget(leaving)
+    }
+
+    /** Draw order only: touch handling and a11y stay on the dataset. */
+    fun renderSeries(series: List<RadarSeries>): List<RadarSeries> = exitTracker.render(series)
 
     /**
      * Launches staggered vertex animations. New vertices animate from 0 with

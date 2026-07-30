@@ -20,7 +20,7 @@ import androidx.compose.animation.core.snap
 import io.grafima.charts.runEngineTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import kotlin.test.assertNotNull
 
 class RadarChartAnimationEngineTest {
 
@@ -51,13 +51,31 @@ class RadarChartAnimationEngineTest {
     }
 
     @Test
-    fun `a removed series loses its animatables`() {
+    fun `a removed series keeps its animatables while it collapses`() {
         val engine = RadarChartAnimationEngine()
         engine.syncAnimatables(axes, listOf(series("s1", emptyMap()), series("s2", emptyMap())))
         engine.syncAnimatables(axes, listOf(series("s1", emptyMap())))
 
-        assertNull(engine.valueAnimatables["s2::speed"])
-        assertNull(engine.alphaAnimatables["s2"])
+        // "s2" left the dataset but is still drawn while it collapses to the
+        // centre, so its animatables outlive the swap. Eviction is the exit's job.
+        assertEquals(listOf("s2"), engine.exiting.map { it.item.id })
+        assertNotNull(engine.valueAnimatables["s2::speed"])
+        assertNotNull(engine.alphaAnimatables["s2"])
+    }
+
+    @Test
+    fun `a series is still drawn on the very frame it leaves the dataset`() {
+        val engine = RadarChartAnimationEngine()
+        val data = listOf(series("s1", emptyMap()), series("s2", emptyMap()))
+        engine.syncAnimatables(axes, data)
+
+        // renderSeries runs during composition, before the SideEffect files "s2"
+        // under exiting. It must already report "s2" or the shape blinks out.
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
+        assertEquals(
+            listOf("s1", "s2"),
+            engine.renderSeries(listOf(series("s1", emptyMap()))).map { it.id }
+        )
     }
 
     @Test

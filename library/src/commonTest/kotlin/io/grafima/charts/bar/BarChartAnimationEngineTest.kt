@@ -16,8 +16,11 @@
 
 package io.grafima.charts.bar
 
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import io.grafima.charts.runEngineTest
+import kotlin.test.assertTrue
 import kotlinx.coroutines.cancel
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,7 +52,7 @@ class BarChartAnimationEngineTest {
     }
 
     @Test
-    fun `sync removes stale animatables and keeps surviving instances`() {
+    fun `sync keeps surviving instances and hands a departed bar to the exit`() {
         val engine = ChartAnimationEngine()
         engine.syncAnimatables(entries("a" to 10f, "b" to 20f))
         val survivor = engine.heightAnimatables.getValue("a")
@@ -58,8 +61,11 @@ class BarChartAnimationEngineTest {
 
         // Same instance survives — that's what keeps morphs continuous across data swaps.
         assertSame(survivor, engine.heightAnimatables.getValue("a"))
-        assertNull(engine.heightAnimatables["b"])
-        assertEquals(setOf("a", "c"), engine.heightAnimatables.keys)
+
+        // "b" is still drawn while it animates out, so its animatable outlives
+        // the swap. Eviction is the exit's job.
+        assertEquals(listOf("b"), engine.exiting.map { it.item.id })
+        assertEquals(setOf("a", "b", "c"), engine.heightAnimatables.keys)
     }
 
     @Test
@@ -110,6 +116,113 @@ class BarChartAnimationEngineTest {
         harness.advanceFrames(100)
         assertEquals(20f, engine.heightAnimatables.getValue("b").value)
     }
+
+    @Test
+    fun `a removed bar shrinks back to zero before it stops being drawn`() =
+        runEngineTest { harness ->
+            val engine = ChartAnimationEngine()
+            // Both phases need a real duration here: the sink, then the slot
+            // collapsing on morphSpec while the survivors widen into it.
+            val config = snapConfig.copy(
+                initialEntrySpec = tween(durationMillis = 200, easing = LinearEasing),
+                morphSpec = tween(durationMillis = 200, easing = LinearEasing)
+            )
+            val data = entries("a" to 10f, "b" to 20f)
+
+            engine.syncAnimatables(data)
+            engine.launchEntryAnimations(data, config, harness.launchScope())
+            harness.advanceFrames(400)
+            assertEquals(20f, engine.heightAnimatables.getValue("b").value)
+
+            engine.syncAnimatables(entries("a" to 10f))
+            engine.launchExitAnimations(config, harness.launchScope())
+
+            harness.advanceFrames(100)
+            val midExit = engine.heightAnimatables.getValue("b").value
+            assertTrue(midExit > 0f && midExit < 20f, "expected a partial shrink, got ${'$'}midExit")
+            assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
+
+            // Sunk, but the slot is still collapsing, so the bar is still drawn.
+            harness.advanceFrames(150)
+            assertEquals(0f, engine.heightAnimatables.getValue("b").value)
+            assertEquals(listOf("b"), engine.exiting.map { it.item.id })
+
+            harness.advanceFrames(2000)
+            assertEquals(emptyList(), engine.exiting.map { it.item.id })
+            assertNull(engine.heightAnimatables["b"])
+        }
+
+    @Test
+    fun `an exit left at rest by a cancelled coroutine is finished on the next pass`() =
+        runEngineTest { harness ->
+            val engine = ChartAnimationEngine()
+            val data = entries("a" to 10f, "b" to 20f)
+            engine.syncAnimatables(data)
+            engine.launchEntryAnimations(data, snapConfig, harness.launchScope())
+            harness.advanceFrames(100)
+
+            engine.syncAnimatables(entries("a" to 10f))
+
+            // What a cancelled exit leaves behind: at rest, but still listed.
+            engine.heightAnimatables.getValue("b").snapTo(0f)
+            engine.slotAnimatables.getValue("b").snapTo(0f)
+            assertEquals(listOf("b"), engine.exiting.map { it.item.id })
+
+            engine.launchExitAnimations(snapConfig, harness.launchScope())
+            harness.advanceFrames(100)
+            assertEquals(emptyList(), engine.exiting.map { it.item.id })
+            assertNull(engine.heightAnimatables["b"])
+            assertNull(engine.slotAnimatables["b"])
+        }
+
+    @Test
+    fun `a bar is still drawn on the very frame it leaves the dataset`() {
+        val engine = ChartAnimationEngine()
+        val data = entries("a" to 10f, "b" to 20f)
+        engine.syncAnimatables(data)
+
+        // renderEntries runs during composition, before the SideEffect that files
+        // "b" under exiting. It must already report "b" or the bar blinks out.
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
+        assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
+    }
+
+    @Test
+    fun `a bar removed and restored mid-exit rejoins the dataset`() = runEngineTest { harness ->
+        val engine = ChartAnimationEngine()
+        val data = entries("a" to 10f, "b" to 20f)
+
+        engine.syncAnimatables(data)
+        engine.launchEntryAnimations(data, snapConfig, harness.launchScope())
+        harness.advanceFrames(100)
+
+        engine.syncAnimatables(entries("a" to 10f))
+        engine.syncAnimatables(data)
+
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
+        assertEquals(listOf("a", "b"), engine.renderEntries(data).map { it.id })
+    }
+
+    @Test
+    fun `a bar appended later waits only the start delay and not the whole cascade`() =
+        runEngineTest { harness ->
+            val engine = ChartAnimationEngine()
+            val config = snapConfig.copy(startDelayMs = 100L, staggerDelayMs = 100L)
+            val opening = entries("a" to 10f, "b" to 20f)
+
+            engine.syncAnimatables(opening)
+            engine.launchEntryAnimations(opening, config, harness.launchScope())
+            harness.advanceFrames(400)
+
+            val grown = entries("a" to 10f, "b" to 20f, "c" to 30f)
+            engine.syncAnimatables(grown)
+            engine.launchEntryAnimations(grown, config, harness.launchScope())
+
+            // Staggering on the dataset index would hold "c" back by 300ms as the
+            // third bar. It is the only bar arriving, so it owes one start delay.
+            harness.advanceFrames(150)
+            assertEquals(30f, engine.heightAnimatables.getValue("c").value)
+        }
 
     /**
      * Regression for the scope bug fixed on the KMP branch: BarChart used to pass

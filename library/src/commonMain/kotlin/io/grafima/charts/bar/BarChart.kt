@@ -92,6 +92,9 @@ fun BarChart(
     // first draw unsubscribed and the bars never painted on iOS.
     SideEffect { animationEngine.syncAnimatables(entries) }
 
+    // Drawn, but not in the dataset: exiting bars stay out of hit testing and a11y.
+    val renderEntries = animationEngine.renderEntries(entries)
+
     val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
@@ -116,7 +119,9 @@ fun BarChart(
     val currentOnBarSelected by rememberUpdatedState(onBarSelected)
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
 
-    val maxBarValue = remember(entries) { computeBarAxisMax(entries) }
+    // Over what is drawn, so removing the tallest bar doesn't rescale the axis
+    // out from under it mid-exit.
+    val maxBarValue = remember(renderEntries) { computeBarAxisMax(renderEntries) }
 
     val maxLabelResult = remember(maxBarValue, axisConfig.axisLabelTextStyle) {
         textMeasurer.measure(
@@ -141,8 +146,8 @@ fun BarChart(
             }
         }
 
-    val xLabelLayouts = remember(entries, style.labelTextStyle) {
-        entries.associate {
+    val xLabelLayouts = remember(renderEntries, style.labelTextStyle) {
+        renderEntries.associate {
             it.id to textMeasurer.measure(
                 text = it.xLabel,
                 style = style.labelTextStyle
@@ -169,8 +174,8 @@ fun BarChart(
         style.valueTextStyle.copy(textAlign = TextAlign.Center)
     }
 
-    val colorStopArrays = remember(entries) {
-        entries.associate { entry ->
+    val colorStopArrays = remember(renderEntries) {
+        renderEntries.associate { entry ->
             entry.id to entry.colorStops?.map { stop -> stop.position to stop.color }?.toTypedArray()
         }
     }
@@ -204,6 +209,7 @@ fun BarChart(
         }
         valueTextCache.clear()
         animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, this)
+        animationEngine.launchExitAnimations(effectiveAnimationConfig, this)
     }
 
     LaunchedEffect(entries, selectedEntry) {
@@ -219,10 +225,10 @@ fun BarChart(
     Canvas(
         modifier = modifier
             .semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
                 role = Role.Image
                 contentDescription = chartDescription
                 stateDescription = chartStateDescription
-                liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     entries.forEach { entry ->
                         add(
@@ -355,7 +361,7 @@ fun BarChart(
             val chartBottom = size.height - bottomSpacePx
             val hChartWidth = chartRight - chartLeft
             val (barThickness, barGap) = barThicknessAndGap(
-                chartBottom - horizontalTopPadPx, entries.size, style.barSpacingFactor
+                chartBottom - horizontalTopPadPx, animationEngine.slotCount(renderEntries), style.barSpacingFactor
             )
 
             drawHorizontalGrid(
@@ -370,6 +376,7 @@ fun BarChart(
             )
             drawHorizontalBars(
                 dataSet = dataSet,
+                renderEntries = renderEntries,
                 style = style,
                 animationEngine = animationEngine,
                 colorStopArrays = colorStopArrays,
@@ -414,7 +421,7 @@ fun BarChart(
         val chartWidth = size.width - yAxisWidthPx
         val chartHeight = size.height - bottomSpacePx - topSpacePx
         val (barWidth, barSpacing) = barThicknessAndGap(
-            chartWidth, entries.size, style.barSpacingFactor
+            chartWidth, animationEngine.slotCount(renderEntries), style.barSpacingFactor
         )
 
         drawVerticalGrid(
@@ -428,6 +435,7 @@ fun BarChart(
         )
         drawVerticalBars(
             dataSet = dataSet,
+            renderEntries = renderEntries,
             style = style,
             animationEngine = animationEngine,
             colorStopArrays = colorStopArrays,

@@ -45,8 +45,22 @@ import androidx.compose.ui.unit.sp
 data class LineDataPoint(
     val x: Float,
     val y: Float,
-    val label: String = ""
+    val label: String = "",
+    /**
+     * Spoken instead of [label] when set.
+     *
+     * Axis labels are abbreviated to fit — twelve of them have to share the width
+     * — but "Apr" is not what a listener wants to hear. Set this to the full form
+     * and the chart keeps drawing [label] while announcing this.
+     */
+    val contentDescription: String = ""
 )
+
+/** What a screen reader should say for this point. */
+internal val LineDataPoint.spokenLabel: String
+    get() = contentDescription
+        .ifEmpty { label }
+        .ifEmpty { x.toInt().toString() }
 
 /**
  * A data series rendered as a single line on the chart.
@@ -289,8 +303,7 @@ data class LineA11yConfig(
             series.forEach { s ->
                 if (idx in s.points.indices) {
                     val p = s.points[idx]
-                    val lbl = p.label.ifEmpty { p.x.toInt().toString() }
-                    append("${s.label} at $lbl: ${p.y.toInt()}. ")
+                    append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")
                 }
             }
         }

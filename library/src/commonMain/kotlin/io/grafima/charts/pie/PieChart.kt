@@ -114,6 +114,9 @@ fun PieChart(
     val animationEngine = remember { PieChartAnimationEngine() }
     val density = LocalDensity.current
 
+    // Drawn, but not in the dataset: closing slices stay out of hit testing and a11y.
+    val renderEntries = animationEngine.renderEntries(entries)
+
     val reduceMotion = rememberEffectiveReduceMotion()
     val effectiveAnimationConfig = remember(animationConfig, reduceMotion) {
         if (reduceMotion) {
@@ -151,19 +154,20 @@ fun PieChart(
     }
     val currentTargetTotal by rememberUpdatedState(targetTotalValue)
 
-    val chartStateDescription = remember(selectedEntry, a11yConfig) {
-        a11yConfig.selectedStateDescription(selectedEntry)
+    val chartStateDescription = remember(selectedEntry, targetTotalValue, a11yConfig) {
+        val share = selectedEntry
+            ?.takeIf { targetTotalValue > 0f }
+            ?.let { (it.value / targetTotalValue) * 100f }
+            ?: 0f
+        a11yConfig.selectedStateDescription(selectedEntry, share)
     }
 
-    val chartDescription = remember(dataSet, targetTotalValue, a11yConfig) {
+    // A summary, not a reading of the data: this node is a live region, so anything
+    // here is repeated on every selection.
+    val chartDescription = remember(dataSet, a11yConfig) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-            if (targetTotalValue > 0f) {
-                entries.forEach { entry ->
-                    val percentage = (entry.value / targetTotalValue) * 100
-                    append(a11yConfig.sliceDescriptionBuilder(entry, percentage)).append(". ")
-                }
-            }
+            append(a11yConfig.sliceCountDescriptionBuilder(entries.size))
         }
     }
 
@@ -229,6 +233,7 @@ fun PieChart(
             currentOnSliceSelected(null)
         }
         animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, this)
+        animationEngine.launchExitAnimations(effectiveAnimationConfig, this)
     }
 
     // Keyed on entries and selection: a selection change restarts from the current
@@ -239,18 +244,18 @@ fun PieChart(
         )
     }
 
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(
+    Box(modifier = modifier) {
+        Box(
+            // On the Box, not the Canvas: `centerContent` is the Canvas's sibling, so
+            // merging there would leave the centre text as a second focusable node
+            // carrying none of the select actions.
             modifier = Modifier
                 .fillMaxSize()
                 .semantics(mergeDescendants = true) {
-                    role = Role.Image
+                    liveRegion = LiveRegionMode.Polite
+                role = Role.Image
                     contentDescription = chartDescription
                     stateDescription = chartStateDescription
-                    liveRegion = LiveRegionMode.Polite
                     customActions = buildList {
                         entries.forEach { entry ->
                             add(
@@ -269,123 +274,134 @@ fun PieChart(
                             )
                         }
                     }
-                }
-                // pointerInput(Unit) never restarts, so no touches are dropped
-                // during a restart window; current values come from the refs above.
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        val touchPos = down.position
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // pointerInput(Unit) never restarts, so no touches are dropped
+                    // during a restart window; current values come from the refs above.
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown()
+                            val touchPos = down.position
 
-                        val activeStyle = currentStyle
-                        val activeIsRtl = currentIsRtl
-                        val activeDensity = currentDensity
+                            val activeStyle = currentStyle
+                            val activeIsRtl = currentIsRtl
+                            val activeDensity = currentDensity
 
-                        val cx = size.width.toFloat() / 2f
-                        val cy = size.height.toFloat() / 2f
+                            val cx = size.width.toFloat() / 2f
+                            val cy = size.height.toFloat() / 2f
 
-                        val effectiveX =
-                            if (activeIsRtl) size.width.toFloat() - touchPos.x else touchPos.x
-                        val dx = effectiveX - cx
-                        val dy = touchPos.y - cy
+                            val effectiveX =
+                                if (activeIsRtl) size.width.toFloat() - touchPos.x else touchPos.x
+                            val dx = effectiveX - cx
+                            val dy = touchPos.y - cy
 
-                        val touchRadius = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-                        val maxRadius = resolveOuterRadius(
-                            style = activeStyle,
-                            canvasWidth = size.width.toFloat(),
-                            canvasHeight = size.height.toFloat(),
-                            density = activeDensity
-                        )
-                        val minRadius = maxRadius * activeStyle.donutRatio.coerceIn(0f, 0.9f)
+                            val touchRadius = hypot(dx.toDouble(), dy.toDouble()).toFloat()
+                            val maxRadius = resolveOuterRadius(
+                                style = activeStyle,
+                                canvasWidth = size.width.toFloat(),
+                                canvasHeight = size.height.toFloat(),
+                                density = activeDensity
+                            )
+                            val minRadius = maxRadius * activeStyle.donutRatio.coerceIn(0f, 0.9f)
 
-                        if (touchRadius !in minRadius..maxRadius) {
-                            if (currentSelectedEntry != null) currentOnSliceSelected(null)
-                            return@awaitEachGesture
-                        }
-
-                        var touchAngle = toDegrees(
-                            atan2(dy.toDouble(), dx.toDouble())
-                        ).toFloat()
-                        touchAngle = (touchAngle - activeStyle.startAngle) % 360f
-                        if (touchAngle < 0f) touchAngle += 360f
-
-                        // derivedStateOf evaluates here, on-demand at touch time
-                        val tappedSlice = sliceTouchBounds.find { (_, bounds) ->
-                            touchAngle in bounds
-                        }?.first
-
-                        if (tappedSlice != null) {
-                            if (currentSelectedEntry?.id == tappedSlice.id) {
-                                currentOnSliceSelected(null)
-                            } else {
-                                currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
-                                currentOnSliceSelected(tappedSlice)
+                            if (touchRadius !in minRadius..maxRadius) {
+                                if (currentSelectedEntry != null) currentOnSliceSelected(null)
+                                return@awaitEachGesture
                             }
-                        } else {
-                            currentOnSliceSelected(null)
+
+                            var touchAngle = toDegrees(
+                                atan2(dy.toDouble(), dx.toDouble())
+                            ).toFloat()
+                            touchAngle = (touchAngle - activeStyle.startAngle) % 360f
+                            if (touchAngle < 0f) touchAngle += 360f
+
+                            // derivedStateOf evaluates here, on-demand at touch time
+                            val tappedSlice = sliceTouchBounds.find { (_, bounds) ->
+                                touchAngle in bounds
+                            }?.first
+
+                            if (tappedSlice != null) {
+                                if (currentSelectedEntry?.id == tappedSlice.id) {
+                                    currentOnSliceSelected(null)
+                                } else {
+                                    currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                                    currentOnSliceSelected(tappedSlice)
+                                }
+                            } else {
+                                currentOnSliceSelected(null)
+                            }
                         }
                     }
-                }
-        ) {
-            // ── Pure draw lambda: no state mutations ──
-            if (entries.isEmpty() || targetTotalValue <= 0f) return@Canvas
+            ) {
+                // ── Pure draw lambda: no state mutations ──
+                if (entries.isEmpty() || targetTotalValue <= 0f) return@Canvas
 
-            val canvasRadius = resolveOuterRadius(
-                style = style,
-                canvasWidth = size.width,
-                canvasHeight = size.height,
-                density = density
-            )
-            val cx = size.width / 2f
-            val cy = size.height / 2f
+                // A closing slice keeps its share until shut, so the survivors expand
+                // as it is released rather than the instant it left the dataset.
+                val drawTotal = targetTotalValue + animationEngine.exitingValue(entries)
 
-            val safeDonutRatio = style.donutRatio.coerceIn(0f, 0.99f)
-            val strokeWidth = canvasRadius * (1f - safeDonutRatio)
-            val drawRadius = canvasRadius - (strokeWidth / 2f)
+                val canvasRadius = resolveOuterRadius(
+                    style = style,
+                    canvasWidth = size.width,
+                    canvasHeight = size.height,
+                    density = density
+                )
+                val cx = size.width / 2f
+                val cy = size.height / 2f
 
-            val directionMultiplier = if (isRtl) -1f else 1f
+                val safeDonutRatio = style.donutRatio.coerceIn(0f, 0.99f)
+                val strokeWidth = canvasRadius * (1f - safeDonutRatio)
+                val drawRadius = canvasRadius - (strokeWidth / 2f)
 
-            val normalizer = pieSweepNormalizer(
-                entries = entries,
-                animationEngine = animationEngine,
-                totalValue = targetTotalValue,
-                minSliceAngle = style.minSliceAngle
-            )
-            drawPieSlices(
-                dataSet = dataSet,
-                style = style,
-                animationEngine = animationEngine,
-                totalValue = targetTotalValue,
-                normalizer = normalizer,
-                cx = cx,
-                cy = cy,
-                canvasRadius = canvasRadius,
-                drawRadius = drawRadius,
-                strokeWidth = strokeWidth,
-                directionMultiplier = directionMultiplier
-            )
-            selectedEntry?.let { entry ->
-                drawPieSelection(
-                    entry = entry,
-                    entries = entries,
+                val directionMultiplier = if (isRtl) -1f else 1f
+
+                val normalizer = pieSweepNormalizer(
+                    entries = renderEntries,
+                    animationEngine = animationEngine,
+                    totalValue = drawTotal,
+                    minSliceAngle = style.minSliceAngle
+                )
+                drawPieSlices(
+                    dataSet = dataSet,
                     style = style,
                     animationEngine = animationEngine,
-                    selectionRenderer = selectionRenderer,
-                    textMeasurer = textMeasurer,
-                    selectionCache = selectionCache,
-                    layoutDirection = layoutDirection,
-                    totalValue = targetTotalValue,
+                    totalValue = drawTotal,
+                    normalizer = normalizer,
                     cx = cx,
                     cy = cy,
                     canvasRadius = canvasRadius,
+                    drawRadius = drawRadius,
                     strokeWidth = strokeWidth,
-                    directionMultiplier = directionMultiplier
+                    directionMultiplier = directionMultiplier,
+                    renderEntries = renderEntries
                 )
+                selectedEntry?.let { entry ->
+                    drawPieSelection(
+                        entry = entry,
+                        entries = entries,
+                        style = style,
+                        animationEngine = animationEngine,
+                        selectionRenderer = selectionRenderer,
+                        textMeasurer = textMeasurer,
+                        selectionCache = selectionCache,
+                        layoutDirection = layoutDirection,
+                        totalValue = drawTotal,
+                        cx = cx,
+                        cy = cy,
+                        canvasRadius = canvasRadius,
+                        strokeWidth = strokeWidth,
+                        directionMultiplier = directionMultiplier
+                    )
+                }
             }
-        }
 
-        if (centerContent != null && style.donutRatio > 0f) {
-            centerContent()
+            if (centerContent != null && style.donutRatio > 0f) {
+                centerContent()
+            }
         }
     }
 }

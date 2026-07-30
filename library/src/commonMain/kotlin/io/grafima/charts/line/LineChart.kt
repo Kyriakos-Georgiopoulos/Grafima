@@ -150,6 +150,9 @@ fun LineChart(
     val isRtl = layoutDirection == LayoutDirection.Rtl
     val animationEngine = remember { LineChartAnimationEngine() }
 
+    // Drawn, but not in the dataset: the crosshair and a11y stay on `series`.
+    val renderSeries = animationEngine.renderSeries(series)
+
     // ── Stable state refs for pointerInput(Unit) ──
     val haptic = LocalHapticFeedback.current
 
@@ -160,7 +163,7 @@ fun LineChart(
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
 
     // ── Data ranges (recomputed only on data change) ──
-    val allPoints = remember(series) { series.flatMap { it.points } }
+    val allPoints = remember(renderSeries) { renderSeries.flatMap { it.points } }
     val xMin = remember(allPoints) { allPoints.minOfOrNull { it.x } ?: 0f }
     val xMax = remember(allPoints) { allPoints.maxOfOrNull { it.x } ?: 1f }
     val currentXMin by rememberUpdatedState(xMin)
@@ -237,17 +240,17 @@ fun LineChart(
     }
 
     // ── Pre-computed key matrix + draw buffers (zero allocation in draw) ──
-    val seriesStructure = remember(series) { series.map { it.id to it.points.size } }
+    val seriesStructure = remember(renderSeries) { renderSeries.map { it.id to it.points.size } }
     val keyMatrix =
-        remember(seriesStructure) { series.associate { s -> s.id to Array(s.points.size) { i -> "${s.id}::$i" } } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to Array(s.points.size) { i -> "${s.id}::$i" } } }
     val xBuffers =
-        remember(seriesStructure) { series.associate { s -> s.id to FloatArray(s.points.size) } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val yBuffers =
-        remember(seriesStructure) { series.associate { s -> s.id to FloatArray(s.points.size) } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val tangentBuffers =
-        remember(seriesStructure) { series.associate { s -> s.id to FloatArray(s.points.size) } }
+        remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val deltasBuffers = remember(seriesStructure) {
-        series.associate { s ->
+        renderSeries.associate { s ->
             s.id to FloatArray(
                 max(
                     0,
@@ -269,8 +272,6 @@ fun LineChart(
         selectedPointIndex?.let { idx -> a11yConfig.selectedPointDescriptionBuilder(idx, series) }
             ?: ""
     }
-    val chartDescription = baseDescription
-    val chartStateDescription = selectedDescription
 
     val tooltipCache = remember { mutableMapOf<String, TextLayoutResult>() }
     val linePath = remember { Path() }
@@ -281,31 +282,30 @@ fun LineChart(
     LaunchedEffect(series) {
         tooltipCache.clear()
         animationEngine.launchEntryAnimations(series, effectiveAnimationConfig, yMin, this)
+        animationEngine.launchExitAnimations(effectiveAnimationConfig, yMin, this)
     }
 
     Canvas(
         modifier = modifier
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
             .semantics(mergeDescendants = true) {
-                role = Role.Image
-                contentDescription = chartDescription
-                stateDescription = chartStateDescription
                 liveRegion = LiveRegionMode.Polite
+                role = Role.Image
+                contentDescription = baseDescription
+                stateDescription = selectedDescription
                 customActions = buildList {
                     val points = series.firstOrNull()?.points.orEmpty()
                     if (points.isNotEmpty()) {
-                        add(
-                            CustomAccessibilityAction(label = "Select next point") {
-                                onPointSelected(((selectedPointIndex ?: -1) + 1).coerceAtMost(points.size - 1))
-                                true
-                            }
-                        )
-                        add(
-                            CustomAccessibilityAction(label = "Select previous point") {
-                                onPointSelected(((selectedPointIndex ?: points.size) - 1).coerceAtLeast(0))
-                                true
-                            }
-                        )
+                        // Named, not next/previous: stepping leaves the listener
+                        // counting along the axis to work out where they landed.
+                        points.forEachIndexed { index, point ->
+                            add(
+                                CustomAccessibilityAction(label = "Select ${point.spokenLabel}") {
+                                    onPointSelected(index)
+                                    true
+                                }
+                            )
+                        }
                         if (selectedPointIndex != null) {
                             add(
                                 CustomAccessibilityAction(label = "Clear selection") {
@@ -445,7 +445,7 @@ fun LineChart(
         }
 
         // ── 4. Series: area fills, line strokes, dots ──
-        series.forEachIndexed { si, s ->
+        renderSeries.forEachIndexed { si, s ->
             val n = s.points.size
             if (n == 0) return@forEachIndexed
             val keys = keyMatrix[s.id] ?: return@forEachIndexed

@@ -23,6 +23,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.Dp
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import io.grafima.charts.toRadians
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -119,6 +121,11 @@ internal class PieChartAnimationEngine {
     internal val alphaAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedIds = mutableSetOf<String>()
 
+    private val exitTracker = ExitTracker<PieEntry> { it.id }
+
+    /** Slices the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<PieEntry>> get() = exitTracker.exiting
+
     /**
      * Ensures Animatable instances exist for all current [entries] and removes stale
      * ones from previous datasets. Synchronous and idempotent. Safe to call on every
@@ -126,16 +133,70 @@ internal class PieChartAnimationEngine {
      * and a single removeAll pass.
      */
     fun syncAnimatables(entries: List<PieEntry>) {
-        val currentIds = entries.mapTo(mutableSetOf()) { it.id }
-        valueAnimatables.keys.removeAll { it !in currentIds }
-        scaleAnimatables.keys.removeAll { it !in currentIds }
-        alphaAnimatables.keys.removeAll { it !in currentIds }
-        initializedIds.removeAll { it !in currentIds }
+        exitTracker.sync(entries)
+
+        val drawn = entries.mapTo(mutableSetOf()) { it.id } +
+            exitTracker.exiting.mapTo(mutableSetOf()) { it.item.id }
+        valueAnimatables.keys.removeAll { it !in drawn }
+        scaleAnimatables.keys.removeAll { it !in drawn }
+        alphaAnimatables.keys.removeAll { it !in drawn }
+        initializedIds.removeAll { it !in drawn }
 
         entries.forEach { entry ->
             valueAnimatables.getOrPut(entry.id) { Animatable(0f) }
             scaleAnimatables.getOrPut(entry.id) { Animatable(1f) }
             alphaAnimatables.getOrPut(entry.id) { Animatable(1f) }
+        }
+    }
+
+    /**
+     * Closes a departing slice by running its entry animation backwards.
+     *
+     * No second movement, unlike a bar: a slice's value is its angle, so the
+     * survivors widen as it closes — provided [exitingValue] keeps counting it.
+     */
+    fun launchExitAnimations(config: PieAnimationConfig, scope: CoroutineScope) {
+        exitTracker.exiting.forEach { slice ->
+            val value = valueAnimatables[slice.item.id] ?: return@forEach
+            if (value.isRunning) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (value.value == 0f) {
+                forget(slice)
+                return@forEach
+            }
+
+            scope.launch {
+                value.animateTo(0f, config.initialEntrySpec)
+                forget(slice)
+            }
+        }
+    }
+
+    private fun forget(slice: Exiting<PieEntry>) {
+        val id = slice.item.id
+        valueAnimatables.remove(id)
+        scaleAnimatables.remove(id)
+        alphaAnimatables.remove(id)
+        initializedIds.remove(id)
+        exitTracker.forget(slice)
+    }
+
+    /**
+     * Dataset slices with the departing ones back in the places they held. Draw
+     * order only — touch handling and the accessibility description stay on the
+     * dataset.
+     */
+    fun renderEntries(entries: List<PieEntry>): List<PieEntry> = exitTracker.render(entries)
+
+    /**
+     * The share the closing slices still hold. Read while drawing, not during
+     * composition: it changes every frame.
+     */
+    fun exitingValue(entries: List<PieEntry>): Float {
+        if (exitTracker.exiting.isEmpty()) return 0f
+        return exitTracker.exiting.fold(0f) { acc, slice ->
+            acc + (valueAnimatables[slice.item.id]?.value ?: 0f)
         }
     }
 
@@ -151,17 +212,21 @@ internal class PieChartAnimationEngine {
         config: PieAnimationConfig,
         scope: CoroutineScope
     ) {
-        entries.forEachIndexed { index, entry ->
-            val valueAnim = valueAnimatables[entry.id] ?: return@forEachIndexed
-            val isInitialLoad = initializedIds.add(entry.id)
+        // Stagger by position among the slices appearing now, not by dataset index.
+        // Identical on first load; on a later addition it saves the newcomer waiting
+        // one stagger step per slice already drawn.
+        var appearing = 0
+        entries.forEach { entry ->
+            val valueAnim = valueAnimatables[entry.id] ?: return@forEach
 
-            scope.launch {
-                if (isInitialLoad) {
-                    delay(config.startDelayMs + (index * config.staggerDelayMs))
+            if (initializedIds.add(entry.id)) {
+                val position = appearing++
+                scope.launch {
+                    delay(config.startDelayMs + (position * config.staggerDelayMs))
                     valueAnim.animateTo(entry.value, config.initialEntrySpec)
-                } else if (valueAnim.targetValue != entry.value) {
-                    valueAnim.animateTo(entry.value, config.morphSpec)
                 }
+            } else if (valueAnim.targetValue != entry.value) {
+                scope.launch { valueAnim.animateTo(entry.value, config.morphSpec) }
             }
         }
     }

@@ -24,11 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -61,7 +57,7 @@ class BarChartUiTest {
     )
 
     @Test
-    fun the_chart_description_contains_the_dataset_and_every_bar() = runComposeUiTest {
+    fun the_chart_description_summarises_the_dataset() = runComposeUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet,
@@ -69,9 +65,11 @@ class BarChartUiTest {
                 animationConfig = snapAnimations
             )
         }
+        // A summary, not a reading of the data — the node is a live region and
+        // would otherwise repeat every bar on each selection.
         onNodeWithContentDescription("Monthly revenue", substring = true).assertExists()
-        onNodeWithContentDescription("Jan value is 45", substring = true).assertExists()
-        onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
+        onNodeWithContentDescription("2 bars", substring = true).assertExists()
+        onNodeWithContentDescription("Jan value is 45", substring = true).assertDoesNotExist()
     }
 
 

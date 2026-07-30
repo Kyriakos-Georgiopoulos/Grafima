@@ -30,10 +30,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 
-// DrawScope extensions, not composables or lambdas: static calls with no
-// per-frame allocation. Cached text layouts and colour stops stay owned by the
-// composable and are passed in, so caching granularity is unchanged.
-
 /** Horizontal grid lines with y-axis labels, plus the baseline. */
 internal fun DrawScope.drawVerticalGrid(
     axisConfig: AxisConfig,
@@ -147,6 +143,7 @@ internal fun DrawScope.drawHorizontalGrid(
 
 internal fun DrawScope.drawVerticalBars(
     dataSet: BarDataSet,
+    renderEntries: List<BarEntry>,
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
@@ -165,12 +162,18 @@ internal fun DrawScope.drawVerticalBars(
     cornerRadiusPx: Float,
     isRtl: Boolean
 ) {
-    dataSet.entries.forEachIndexed { index, entry ->
+    // Running total of the slots to the left, so a collapsing slot slides the
+    // bars after it across rather than teleporting them.
+    var position = 0f
+    renderEntries.forEach { entry ->
+        val occupancy = animationEngine.slotOccupancy(entry.id)
         val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-        val selectionAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+        val selectionAlpha =
+            (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
         val targetHeight = (animatedValue / maxBarValue) * chartHeight
 
-        val ltrXOffset = barSlotOffset(index, yAxisWidthPx, barWidth, barSpacing)
+        val ltrXOffset = barSlotOffset(position, yAxisWidthPx, barWidth, barSpacing)
+        position += occupancy
         val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
         val yOffset = size.height - bottomSpacePx - targetHeight
 
@@ -233,6 +236,7 @@ internal fun DrawScope.drawVerticalBars(
 
 internal fun DrawScope.drawHorizontalBars(
     dataSet: BarDataSet,
+    renderEntries: List<BarEntry>,
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
@@ -252,12 +256,16 @@ internal fun DrawScope.drawHorizontalBars(
     cornerRadiusPx: Float,
     isRtl: Boolean
 ) {
-    dataSet.entries.forEachIndexed { index, entry ->
+    var position = 0f
+    renderEntries.forEach { entry ->
+        val occupancy = animationEngine.slotOccupancy(entry.id)
         val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-        val selectionAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+        val selectionAlpha =
+            (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
         val barLen = (animatedValue / maxBarValue) * chartWidth
 
-        val yOff = barSlotOffset(index, topPadPx, barThickness, barGap)
+        val yOff = barSlotOffset(position, topPadPx, barThickness, barGap)
+        position += occupancy
         val xOff = if (isRtl) chartRight - barLen else chartLeft
 
         if (barLen > 0f) {

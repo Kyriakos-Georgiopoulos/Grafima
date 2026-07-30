@@ -20,8 +20,11 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Path
+import io.grafima.charts.Exiting
+import io.grafima.charts.ExitTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -171,10 +174,17 @@ internal class LineChartAnimationEngine {
     internal val yAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()
 
+    private val exitTracker = ExitTracker<LineSeries> { it.id }
+
+    /** Series the dataset no longer contains but the chart is still drawing. */
+    val exiting: List<Exiting<LineSeries>> get() = exitTracker.exiting
+
     /** Ensures animatables exist for all current points. Removes stale entries. */
     fun syncAnimatables(series: List<LineSeries>) {
+        exitTracker.sync(series)
+
         val activeKeys = mutableSetOf<String>()
-        series.forEach { s ->
+        renderSeries(series).forEach { s ->
             s.points.forEachIndexed { i, _ ->
                 val key = "${s.id}::$i"
                 activeKeys.add(key)
@@ -184,6 +194,45 @@ internal class LineChartAnimationEngine {
         yAnimatables.keys.removeAll { it !in activeKeys }
         initializedKeys.removeAll { it !in activeKeys }
     }
+
+    /** Draws a departing series back to the baseline: its entry animation in reverse. */
+    fun launchExitAnimations(
+        config: LineAnimationConfig,
+        yBaseline: Float,
+        scope: CoroutineScope
+    ) {
+        exitTracker.exiting.forEach { leaving ->
+            val series = leaving.item
+            val keys = series.points.indices.map { i -> "${series.id}::$i" }
+            val anims = keys.mapNotNull { yAnimatables[it] }
+            if (anims.isEmpty()) return@forEach
+            if (anims.any { it.isRunning }) return@forEach
+
+            // A cancelled coroutine can leave it at rest but still listed.
+            if (anims.all { it.value == yBaseline }) {
+                forget(leaving, keys)
+                return@forEach
+            }
+
+            scope.launch {
+                anims.map { anim ->
+                    launch { anim.animateTo(yBaseline, config.entrySpec) }
+                }.joinAll()
+                forget(leaving, keys)
+            }
+        }
+    }
+
+    private fun forget(leaving: Exiting<LineSeries>, keys: List<String>) {
+        keys.forEach { key ->
+            yAnimatables.remove(key)
+            initializedKeys.remove(key)
+        }
+        exitTracker.forget(leaving)
+    }
+
+    /** Draw order only: the crosshair and a11y stay on the dataset. */
+    fun renderSeries(series: List<LineSeries>): List<LineSeries> = exitTracker.render(series)
 
     /**
      * Launches staggered entry or morph animations. New points animate from

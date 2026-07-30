@@ -22,11 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.customActionLabels
@@ -46,9 +42,9 @@ class LineChartUiTest {
                 id = "revenue",
                 label = "Revenue",
                 points = listOf(
-                    LineDataPoint(x = 0f, y = 10f),
-                    LineDataPoint(x = 1f, y = 25f),
-                    LineDataPoint(x = 2f, y = 18f)
+                    LineDataPoint(x = 0f, y = 10f, label = "Jan"),
+                    LineDataPoint(x = 1f, y = 25f, label = "Feb"),
+                    LineDataPoint(x = 2f, y = 18f, label = "Mar")
                 )
             )
         ),
@@ -64,7 +60,7 @@ class LineChartUiTest {
     )
 
     @Test
-    fun select_next_walks_forward_and_clamps_at_the_last_point() = runComposeUiTest {
+    fun each_point_offers_a_select_action_named_after_its_label() = runComposeUiTest {
         var selected by mutableStateOf<Int?>(null)
         setContent {
             LineChart(
@@ -76,20 +72,36 @@ class LineChartUiTest {
             )
         }
 
-        repeat(5) {
-            onChartNode().performCustomAction("Select next point")
-            waitForIdle()
-        }
-        // 3 points: after five "next" presses the index clamps at 2.
+        // Naming the point is the whole point: stepping with next/previous leaves a
+        // listener counting along the axis to work out where they landed.
+        onChartNode().performCustomAction("Select Mar")
+        waitForIdle()
         assertEquals(2, selected)
+
+        onChartNode().performCustomAction("Select Jan")
+        waitForIdle()
+        assertEquals(0, selected)
     }
 
     @Test
-    fun select_previous_starts_at_the_end_and_then_clamps_at_zero() = runComposeUiTest {
+    fun a_point_without_a_label_falls_back_to_its_x_value() = runComposeUiTest {
         var selected by mutableStateOf<Int?>(null)
+        val unlabelled = LineDataSet(
+            series = listOf(
+                LineSeries(
+                    id = "revenue",
+                    label = "Revenue",
+                    points = listOf(
+                        LineDataPoint(x = 7f, y = 10f),
+                        LineDataPoint(x = 8f, y = 25f)
+                    )
+                )
+            ),
+            contentDescription = "Unlabelled"
+        )
         setContent {
             LineChart(
-                dataSet = dataSet,
+                dataSet = unlabelled,
                 modifier = Modifier.size(300.dp),
                 animationConfig = snapAnimations,
                 selectedPointIndex = selected,
@@ -97,15 +109,9 @@ class LineChartUiTest {
             )
         }
 
-        onChartNode().performCustomAction("Select previous point")
+        onChartNode().performCustomAction("Select 8")
         waitForIdle()
-        assertEquals(2, selected, "previous from no selection starts at the last point")
-
-        repeat(5) {
-            onChartNode().performCustomAction("Select previous point")
-            waitForIdle()
-        }
-        assertEquals(0, selected)
+        assertEquals(1, selected)
     }
 
     @Test

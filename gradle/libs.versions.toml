@@ -7,14 +7,13 @@ activityCompose = "1.13.0"
 kotlin = "2.3.21"
 composeBom = "2026.02.01"
 composeMultiplatform = "1.11.1"
-# Compose Multiplatform ships material3 on its own version line, not the CMP one.
 composeMultiplatformMaterial3 = "1.9.0"
-# Matches the kotlinx-coroutines-core version CMP 1.11.1 pulls in transitively.
 kotlinxCoroutines = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }

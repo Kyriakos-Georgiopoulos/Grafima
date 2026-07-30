@@ -51,6 +51,24 @@ class LineA11yDefaultsTest {
     }
 
     @Test
+    fun `a point speaks its content description in place of the drawn label`() {
+        // The axis has room for "Apr" and no more; the listener still gets "April".
+        val series = listOf(
+            LineSeries(
+                id = "rev",
+                label = "Revenue",
+                points = listOf(
+                    LineDataPoint(x = 0f, y = 10f, label = "Apr", contentDescription = "April")
+                )
+            )
+        )
+        assertEquals(
+            "Revenue at April: 10. ",
+            config.selectedPointDescriptionBuilder(0, series)
+        )
+    }
+
+    @Test
     fun `an unlabelled point falls back to its x value`() {
         assertEquals(
             "Revenue at 1: 25. ",

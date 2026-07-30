@@ -120,6 +120,10 @@ fun RadarChart(
     val axes = dataSet.axes
     val series = dataSet.series
     val animationEngine = remember { RadarChartAnimationEngine() }
+
+    // Series still collapsing are drawn but are not part of the dataset: they stay
+    // out of hit testing and out of the accessibility description.
+    val renderSeries = animationEngine.renderSeries(series)
     val density = LocalDensity.current
 
     val reduceMotion = rememberEffectiveReduceMotion()
@@ -147,7 +151,6 @@ fun RadarChart(
     val currentOnSeriesSelected by rememberUpdatedState(onSeriesSelected)
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
     val currentStyle by rememberUpdatedState(style)
-    val currentIsRtl by rememberUpdatedState(isRtl)
     val currentDensity by rememberUpdatedState(density)
     val currentAxes by rememberUpdatedState(axes)
     val currentSeries by rememberUpdatedState(series)
@@ -176,12 +179,14 @@ fun RadarChart(
     // Flat array keyed [seriesIndex * axisCount + axisIndex], so the draw pass
     // does no string concatenation.
     val axisCount = axes.size
-    val keyMatrix = remember(axes, series) {
-        if (axisCount < 3 || series.isEmpty()) emptyArray()
-        else Array(series.size * axisCount) { flat ->
+    // Keyed on the drawn series, so a collapsing one keeps its row in the matrix
+    // until it is gone.
+    val keyMatrix = remember(axes, renderSeries) {
+        if (axisCount < 3 || renderSeries.isEmpty()) emptyArray()
+        else Array(renderSeries.size * axisCount) { flat ->
             val si = flat / axisCount
             val ai = flat % axisCount
-            "${series[si].id}::${axes[ai].id}"
+            "${renderSeries[si].id}::${axes[ai].id}"
         }
     }
 
@@ -203,7 +208,6 @@ fun RadarChart(
             )
         }
     }
-    val currentAxisLabelLayouts by rememberUpdatedState(axisLabelLayouts)
 
     val maxLabelDim = remember(axisLabelLayouts) {
         if (axisLabelLayouts.isEmpty()) 0f
@@ -212,15 +216,13 @@ fun RadarChart(
     val currentMaxLabelDim by rememberUpdatedState(maxLabelDim)
 
     val chartStateDescription = remember(selectedSeries, a11yConfig) {
-        a11yConfig.selectedStateDescription(selectedSeries)
+        a11yConfig.selectedStateDescription(selectedSeries, axes)
     }
 
     val chartDescription = remember(dataSet, a11yConfig) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-            series.forEach { s ->
-                append(a11yConfig.seriesDescriptionBuilder(s, axes)).append(". ")
-            }
+            append(a11yConfig.seriesCountDescriptionBuilder(series.size))
         }
     }
 
@@ -234,6 +236,7 @@ fun RadarChart(
             currentOnSeriesSelected(null)
         }
         animationEngine.launchEntryAnimations(axes, series, effectiveAnimationConfig, this)
+        animationEngine.launchExitAnimations(axes, effectiveAnimationConfig, this)
     }
 
     LaunchedEffect(axes, series, selectedSeries) {
@@ -250,10 +253,10 @@ fun RadarChart(
         modifier = modifier
             .defaultMinSize(minWidth = style.minSize, minHeight = style.minSize)
             .semantics(mergeDescendants = true) {
+                liveRegion = LiveRegionMode.Polite
                 role = Role.Image
                 contentDescription = chartDescription
                 stateDescription = chartStateDescription
-                liveRegion = LiveRegionMode.Polite
                 customActions = buildList {
                     series.forEach { s ->
                         add(
@@ -368,7 +371,7 @@ fun RadarChart(
         drawRadarAxes(style, cosA, sinA, axisCount, center, chartRadius)
         drawRadarSeries(
             axes = axes,
-            series = series,
+            series = renderSeries,
             style = style,
             animationEngine = animationEngine,
             keyMatrix = keyMatrix,
@@ -393,7 +396,7 @@ fun RadarChart(
         }
 
         selectedSeries?.let { selected ->
-            val selectedIdx = series.indexOfFirst { it.id == selected.id }
+            val selectedIdx = renderSeries.indexOfFirst { it.id == selected.id }
             if (selectedIdx < 0) return@let
 
             val vertices = List(axisCount) { i ->

@@ -35,6 +35,7 @@ import io.grafima.charts.bar.BarChart
 import io.grafima.charts.bar.BarDataSet
 import io.grafima.charts.bar.BarEntry
 import io.grafima.charts.gauge.GaugeChart
+import io.grafima.charts.line.LineA11yConfig
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
@@ -48,6 +49,7 @@ import io.grafima.charts.radar.RadarDataSet
 import io.grafima.charts.radar.RadarSeries
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -106,8 +108,6 @@ class AccessibilityContractTest {
 
     @Test
     fun every_chart_exposes_exactly_one_described_accessibility_node() {
-        // mergeDescendants keeps screen readers from walking chart internals,
-        // so each chart must surface one described node — never zero, never many.
         for ((name, chart) in allCharts) {
             runComposeUiTest {
                 setContent { chart() }
@@ -121,8 +121,6 @@ class AccessibilityContractTest {
 
     @Test
     fun interactive_charts_announce_updates_as_polite_live_regions() {
-        // GaugeChart is excluded deliberately: it is non-interactive and
-        // exposes ProgressBarRangeInfo instead of a live region.
         for ((name, chart) in allCharts.filterNot { it.first == "GaugeChart" }) {
             runComposeUiTest {
                 setContent { chart() }
@@ -137,10 +135,45 @@ class AccessibilityContractTest {
         }
     }
 
+    /**
+     * Per-item detail each chart must keep out of its description: every item's own
+     * value, plus for the line chart the point text that belongs in
+     * `stateDescription` instead.
+     */
+    private fun forbiddenPerItemText(): Map<String, List<String>> = mapOf(
+        "BarChart" to barData.entries.map { it.y.toInt().toString() },
+        "PieChart" to pieData.entries.map { it.value.toInt().toString() },
+        "RadarChart" to radarData.series.flatMap { s ->
+            radarData.axes.map { (s.values[it.id] ?: 0f).toInt().toString() }
+        },
+        "LineChart" to lineData.series.first().points.indices.map {
+            LineA11yConfig().selectedPointDescriptionBuilder(it, lineData.series)
+        }
+    )
+
+    @Test
+    fun a_chart_description_does_not_read_out_every_entry() {
+        val forbidden = forbiddenPerItemText()
+        for ((name, chart) in allCharts) {
+            val banned = forbidden[name] ?: continue
+            runComposeUiTest {
+                setContent { chart() }
+                val description = onChartNode()
+                    .fetchSemanticsNode()
+                    .config[SemanticsProperties.ContentDescription]
+                    .joinToString(" ")
+                banned.forEach { text ->
+                    assertFalse(
+                        description.contains(text.trim()),
+                        "$name reads out \"${text.trim()}\" in its live-region description"
+                    )
+                }
+            }
+        }
+    }
+
     @Test
     fun custom_action_labels_are_unique_within_a_chart() {
-        // Duplicate labels collapse in the TalkBack action menu, making
-        // entries unreachable.
         for ((name, chart) in listOf(allCharts[0], allCharts[1], allCharts[2], allCharts[3])) {
             runComposeUiTest {
                 setContent { chart() }
@@ -167,13 +200,11 @@ class AccessibilityContractTest {
     }
 
     @Test
-    fun the_description_changes_when_the_data_changes() = runComposeUiTest {
-        // The charts are polite live regions; that only helps if the announced
-        // text actually differs after an update.
+    fun the_announced_text_changes_when_the_data_changes() = runComposeUiTest {
         var data by mutableStateOf(barData)
         setContent { BarChart(dataSet = data, modifier = Modifier.size(300.dp)) }
         waitForIdle()
-        onNodeWithContentDescription("Feb value is 80", substring = true).assertExists()
+        assertTrue(onChartNode().customActionLabels().contains("Select Feb"))
 
         data = BarDataSet(
             entries = listOf(BarEntry(id = "jan", xLabel = "Jan", y = 999f)),
@@ -181,14 +212,14 @@ class AccessibilityContractTest {
         )
         waitForIdle()
 
-        onNodeWithContentDescription("Jan value is 999", substring = true).assertExists()
-        onNodeWithContentDescription("Feb value is 80", substring = true).assertDoesNotExist()
+        val labels = onChartNode().customActionLabels()
+        assertTrue(labels.contains("Select Jan"))
+        assertFalse(labels.contains("Select Feb"))
+        onNodeWithContentDescription("1 bars", substring = true).assertExists()
     }
 
     @Test
     fun selection_is_reported_as_state_rather_than_in_the_description() {
-        // Keeping selection out of contentDescription means a screen reader
-        // announces just the state change, not the whole chart again.
         runComposeUiTest {
             var selected by mutableStateOf<BarEntry?>(null)
             setContent {
@@ -214,7 +245,6 @@ class AccessibilityContractTest {
                     SemanticsProperties.StateDescription, "Currently selected: Feb, 80."
                 )
             )
-            // The bar list itself must not repeat the selection.
             onNodeWithContentDescription("Currently selected", substring = true)
                 .assertDoesNotExist()
         }
@@ -222,8 +252,6 @@ class AccessibilityContractTest {
 
     @Test
     fun every_chart_declares_an_image_role() {
-        // Mirrors the ARIA role="img" convention for data visualisations, so a
-        // screen reader can tell the user they are on a graphic.
         for ((name, chart) in allCharts) {
             runComposeUiTest {
                 setContent { chart() }
