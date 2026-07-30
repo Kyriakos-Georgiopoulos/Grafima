@@ -52,6 +52,8 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
 
     private var lastItems: List<T> = emptyList()
 
+    private val unchanged = ExitSync<T>(emptyList(), emptyList())
+
     /**
      * Reconciles [current] against the dataset seen last call: items it dropped
      * join [exiting], items already exiting that reappeared rejoin the dataset.
@@ -61,6 +63,8 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
      * seed or drop whatever extra animatable state its own exit needs.
      */
     fun sync(current: List<T>): ExitSync<T> {
+        if (lastItems === current) return unchanged
+
         val currentIds = current.mapTo(mutableSetOf(), idOf)
         val exitingIds = exiting.mapTo(mutableSetOf()) { idOf(it.item) }
 
@@ -100,6 +104,8 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
     }
 
     private fun leaving(current: List<T>): List<Exiting<T>> {
+        if (lastItems === current) return exiting
+
         val currentIds = current.mapTo(mutableSetOf(), idOf)
         val pending = lastItems.withIndex()
             .filter { (_, item) -> idOf(item) !in currentIds }
