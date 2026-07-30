@@ -22,12 +22,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,7 +41,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -174,41 +177,39 @@ internal fun BarChartDemoScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .selectableGroup(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 listOf(
                     BarOrientation.Vertical to "Vertical",
                     BarOrientation.Horizontal to "Horizontal"
                 ).forEach { (orient, label) ->
-                    val selected = orientation == orient
-                    Button(
-                        onClick = {
-                            selectedBarId = null
-                            orientation = orient
-                            dataSet = dataSet.randomized()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selected) colors.onSurface else Color.Transparent,
-                            contentColor = if (selected) colors.background else colors.onSurfaceMuted
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = 0.dp,
-                            pressedElevation = 0.dp,
-                            focusedElevation = 0.dp
-                        ),
-                        // Material's 24dp default leaves no room for "Horizontal"
-                        // in the narrow wide-layout column.
-                        contentPadding = PaddingValues(horizontal = 4.dp),
+                    val isSelected = orientation == orient
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (isSelected) colors.onSurface else Color.Transparent
+                            )
+                            .selectable(
+                                selected = isSelected,
+                                role = Role.Tab,
+                                onClick = {
+                                    selectedBarId = null
+                                    orientation = orient
+                                    dataSet = dataSet.randomized()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             label,
                             fontSize = 14.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) colors.background else colors.onSurfaceMuted,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

@@ -27,15 +27,18 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.semantics.Role
@@ -67,6 +70,7 @@ fun ThemeToggle(
         animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium),
         label = "themeToggle"
     )
+    val layerPaint = remember { Paint() }
 
     Box(
         modifier = modifier
@@ -123,10 +127,7 @@ fun ThemeToggle(
             // another rather than two icons swapping.
             val bodyRadius = c * (0.55f + 0.17f * p)
 
-            drawContext.canvas.saveLayer(
-                androidx.compose.ui.geometry.Rect(Offset.Zero, size),
-                androidx.compose.ui.graphics.Paint()
-            )
+            drawContext.canvas.saveLayer(Rect(Offset.Zero, size), layerPaint)
             drawCircle(color = colors.onSurface, radius = bodyRadius, center = center, style = Fill)
             if (p > 0f) {
                 // The cut-out slides in from outside the disc, so early frames

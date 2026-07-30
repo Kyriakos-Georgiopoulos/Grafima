@@ -108,7 +108,9 @@ internal fun DrawScope.drawGaugeArcFill(
     // butt caps: the outermost curves survive — they have to, to cover the
     // rounded track beneath — and both overhangs end up buried under the very
     // bands they were spilling into.
-    drawGaugeBand(bands.last(), StrokeCap.Round, zoneGradientStops, center, arcTopLeft, arcRect, arcWidthPx)
+    if (bands.size > 1) {
+        drawGaugeBand(bands.last(), StrokeCap.Round, zoneGradientStops, center, arcTopLeft, arcRect, arcWidthPx)
+    }
     drawGaugeBand(bands.first(), StrokeCap.Round, zoneGradientStops, center, arcTopLeft, arcRect, arcWidthPx)
     for (index in 1..bands.lastIndex) {
         drawGaugeBand(bands[index], StrokeCap.Butt, zoneGradientStops, center, arcTopLeft, arcRect, arcWidthPx)
