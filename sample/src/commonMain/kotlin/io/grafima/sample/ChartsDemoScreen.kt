@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.sample.theme.LocalDemoColors
 import io.grafima.sample.theme.LocalIsWideLayout
+import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.ThemeToggle
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -286,4 +287,10 @@ private fun ChartTab(
 @Composable
 private fun ChartsDemoScreenPreview() {
     ChartsDemoScreen()
+}
+
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+private fun ChartsDemoScreenLandscapePreview() {
+    ProvideDemoLayout { ChartsDemoScreen() }
 }

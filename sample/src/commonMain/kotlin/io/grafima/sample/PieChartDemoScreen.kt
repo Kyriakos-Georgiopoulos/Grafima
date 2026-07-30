@@ -58,6 +58,7 @@ import io.grafima.charts.pie.PieEntry
 import io.grafima.charts.pie.SliceBrush
 import io.grafima.charts.pie.TooltipPieSelectionRenderer
 import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.ProvideDemoLayout
 import kotlin.random.Random
 
 private val OceanBrush = SliceBrush.Linear(
@@ -349,4 +350,10 @@ internal fun PieChartDemoScreen(
 @Composable
 private fun PieChartDemoScreenPreview() {
     PieChartDemoScreen()
+}
+
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+private fun PieChartDemoScreenLandscapePreview() {
+    ProvideDemoLayout { PieChartDemoScreen() }
 }

@@ -58,6 +58,7 @@ import io.grafima.charts.gauge.GaugeNeedleStyle
 import io.grafima.charts.gauge.GaugeTickConfig
 import io.grafima.charts.gauge.GaugeZone
 import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.onColorFor
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -289,4 +290,10 @@ internal fun GaugeChartDemoScreen(
 @Composable
 private fun GaugeChartDemoScreenPreview() {
     GaugeChartDemoScreen()
+}
+
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+private fun GaugeChartDemoScreenLandscapePreview() {
+    ProvideDemoLayout { GaugeChartDemoScreen() }
 }

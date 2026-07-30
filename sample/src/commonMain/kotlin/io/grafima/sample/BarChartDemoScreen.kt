@@ -58,6 +58,7 @@ import io.grafima.charts.bar.BarEntry
 import io.grafima.charts.bar.BarOrientation
 import io.grafima.charts.bar.TooltipSelectionRenderer
 import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.themedBarAxis
 import io.grafima.sample.theme.themedBarStyle
 import kotlin.random.Random
@@ -310,4 +311,10 @@ internal fun BarChartDemoScreen(
 @Composable
 private fun BarChartDemoScreenPreview() {
     BarChartDemoScreen()
+}
+
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+private fun BarChartDemoScreenLandscapePreview() {
+    ProvideDemoLayout { BarChartDemoScreen() }
 }

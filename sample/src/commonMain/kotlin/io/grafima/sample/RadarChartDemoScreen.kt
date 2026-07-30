@@ -60,6 +60,7 @@ import io.grafima.charts.radar.RadarSeries
 import io.grafima.sample.theme.DemoColors
 import io.grafima.sample.theme.LocalDemoColors
 import io.grafima.sample.theme.LocalIsWideLayout
+import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.themedRadarStyle
 import kotlin.random.Random
 
@@ -369,4 +370,10 @@ private fun RadarPlot(
 @Composable
 private fun RadarChartDemoScreenPreview() {
     RadarChartDemoScreen()
+}
+
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+private fun RadarChartDemoScreenLandscapePreview() {
+    ProvideDemoLayout { RadarChartDemoScreen() }
 }

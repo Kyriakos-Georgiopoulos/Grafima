@@ -57,6 +57,7 @@ import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
 import io.grafima.charts.line.LineSeries
 import io.grafima.sample.theme.LocalDemoColors
+import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.themedCrosshair
 import io.grafima.sample.theme.themedLineAxis
 import kotlin.random.Random
@@ -358,4 +359,10 @@ internal fun LineChartDemoScreen(
 @Composable
 private fun LineChartDemoScreenPreview() {
     LineChartDemoScreen()
+}
+
+@Preview(name = "Landscape", widthDp = 800, heightDp = 360)
+@Composable
+private fun LineChartDemoScreenLandscapePreview() {
+    ProvideDemoLayout { LineChartDemoScreen() }
 }
