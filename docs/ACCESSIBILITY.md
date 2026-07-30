@@ -23,9 +23,9 @@ semantics instead of a live region.
 
 ## Navigating without touch
 
-Bar, pie and radar publish one custom action per entry, plus a clear action when
-something is selected. Line publishes next/previous point actions. Screen reader
-users reach these through the actions menu — they don't need to hit a target.
+Every interactive chart publishes one custom action per item — bar, slice, series
+or point — plus a clear action when something is selected. Screen reader users
+reach these through the actions menu; they don't need to hit a target.
 
 Give your entries distinct labels. Two bars both labelled "Q1" produce two
 identical actions and one of them becomes unreachable.
@@ -40,12 +40,20 @@ BarChart(
     dataSet = data,
     a11yConfig = A11yConfig(
         chartDescriptionBuilder = { "Revenue for ${it.contentDescription}" },
-        barDescriptionBuilder = { "${it.xLabel}: ${it.y.toInt()} thousand euro" }
+        selectedStateDescription = { entry ->
+            entry?.let { "${it.xLabel}: ${it.y.toInt()} thousand euro" }
+                ?: "No bar selected."
+        }
     )
 )
 ```
 
 Worth reading yours out loud. `"45.0"` is fine on screen and awkward spoken.
+
+The chart's own description stays a summary — a count, not a reading of every
+item. It sits on a live region, so anything in it is repeated on every selection.
+Per-item values belong in `selectedStateDescription`, which is spoken only when
+the selection actually changes.
 
 ## Reduced motion
 

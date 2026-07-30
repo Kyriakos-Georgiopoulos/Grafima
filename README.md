@@ -60,8 +60,9 @@ open iosApp/iosApp.xcodeproj           # iOS, then run from Xcode
 
 ## Contributing
 
-[docs/TESTING.md](docs/TESTING.md) covers the test suites and how to run them.
-If you're working with an AI assistant, point it at
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the branching model and what a PR needs
+to pass. [docs/TESTING.md](docs/TESTING.md) covers the test suites and how to run
+them. If you're working with an AI assistant, point it at
 [docs/AI_CONTRIBUTING.md](docs/AI_CONTRIBUTING.md) first — it has the
 conventions and the checks that catch mistakes.
 
