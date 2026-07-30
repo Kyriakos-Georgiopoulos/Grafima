@@ -32,9 +32,6 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-// DrawScope extensions, not composables or lambdas: static calls with no
-// per-frame allocation. Called in paint order from GaugeChart's Canvas.
-
 internal fun DrawScope.drawGaugeTrack(
     style: GaugeChartStyle,
     arcTopLeft: Offset,

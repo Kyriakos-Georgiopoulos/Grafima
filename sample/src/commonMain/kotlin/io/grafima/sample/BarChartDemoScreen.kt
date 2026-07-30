@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,7 +37,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.grafima.charts.bar.A11yConfig
 import io.grafima.charts.bar.AnimationConfig
 import io.grafima.charts.bar.BarChart
@@ -96,28 +96,33 @@ private fun BarDataSet.plusEntry(): BarDataSet {
 
 private fun BarDataSet.minusEntry(): BarDataSet = copy(entries = entries.dropLast(1))
 
+private fun initialBarDataSet() = BarDataSet(
+    entries = listOf(
+        BarEntry(id = "JAN", xLabel = "Jan", y = 45f, gradientColors = OceanGradient),
+        BarEntry(id = "FEB", xLabel = "Feb", y = 80f, gradientColors = SunsetGradient),
+        BarEntry(id = "MAR", xLabel = "Mar", y = 55f, gradientColors = AmethystGradient),
+        BarEntry(id = "APR", xLabel = "Apr", y = 95f, gradientColors = SunsetGradient),
+        BarEntry(id = "MAY", xLabel = "May", y = 65f, gradientColors = EmeraldGradient)
+    ),
+    contentDescription = "Q1 and Q2 Revenue Trends"
+)
+
+internal class BarChartViewModel : ViewModel() {
+    var orientation by mutableStateOf(BarOrientation.Horizontal)
+    var dataSet by mutableStateOf(initialBarDataSet())
+    var selectedBarId by mutableStateOf<String?>(null)
+}
+
 @Composable
-fun BarChartDemoScreen() {
+internal fun BarChartDemoScreen(
+    viewModel: BarChartViewModel = viewModel { BarChartViewModel() }
+) {
     val colors = LocalDemoColors.current
 
-    var orientation by remember { mutableStateOf(BarOrientation.Horizontal) }
+    var orientation by viewModel::orientation
+    var dataSet by viewModel::dataSet
+    var selectedBarId by viewModel::selectedBarId
 
-    var dataSet by remember {
-        mutableStateOf(
-            BarDataSet(
-                entries = listOf(
-                    BarEntry(id = "JAN", xLabel = "Jan", y = 45f, gradientColors = OceanGradient),
-                    BarEntry(id = "FEB", xLabel = "Feb", y = 80f, gradientColors = SunsetGradient),
-                    BarEntry(id = "MAR", xLabel = "Mar", y = 55f, gradientColors = AmethystGradient),
-                    BarEntry(id = "APR", xLabel = "Apr", y = 95f, gradientColors = SunsetGradient),
-                    BarEntry(id = "MAY", xLabel = "May", y = 65f, gradientColors = EmeraldGradient)
-                ),
-                contentDescription = "Q1 and Q2 Revenue Trends"
-            )
-        )
-    }
-
-    var selectedBarId by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedBarData by remember {
         derivedStateOf { dataSet.entries.find { it.id == selectedBarId } }
     }

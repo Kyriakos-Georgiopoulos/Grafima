@@ -30,10 +30,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 
-// DrawScope extensions, not composables or lambdas: static calls with no
-// per-frame allocation. Cached text layouts and colour stops stay owned by the
-// composable and are passed in, so caching granularity is unchanged.
-
 /** Horizontal grid lines with y-axis labels, plus the baseline. */
 internal fun DrawScope.drawVerticalGrid(
     axisConfig: AxisConfig,

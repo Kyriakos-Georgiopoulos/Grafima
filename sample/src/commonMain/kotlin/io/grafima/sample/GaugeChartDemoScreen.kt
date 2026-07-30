@@ -48,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.grafima.charts.gauge.GaugeAnimationConfig
 import io.grafima.charts.gauge.GaugeChart
 import io.grafima.charts.gauge.GaugeChartStyle
@@ -83,8 +85,14 @@ private val ArcGradient = listOf(
     Color(0xFFEF4444)
 )
 
+internal class GaugeChartViewModel : ViewModel() {
+    var useGradientArc by mutableStateOf(false)
+}
+
 @Composable
-fun GaugeChartDemoScreen() {
+internal fun GaugeChartDemoScreen(
+    viewModel: GaugeChartViewModel = viewModel { GaugeChartViewModel() }
+) {
     val colors = LocalDemoColors.current
 
     var currentValue by remember { mutableFloatStateOf(0f) }
@@ -98,7 +106,7 @@ fun GaugeChartDemoScreen() {
         GaugeZones.find { currentValue in it.range }
     }
 
-    var useGradientArc by remember { mutableStateOf(false) }
+    var useGradientArc by viewModel::useGradientArc
 
     val chartStyle = remember(useGradientArc, colors) {
         GaugeChartStyle(

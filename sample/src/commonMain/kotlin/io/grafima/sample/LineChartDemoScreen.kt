@@ -36,7 +36,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineChartStyle
 import io.grafima.charts.line.LineCurveType
@@ -161,14 +162,23 @@ private fun seededDataSet(): LineDataSet = LineDataSet(
     contentDescription = "Monthly Revenue vs Expenses"
 )
 
+internal class LineChartViewModel : ViewModel() {
+    var showFill by mutableStateOf(true)
+    var curveType by mutableStateOf(LineCurveType.MonotoneCubic)
+    var dataSet by mutableStateOf(seededDataSet())
+    var selectedIdx by mutableStateOf<Int?>(null)
+}
+
 @Composable
-fun LineChartDemoScreen() {
+internal fun LineChartDemoScreen(
+    viewModel: LineChartViewModel = viewModel { LineChartViewModel() }
+) {
     val colors = LocalDemoColors.current
 
-    var showFill by remember { mutableStateOf(true) }
-    var curveType by remember { mutableStateOf(LineCurveType.MonotoneCubic) }
-    var dataSet by remember { mutableStateOf(seededDataSet()) }
-    var selectedIdx by rememberSaveable { mutableStateOf<Int?>(null) }
+    var showFill by viewModel::showFill
+    var curveType by viewModel::curveType
+    var dataSet by viewModel::dataSet
+    var selectedIdx by viewModel::selectedIdx
 
     // Stripping the fill rewrites every series, so derive it once per change:
     // rebuilding inline hands the chart a new dataset on every recomposition and

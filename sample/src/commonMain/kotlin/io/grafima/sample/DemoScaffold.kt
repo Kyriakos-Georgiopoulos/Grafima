@@ -83,7 +83,6 @@ fun DemoScreenScaffold(
                 modifier = Modifier
                     .width(ControlsWidth)
                     .fillMaxHeight()
-                    // The gauge stacks six buttons, which overruns a landscape phone.
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -168,7 +167,6 @@ private fun DatasetButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = container,
             contentColor = content,
-            // Material's defaults tint against its own surface and smudge this palette.
             disabledContainerColor = colors.surfaceMuted,
             disabledContentColor = colors.onSurfaceMuted
         ),

@@ -20,9 +20,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -274,8 +272,6 @@ fun LineChart(
         selectedPointIndex?.let { idx -> a11yConfig.selectedPointDescriptionBuilder(idx, series) }
             ?: ""
     }
-    val chartDescription = baseDescription
-    val chartStateDescription = selectedDescription
 
     val tooltipCache = remember { mutableMapOf<String, TextLayoutResult>() }
     val linePath = remember { Path() }
@@ -295,8 +291,8 @@ fun LineChart(
             .semantics(mergeDescendants = true) {
                 liveRegion = LiveRegionMode.Polite
                 role = Role.Image
-                contentDescription = chartDescription
-                stateDescription = chartStateDescription
+                contentDescription = baseDescription
+                stateDescription = selectedDescription
                 customActions = buildList {
                     val points = series.firstOrNull()?.points.orEmpty()
                     if (points.isNotEmpty()) {

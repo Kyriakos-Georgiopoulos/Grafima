@@ -41,7 +41,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.grafima.charts.radar.RadarAxis
 import io.grafima.charts.radar.RadarChart
 import io.grafima.charts.radar.RadarDataSet
@@ -94,47 +95,52 @@ private fun RadarDataSet.plusClass(): RadarDataSet {
 
 private fun RadarDataSet.minusClass(): RadarDataSet = copy(series = series.dropLast(1))
 
+private fun initialRadarDataSet() = RadarDataSet(
+    axes = DefaultAxes,
+    series = listOf(
+        RadarSeries(
+            id = "warrior",
+            label = "Warrior",
+            values = mapOf(
+                "atk" to 88f, "def" to 82f, "spd" to 55f,
+                "mag" to 20f, "sta" to 75f, "lck" to 45f
+            ),
+            color = Color(0xFFEF4444),
+            fillAlpha = 0.15f
+        ),
+        RadarSeries(
+            id = "mage",
+            label = "Mage",
+            values = mapOf(
+                "atk" to 30f, "def" to 35f, "spd" to 60f,
+                "mag" to 95f, "sta" to 45f, "lck" to 70f
+            ),
+            color = Color(0xFF6366F1),
+            fillAlpha = 0.15f
+        )
+    ),
+    contentDescription = "Character Class Comparison"
+)
+
+internal class RadarChartViewModel : ViewModel() {
+    var dataSet by mutableStateOf(initialRadarDataSet())
+    var selectedSeriesId by mutableStateOf<String?>(null)
+    var isPolygonGrid by mutableStateOf(true)
+}
+
 @Composable
-fun RadarChartDemoScreen() {
+internal fun RadarChartDemoScreen(
+    viewModel: RadarChartViewModel = viewModel { RadarChartViewModel() }
+) {
     val colors = LocalDemoColors.current
 
-    var dataSet by remember {
-        mutableStateOf(
-            RadarDataSet(
-                axes = DefaultAxes,
-                series = listOf(
-                    RadarSeries(
-                        id = "warrior",
-                        label = "Warrior",
-                        values = mapOf(
-                            "atk" to 88f, "def" to 82f, "spd" to 55f,
-                            "mag" to 20f, "sta" to 75f, "lck" to 45f
-                        ),
-                        color = Color(0xFFEF4444),
-                        fillAlpha = 0.15f
-                    ),
-                    RadarSeries(
-                        id = "mage",
-                        label = "Mage",
-                        values = mapOf(
-                            "atk" to 30f, "def" to 35f, "spd" to 60f,
-                            "mag" to 95f, "sta" to 45f, "lck" to 70f
-                        ),
-                        color = Color(0xFF6366F1),
-                        fillAlpha = 0.15f
-                    )
-                ),
-                contentDescription = "Character Class Comparison"
-            )
-        )
-    }
+    var dataSet by viewModel::dataSet
+    var selectedSeriesId by viewModel::selectedSeriesId
+    var isPolygonGrid by viewModel::isPolygonGrid
 
-    var selectedSeriesId by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedSeriesData by remember {
         derivedStateOf { dataSet.series.find { it.id == selectedSeriesId } }
     }
-
-    var isPolygonGrid by remember { mutableStateOf(true) }
 
     DemoScreenScaffold(
         controls = {

@@ -153,7 +153,6 @@ fun RadarChart(
     val currentOnSeriesSelected by rememberUpdatedState(onSeriesSelected)
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
     val currentStyle by rememberUpdatedState(style)
-    val currentIsRtl by rememberUpdatedState(isRtl)
     val currentDensity by rememberUpdatedState(density)
     val currentAxes by rememberUpdatedState(axes)
     val currentSeries by rememberUpdatedState(series)
@@ -211,7 +210,6 @@ fun RadarChart(
             )
         }
     }
-    val currentAxisLabelLayouts by rememberUpdatedState(axisLabelLayouts)
 
     val maxLabelDim = remember(axisLabelLayouts) {
         if (axisLabelLayouts.isEmpty()) 0f
