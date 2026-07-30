@@ -250,7 +250,7 @@ fun LineChart(
     val tangentBuffers =
         remember(seriesStructure) { renderSeries.associate { s -> s.id to FloatArray(s.points.size) } }
     val deltasBuffers = remember(seriesStructure) {
-        series.associate { s ->
+        renderSeries.associate { s ->
             s.id to FloatArray(
                 max(
                     0,
