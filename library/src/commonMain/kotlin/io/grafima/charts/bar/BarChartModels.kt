@@ -159,7 +159,6 @@ data class AnimationConfig(
 @Stable
 data class A11yConfig(
     val chartDescriptionBuilder: (BarDataSet) -> String = { "Bar Chart representing ${it.contentDescription}" },
-    val barDescriptionBuilder: (BarEntry) -> String = { "${it.xLabel} value is ${it.y.toInt()}" },
     val selectedStateDescription: (BarEntry?) -> String = { entry ->
         entry?.let { "Currently selected: ${it.xLabel}, ${it.y.toInt()}." } ?: "No bar selected."
     },

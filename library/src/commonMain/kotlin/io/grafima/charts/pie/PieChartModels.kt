@@ -183,9 +183,6 @@ data class PieA11yConfig(
     val chartDescriptionBuilder: (PieDataSet) -> String = { ds ->
         "Pie Chart representing ${ds.contentDescription}"
     },
-    val sliceDescriptionBuilder: (PieEntry, Float) -> String = { entry, percentage ->
-        "${entry.label}, ${entry.value.toInt()}, ${percentage.toInt()} percent of total."
-    },
     /**
      * Announced on its own when the selection changes, so it carries the value and
      * the share as well as the label — the share is passed in because a single

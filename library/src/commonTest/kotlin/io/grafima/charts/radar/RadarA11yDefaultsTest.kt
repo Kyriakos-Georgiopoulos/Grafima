@@ -29,29 +29,6 @@ class RadarA11yDefaultsTest {
     )
 
     @Test
-    fun `series percentages are relative to each axis maximum`() {
-        val series = RadarSeries(
-            id = "s1",
-            label = "Model A",
-            values = mapOf("speed" to 100f, "power" to 60f)
-        )
-        // speed: 100/200 → 50%; power: 60/100 → 60%.
-        assertEquals(
-            "Model A (Speed: 50%, Power: 60%)",
-            config.seriesDescriptionBuilder(series, axes)
-        )
-    }
-
-    @Test
-    fun `a missing axis value reads as zero percent`() {
-        val series = RadarSeries(id = "s1", label = "Model A", values = mapOf("speed" to 100f))
-        assertEquals(
-            "Model A (Speed: 50%, Power: 0%)",
-            config.seriesDescriptionBuilder(series, axes)
-        )
-    }
-
-    @Test
     fun `the selected state description covers both states`() {
         // Spoken on its own when the selection changes, so it names every axis
         // value rather than just the series.

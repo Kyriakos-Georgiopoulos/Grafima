@@ -31,7 +31,6 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
-import io.grafima.charts.bar.A11yConfig
 import io.grafima.charts.bar.BarChart
 import io.grafima.charts.bar.BarDataSet
 import io.grafima.charts.bar.BarEntry
@@ -41,11 +40,9 @@ import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
 import io.grafima.charts.line.LineSeries
-import io.grafima.charts.pie.PieA11yConfig
 import io.grafima.charts.pie.PieChart
 import io.grafima.charts.pie.PieDataSet
 import io.grafima.charts.pie.PieEntry
-import io.grafima.charts.radar.RadarA11yConfig
 import io.grafima.charts.radar.RadarAxis
 import io.grafima.charts.radar.RadarChart
 import io.grafima.charts.radar.RadarDataSet
@@ -139,25 +136,20 @@ class AccessibilityContractTest {
     }
 
     /**
-     * Per-item text each chart must keep out of its description, taken from the
-     * config builder that legitimately produces it elsewhere (a select action or
-     * `stateDescription`), so these stay exact as the defaults change.
+     * Per-item detail each chart must keep out of its description: every item's own
+     * value, plus for the line chart the point text that belongs in
+     * `stateDescription` instead.
      */
-    private fun forbiddenPerItemText(): Map<String, List<String>> {
-        val pieTotal = pieData.entries.sumOf { it.value.toDouble() }.toFloat()
-        return mapOf(
-            "BarChart" to barData.entries.map { A11yConfig().barDescriptionBuilder(it) },
-            "PieChart" to pieData.entries.map {
-                PieA11yConfig().sliceDescriptionBuilder(it, it.value / pieTotal * 100f)
-            },
-            "RadarChart" to radarData.series.map {
-                RadarA11yConfig().seriesDescriptionBuilder(it, radarData.axes)
-            },
-            "LineChart" to lineData.series.first().points.indices.map {
-                LineA11yConfig().selectedPointDescriptionBuilder(it, lineData.series)
-            }
-        )
-    }
+    private fun forbiddenPerItemText(): Map<String, List<String>> = mapOf(
+        "BarChart" to barData.entries.map { it.y.toInt().toString() },
+        "PieChart" to pieData.entries.map { it.value.toInt().toString() },
+        "RadarChart" to radarData.series.flatMap { s ->
+            radarData.axes.map { (s.values[it.id] ?: 0f).toInt().toString() }
+        },
+        "LineChart" to lineData.series.first().points.indices.map {
+            LineA11yConfig().selectedPointDescriptionBuilder(it, lineData.series)
+        }
+    )
 
     @Test
     fun a_chart_description_does_not_read_out_every_entry() {

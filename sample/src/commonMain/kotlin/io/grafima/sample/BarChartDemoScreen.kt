@@ -157,10 +157,7 @@ internal fun BarChartDemoScreen(
 
     val a11yConfig = remember {
         A11yConfig(
-            chartDescriptionBuilder = { "Financial Revenue Chart for ${it.contentDescription}." },
-            barDescriptionBuilder = {
-                "In ${spokenMonth(it.xLabel)}, revenue was $${it.y.toInt()} thousand dollars."
-            },
+            chartDescriptionBuilder = { "Financial Revenue Chart for ${it.contentDescription}" },
             // Spoken alone on a selection change, so it names the value too.
             selectedStateDescription = { entry ->
                 entry?.let {

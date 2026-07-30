@@ -21,32 +21,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-/** An item dropped from a chart's dataset that is still animating out of view. */
 @Stable
 internal class Exiting<T>(val item: T, val index: Int)
 
-/** [ExitTracker.sync] result: what changed against the dataset seen last call. */
 internal data class ExitSync<T>(val departed: List<Exiting<T>>, val returned: List<Exiting<T>>)
 
 /**
- * Tracks dataset items dropped from a chart's data but still animating out, so
- * the chart can keep drawing them in their old slot until the exit finishes.
- *
- * Shared across Bar, Line, Pie and Radar: a bar, a pie slice, a line series and a
- * radar series all go through the same three states — present, exiting, forgotten
- * — and the bookkeeping for that is identical. What "exiting" actually *animates*
- * differs per chart, so that stays with each chart's own animation engine, which
- * owns one tracker and drives it from `syncAnimatables`/`launchExitAnimations`.
+ * Keeps dataset items that are gone but still animating out, so a chart can go on
+ * drawing them in the slot they held.
  */
 @Stable
 internal class ExitTracker<T>(private val idOf: (T) -> String) {
 
-    /**
-     * Items the dataset no longer contains but the chart is still drawing.
-     *
-     * Snapshot state, because dropping one at the end of its exit has to bring
-     * the chart back for another frame.
-     */
+    /** Snapshot state: dropping the last one has to bring the chart back for a final frame. */
     var exiting: List<Exiting<T>> by mutableStateOf(emptyList())
         private set
 
@@ -54,14 +41,7 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
 
     private val unchanged = ExitSync<T>(emptyList(), emptyList())
 
-    /**
-     * Reconciles [current] against the dataset seen last call: items it dropped
-     * join [exiting], items already exiting that reappeared rejoin the dataset.
-     *
-     * Call once per composition, before touching per-item animatables — the
-     * returned [ExitSync.departed] and [ExitSync.returned] are a chart's cue to
-     * seed or drop whatever extra animatable state its own exit needs.
-     */
+    /** Call once per composition, before touching per-item animatables. */
     fun sync(current: List<T>): ExitSync<T> {
         if (lastItems === current) return unchanged
 
@@ -80,19 +60,17 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
         return ExitSync(departed, returned)
     }
 
-    /** Drops [item] once its exit animation finishes. */
     fun forget(item: Exiting<T>) {
         exiting = exiting - item
     }
 
     /**
-     * [current] with the departing items reinserted at the indices they held.
-     * Draw order only — touch handling and the accessibility description stay on
-     * the dataset itself.
+     * Draw order only — hit testing and the accessibility description stay on
+     * [current].
      *
-     * Also reads the dataset from the last [sync]: on the frame an item is
-     * dropped, `sync` has not run yet (it runs from a `SideEffect`), and without
-     * this the item would blink out for one frame before its exit even starts.
+     * Also reads the dataset from the last [sync], which runs from a `SideEffect`
+     * and so has not seen a just-dropped item yet; without that the item would
+     * blink out for a frame before its exit starts.
      */
     fun render(current: List<T>): List<T> {
         val leaving = leaving(current)

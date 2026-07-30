@@ -175,14 +175,6 @@ data class RadarA11yConfig(
     val chartDescriptionBuilder: (RadarDataSet) -> String = { ds ->
         "Radar Chart representing ${ds.contentDescription}"
     },
-    val seriesDescriptionBuilder: (RadarSeries, List<RadarAxis>) -> String = { series, axes ->
-        val valueText = axes.joinToString(", ") { axis ->
-            val v = series.values[axis.id] ?: 0f
-            val pct = ((v / axis.maxValue) * 100).toInt()
-            "${axis.label}: $pct%"
-        }
-        "${series.label} ($valueText)"
-    },
     /**
      * Announced on its own when the selection changes, so it has to carry the
      * whole story — the axes are passed in because a series' values are keyed by
