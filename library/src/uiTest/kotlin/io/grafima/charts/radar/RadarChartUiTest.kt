@@ -108,5 +108,4 @@ class RadarChartUiTest {
         waitForIdle()
         assertNull(selected, "selection must clear when its series leaves the dataset")
     }
-
 }

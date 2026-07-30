@@ -9,6 +9,8 @@ composeBom = "2026.02.01"
 composeMultiplatform = "1.11.1"
 composeMultiplatformMaterial3 = "1.9.0"
 kotlinxCoroutines = "1.9.0"
+ktlintPlugin = "13.1.0"
+ktlint = "1.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,4 +38,5 @@ android-kmp-library = { id = "com.android.kotlin.multiplatform.library", version
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintPlugin" }
 

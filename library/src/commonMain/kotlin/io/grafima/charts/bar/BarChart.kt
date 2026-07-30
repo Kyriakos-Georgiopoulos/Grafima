@@ -87,12 +87,7 @@ fun BarChart(
     val animationEngine = remember { ChartAnimationEngine() }
     val density = LocalDensity.current
 
-    // SideEffect runs before the first draw, so the Canvas subscribes to the
-    // animatables on frame one. Creating them in LaunchedEffect instead left the
-    // first draw unsubscribed and the bars never painted on iOS.
     SideEffect { animationEngine.syncAnimatables(entries) }
-
-    // Drawn, but not in the dataset: exiting bars stay out of hit testing and a11y.
     val renderEntries = animationEngine.renderEntries(entries)
 
     val reduceMotion = rememberEffectiveReduceMotion()
@@ -132,7 +127,11 @@ fun BarChart(
 
     val yAxisWidthPx =
         remember(axisConfig.showYAxis, maxLabelResult, axisConfig.yAxisLabelPadding, density) {
-            if (axisConfig.showYAxis) maxLabelResult.size.width + with(density) { axisConfig.yAxisLabelPadding.toPx() } else 0f
+            if (axisConfig.showYAxis) {
+                maxLabelResult.size.width + with(density) { axisConfig.yAxisLabelPadding.toPx() }
+            } else {
+                0f
+            }
         }
 
     val yAxisTextLayouts =
@@ -189,7 +188,7 @@ fun BarChart(
     val horizontalCatLabelSpacePx = remember(xLabelLayouts, isHorizontal, density) {
         if (!isHorizontal) 0f
         else (xLabelLayouts.values.maxOfOrNull { it.size.width } ?: 0) +
-                with(density) { 16.dp.toPx() }
+            with(density) { 16.dp.toPx() }
     }
 
     val horizontalTopPadPx = remember(isHorizontal, density) {
@@ -322,7 +321,9 @@ fun BarChart(
                         val startY = canvasHeight - bottomSpacePx - targetHeight
                         val endY = canvasHeight - bottomSpacePx
 
-                        if (touchPos.x in (startX - hitSlopPx)..(endX + hitSlopPx) && touchPos.y in (startY - hitSlopPx)..(endY + hitSlopPx)) {
+                        val withinX = touchPos.x in (startX - hitSlopPx)..(endX + hitSlopPx)
+                        val withinY = touchPos.y in (startY - hitSlopPx)..(endY + hitSlopPx)
+                        if (withinX && withinY) {
                             foundEntry = entries[i]
                             break
                         }
@@ -475,4 +476,3 @@ fun BarChart(
         }
     }
 }
-

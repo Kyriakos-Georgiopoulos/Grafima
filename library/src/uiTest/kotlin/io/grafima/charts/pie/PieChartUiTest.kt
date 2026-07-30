@@ -129,5 +129,4 @@ class PieChartUiTest {
         waitForIdle()
         assertNull(selected, "selection must clear when its slice leaves the dataset")
     }
-
 }

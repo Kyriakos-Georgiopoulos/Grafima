@@ -156,9 +156,9 @@ internal fun DrawScope.drawRadarLabels(
             textLayoutResult = layout,
             topLeft = Offset(
                 x = center.x + labelRadius * cosA[i] -
-                        layout.size.width / 2f + cosA[i] * layout.size.width / 2f,
+                    layout.size.width / 2f + cosA[i] * layout.size.width / 2f,
                 y = center.y + labelRadius * sinA[i] -
-                        layout.size.height / 2f + sinA[i] * layout.size.height / 2f
+                    layout.size.height / 2f + sinA[i] * layout.size.height / 2f
             )
         )
     }

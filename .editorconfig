@@ -1,0 +1,28 @@
+root = true
+
+[*.{kt,kts}]
+ktlint_code_style = intellij_idea
+indent_size = 4
+insert_final_newline = true
+max_line_length = 120
+
+# @Composable functions are PascalCase and test functions use backticked
+# sentences; neither convention is modelled by ktlint's naming rules.
+ktlint_standard_function-naming = disabled
+ktlint_standard_property-naming = disabled
+
+# Layout opinions, not defects. Left off so ktlint reports real problems
+# instead of reformatting every file to a different house style.
+ktlint_standard_trailing-comma-on-call-site = disabled
+ktlint_standard_trailing-comma-on-declaration-site = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_class-signature = disabled
+ktlint_standard_argument-list-wrapping = disabled
+ktlint_standard_parameter-list-wrapping = disabled
+ktlint_standard_binary-expression-wrapping = disabled
+ktlint_standard_statement-wrapping = disabled
+ktlint_standard_function-expression-body = disabled
+ktlint_standard_function-literal = disabled
+ktlint_standard_multiline-if-else = disabled
+ktlint_standard_multiline-loop = disabled
+ktlint_standard_wrapping = disabled

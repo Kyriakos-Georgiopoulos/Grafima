@@ -19,8 +19,8 @@ package io.grafima.charts.bar
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
-import io.grafima.charts.Exiting
 import io.grafima.charts.ExitTracker
+import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

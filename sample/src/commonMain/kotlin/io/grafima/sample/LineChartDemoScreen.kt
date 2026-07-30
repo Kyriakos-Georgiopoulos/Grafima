@@ -138,11 +138,11 @@ private fun seededDataSet(): LineDataSet = LineDataSet(
             strokeGradientColors = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
             points = listOf(42f, 55f, 48f, 72f, 68f, 85f, 90f, 78f, 95f, 110f, 105f, 120f)
                 .mapIndexed { i, v -> LineDataPoint(
-                x = i.toFloat(),
-                y = v,
-                label = MonthLabels[i],
-                contentDescription = SpokenMonths[i]
-            ) }
+                    x = i.toFloat(),
+                    y = v,
+                    label = MonthLabels[i],
+                    contentDescription = SpokenMonths[i]
+                ) }
         ),
         LineSeries(
             id = "exp",
@@ -152,11 +152,11 @@ private fun seededDataSet(): LineDataSet = LineDataSet(
             strokeGradientColors = listOf(Color(0xFFFBBF24), Color(0xFFD97706)),
             points = listOf(38f, 42f, 50f, 45f, 55f, 52f, 60f, 58f, 62f, 65f, 70f, 68f)
                 .mapIndexed { i, v -> LineDataPoint(
-                x = i.toFloat(),
-                y = v,
-                label = MonthLabels[i],
-                contentDescription = SpokenMonths[i]
-            ) }
+                    x = i.toFloat(),
+                    y = v,
+                    label = MonthLabels[i],
+                    contentDescription = SpokenMonths[i]
+                ) }
         )
     ),
     contentDescription = "Monthly Revenue vs Expenses"
