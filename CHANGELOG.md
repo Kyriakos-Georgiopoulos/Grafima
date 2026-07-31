@@ -11,7 +11,7 @@ under **Changed** or **Removed** below has a matching diff in that file.
 
 Nothing yet.
 
-## [1.0.0] — not yet released
+## [1.0.0] - 2026-07-31
 
 First release.
 
@@ -31,4 +31,5 @@ First release.
 - Per-chart `a11yConfig`, `style`, `axisConfig` and `animationConfig` for
   overriding text, geometry and timing.
 
-[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/main...HEAD
+[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/releases/tag/v1.0.0
