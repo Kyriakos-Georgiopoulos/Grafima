@@ -256,6 +256,25 @@ fun BarChart(
                 horizontalCatLabelSpacePx,
                 hitSlopPx
             ) {
+                var clearedId: String? = null
+
+                fun applySelection(foundEntry: BarEntry?, isInitialDown: Boolean) {
+                    if (foundEntry == null) {
+                        if (currentSelectedEntry != null) currentOnBarSelected(null)
+                        return
+                    }
+                    if (foundEntry.id == clearedId) return
+                    clearedId = null
+
+                    if (isInitialDown && currentSelectedEntry?.id == foundEntry.id) {
+                        clearedId = foundEntry.id
+                        currentOnBarSelected(null)
+                    } else if (currentSelectedEntry?.id != foundEntry.id) {
+                        currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                        currentOnBarSelected(foundEntry)
+                    }
+                }
+
                 fun processTouch(touchPos: Offset, isInitialDown: Boolean) {
                     val canvasWidth = size.width.toFloat()
                     val canvasHeight = size.height.toFloat()
@@ -288,16 +307,7 @@ fun BarChart(
                             }
                         }
 
-                        if (foundEntry == null) {
-                            if (currentSelectedEntry != null) currentOnBarSelected(null)
-                        } else {
-                            if (isInitialDown && currentSelectedEntry?.id == foundEntry.id) {
-                                currentOnBarSelected(null)
-                            } else if (currentSelectedEntry?.id != foundEntry.id) {
-                                currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
-                                currentOnBarSelected(foundEntry)
-                            }
-                        }
+                        applySelection(foundEntry, isInitialDown)
                         return
                     }
 
@@ -329,19 +339,11 @@ fun BarChart(
                         }
                     }
 
-                    if (foundEntry == null) {
-                        if (currentSelectedEntry != null) currentOnBarSelected(null)
-                    } else {
-                        if (isInitialDown && currentSelectedEntry?.id == foundEntry.id) {
-                            currentOnBarSelected(null)
-                        } else if (currentSelectedEntry?.id != foundEntry.id) {
-                            currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
-                            currentOnBarSelected(foundEntry)
-                        }
-                    }
+                    applySelection(foundEntry, isInitialDown)
                 }
 
                 awaitEachGesture {
+                    clearedId = null
                     val down = awaitFirstDown()
                     processTouch(down.position, isInitialDown = true)
                     do {
