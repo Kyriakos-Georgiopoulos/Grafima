@@ -1,0 +1,106 @@
+name: Release
+
+# Publishing is triggered by pushing a tag, which per CONTRIBUTING.md only
+# happens after a release/x.y.z PR has merged into main. Everything here has
+# therefore already passed the full CI suite; the checks below exist to catch
+# the two mistakes a tag can still carry: a version that disagrees with the tag,
+# and a public API that drifted from the committed dump.
+on:
+  push:
+    tags: ['v*']
+  # Lets the whole thing be rehearsed from the Actions tab without publishing.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build and verify without publishing'
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  JAVA_VERSION: '21'
+
+jobs:
+  publish:
+    name: Publish to Maven Central
+    # macOS is not optional: the iosArm64 and iosSimulatorArm64 klibs can only
+    # be produced on a Mac, and a release missing them would be worse than no
+    # release at all.
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v6
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: konan-${{ runner.os }}-
+
+      # A tag of v1.0.0 against VERSION_NAME=1.0.0-SNAPSHOT would publish a
+      # snapshot under a release tag, which cannot be undone on Central.
+      - name: Check the tag matches VERSION_NAME
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION=$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2)
+          echo "tag=$TAG  gradle.properties=$VERSION"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match VERSION_NAME=$VERSION"
+            exit 1
+          fi
+          case "$VERSION" in
+            *-SNAPSHOT) echo "::error::Refusing to release a snapshot"; exit 1 ;;
+          esac
+
+      - name: Check public API has not drifted
+        run: ./gradlew :library:checkKotlinAbi
+
+      - name: Run the library test suites
+        run: ./gradlew :library:allTests
+
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
+        # Uploads a deployment and validates it, then waits for you to press
+        # Publish at central.sonatype.com. Swap in publishAndReleaseToMavenCentral
+        # once you are happy to let a tag go straight to Central unattended.
+        run: ./gradlew :library:publishToMavenCentral --no-configuration-cache
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+
+      # Release notes come from CHANGELOG.md so there is one source of truth and
+      # no chance of the tag saying something the changelog does not.
+      - name: Extract the changelog section
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+            flag && /^## \[/ { exit }
+            flag { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::warning::No [$VERSION] section found in CHANGELOG.md"
+            echo "See CHANGELOG.md for details." > release-notes.md
+          fi
+          cat release-notes.md
+
+      - name: Create the GitHub release
+        if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

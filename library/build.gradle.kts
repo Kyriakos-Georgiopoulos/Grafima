@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.maven.publish)
 }
 
 kotlin {
@@ -73,6 +74,45 @@ kotlin {
                 implementation(libs.androidx.test.runner)
                 implementation(libs.androidx.compose.ui.test.manifest)
             }
+        }
+    }
+}
+
+// Coordinates and version come from gradle.properties (GROUP, POM_ARTIFACT_ID,
+// VERSION_NAME) so a release only has to bump one line.
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+
+    pom {
+        name.set("Grafima")
+        description.set(
+            "Charts for Compose Multiplatform: bar, line, pie, radar and gauge, drawn on " +
+                "Canvas with animations, accessibility and RTL support on Android and iOS."
+        )
+        inceptionYear.set("2026")
+        url.set("https://github.com/Kyriakos-Georgiopoulos/Grafima")
+
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                distribution.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+            }
+        }
+
+        developers {
+            developer {
+                id.set("Kyriakos-Georgiopoulos")
+                name.set("Kyriakos Georgiopoulos")
+                url.set("https://github.com/Kyriakos-Georgiopoulos")
+            }
+        }
+
+        scm {
+            url.set("https://github.com/Kyriakos-Georgiopoulos/Grafima")
+            connection.set("scm:git:git://github.com/Kyriakos-Georgiopoulos/Grafima.git")
+            developerConnection.set("scm:git:ssh://git@github.com/Kyriakos-Georgiopoulos/Grafima.git")
         }
     }
 }
