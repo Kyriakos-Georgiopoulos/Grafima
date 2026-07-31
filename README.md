@@ -18,6 +18,24 @@ accessible by default.
 | **Gauge** | |
 | <video src="https://github.com/user-attachments/assets/239a3982-68b6-4998-9690-9e9df98265e9"></video>| |
 
+## Install
+
+```kotlin
+commonMain.dependencies {
+    implementation("io.grafima:grafima:1.0.0")
+}
+```
+
+On an Android-only project, put it in the usual `dependencies` block instead:
+
+```kotlin
+dependencies {
+    implementation("io.grafima:grafima:1.0.0")
+}
+```
+
+## Usage
+
 ```kotlin
 BarChart(
     dataSet = BarDataSet(
