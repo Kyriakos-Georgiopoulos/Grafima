@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="" width="112">
+  <img src="docs/assets/logo-wordmark.svg" alt="" width="440">
 </p>
 
 # Grafima
@@ -26,12 +26,12 @@ BarChart(
 
 Γράφημα is the Greek word for chart. I'm Greek, so the name picked itself.
 
-I wanted a charts library I could put in a production app without a list of
-things to fix later. Readable by a screen reader, correct in right-to-left
-layouts, quick to wire up, and cheap to draw. Those four are the parts that take
-longest and are the easiest to postpone, so they came first here.
+I wanted charts I could ship in a real app without a list of things to fix later.
+So the hard parts came first: screen readers read them properly, right-to-left
+layouts work, setup is quick, and drawing stays cheap.
 
-If you need to move fast and not give those up, that is what this is for.
+Those four are the easiest to put off and the slowest to add back. If you need to
+move fast without giving them up, that is what this is for.
 
 ## What you get
 

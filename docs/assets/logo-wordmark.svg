@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" width="1280" height="320" role="img" aria-label="Grafima, charts for Compose Multiplatform">
+  <defs>
+    <linearGradient id="b2-axis" gradientUnits="userSpaceOnUse" x1="452" y1="96" x2="96" y2="452">
+      <stop offset="0" stop-color="#38BDF8"/><stop offset="0.55" stop-color="#4F46E5"/><stop offset="1" stop-color="#6D28D9"/>
+    </linearGradient>
+    <linearGradient id="b2-a" gradientUnits="userSpaceOnUse" x1="382.9" y1="183.7" x2="313.5" y2="302.5">
+      <stop offset="0" stop-color="#FFC542"/><stop offset="1" stop-color="#FF7A5C"/>
+    </linearGradient>
+    <linearGradient id="b2-b" gradientUnits="userSpaceOnUse" x1="302.5" y1="313.5" x2="183.7" y2="382.9">
+      <stop offset="0" stop-color="#FF6A63"/><stop offset="1" stop-color="#FF2E7E"/>
+    </linearGradient>
+    <linearGradient id="b2-word" gradientUnits="userSpaceOnUse" x1="440" y1="120" x2="920" y2="220">
+      <stop offset="0" stop-color="#38BDF8"/><stop offset="0.5" stop-color="#6D28D9"/><stop offset="1" stop-color="#FF2E7E"/>
+    </linearGradient>
+    <linearGradient id="b2-rule" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="70" y2="0">
+      <stop offset="0" stop-color="#FFC542"/><stop offset="1" stop-color="#FF2E7E"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(150,50) scale(0.42)">
+    <path d="M452 96 H96 V452" fill="none" stroke="url(#b2-axis)" stroke-width="56" stroke-linecap="butt" stroke-linejoin="miter"/>
+    <path d="M382.9 183.7 A300 300 0 0 1 313.5 302.5" fill="none" stroke="url(#b2-a)" stroke-width="56" stroke-linecap="butt"/>
+    <path d="M302.5 313.5 A300 300 0 0 1 183.7 382.9" fill="none" stroke="url(#b2-b)" stroke-width="56" stroke-linecap="butt"/>
+  </g>
+
+  <text x="470" y="180" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="120" font-weight="700" letter-spacing="-4" fill="url(#b2-word)">grafima</text>
+  <rect x="473" y="212" width="70" height="6" rx="3" fill="url(#b2-rule)"/>
+  <text x="560" y="225" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="26" font-weight="500" letter-spacing="3.4" fill="#8B93C7">CHARTS FOR COMPOSE MULTIPLATFORM</text>
+</svg>
