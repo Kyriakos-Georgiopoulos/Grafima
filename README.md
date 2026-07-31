@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo-wordmark.svg" alt="" width="440">
+  <img src="docs/assets/logo-wordmark.svg" alt="" width=“740">
 </p>
 
 # Grafima
@@ -8,6 +8,15 @@ Charts for Compose Multiplatform. Android and iOS, one codebase.
 
 Five chart types (bar, line, pie, radar, gauge) drawn on `Canvas`, animated, and
 accessible by default.
+
+ ## Demo
+| Bar | Line |
+| :---: | :---: |
+| <video src="https://github.com/user-attachments/assets/ea18ffda-d197-4993-8c21-ab53ec5988c1"></video> |<video src="https://github.com/user-attachments/assets/11a8f662-a679-4a5b-a62d-32a5a9644f4d"></video>|
+| **Pie** | **Radar** |
+| <video src="https://github.com/user-attachments/assets/5a215fdd-c9f9-43a7-847e-1ce3e6b274cf"></video> | <video src="https://github.com/user-attachments/assets/80f94bac-79df-4c68-b12f-51baa1f96e6b"></video>|
+| **Gauge** | |
+| <video src="https://github.com/user-attachments/assets/239a3982-68b6-4998-9690-9e9df98265e9"></video>| |
 
 ```kotlin
 BarChart(
