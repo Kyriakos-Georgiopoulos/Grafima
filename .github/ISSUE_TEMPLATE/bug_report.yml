@@ -1,0 +1,66 @@
+name: Bug report
+description: Something renders, animates, or announces wrongly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The reproduction code is the part that gets a bug fixed fastest. Keep it
+        to the smallest chart that still shows the problem.
+
+  - type: dropdown
+    id: chart
+    attributes:
+      label: Which chart
+      options: [Bar, Line, Pie, Radar, Gauge, More than one, Not chart specific]
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platform
+    attributes:
+      label: Where it happens
+      options:
+        - label: Android
+        - label: iOS
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Grafima, and Compose Multiplatform if you have changed it.
+      placeholder: Grafima 1.0.0, CMP 1.11.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: The dataset and the composable call. Trim it to the minimum.
+      render: kotlin
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshot, recording, or stack trace
+      description: >
+        Optional, but the fastest way to explain a visual bug. For an
+        accessibility bug, what TalkBack or VoiceOver actually said is more
+        useful than a screenshot.

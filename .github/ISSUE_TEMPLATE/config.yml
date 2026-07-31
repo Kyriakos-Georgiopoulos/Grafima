@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: How do I use a chart?
+    url: https://github.com/Kyriakos-Georgiopoulos/Grafima/tree/main/docs
+    about: Each chart has a guide with the full parameter list and examples.
