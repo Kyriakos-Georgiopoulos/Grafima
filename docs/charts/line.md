@@ -2,6 +2,8 @@
 
 Multi-series line chart with smooth curves, area fills, and a drag crosshair.
 
+![A line chart with one series rising from 42 to 90 across seven points, drawn as a smooth curve with a light area fill.](../assets/charts/line.png)
+
 ```kotlin
 val data = LineDataSet(
     series = listOf(

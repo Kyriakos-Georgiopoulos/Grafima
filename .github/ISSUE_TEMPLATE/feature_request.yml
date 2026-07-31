@@ -1,0 +1,37 @@
+name: Feature request
+description: A new chart type, or something an existing chart cannot do yet.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open this before writing code. It is quicker to agree on the shape here
+        than to rework a pull request.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The problem, not the solution. What are you building?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: An API sketch is welcome if you have one in mind.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: chart
+    attributes:
+      label: Which chart this affects
+      options: [Bar, Line, Pie, Radar, Gauge, A new chart type, All of them]
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried already
+      description: Workarounds you found, and why they were not enough.

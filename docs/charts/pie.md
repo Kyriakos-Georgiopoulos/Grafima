@@ -2,6 +2,8 @@
 
 Pie or donut with tap selection, per-slice gradients, and a center content slot.
 
+![A donut chart with four coloured slices: Research, Design, Development and Support.](../assets/charts/pie.png)
+
 ```kotlin
 val data = PieDataSet(
     entries = listOf(

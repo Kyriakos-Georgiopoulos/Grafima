@@ -2,6 +2,8 @@
 
 Vertical or horizontal bars with tap selection, animated entry, and RTL support.
 
+![A bar chart of monthly revenue, five bars labelled Jan to May with their values above each bar.](../assets/charts/bar.png)
+
 ```kotlin
 val data = BarDataSet(
     entries = listOf(

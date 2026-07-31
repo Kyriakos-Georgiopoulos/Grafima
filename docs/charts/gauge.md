@@ -3,6 +3,8 @@
 A single value on an arc, with a needle. For speed, capacity, progress, scores —
 anything with a known range.
 
+![A gauge showing 72 on a 0 to 100 arc, with green, amber and red zones and a needle.](../assets/charts/gauge.png)
+
 ```kotlin
 GaugeChart(value = 72f, modifier = Modifier.size(280.dp))
 ```

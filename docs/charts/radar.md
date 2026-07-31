@@ -3,6 +3,8 @@
 Compares several series across the same set of axes. Useful when each thing you
 are measuring has the same dimensions — product specs, skill profiles, scores.
 
+![A radar chart with five axes labelled Attack, Defense, Speed, Magic and Stamina, one filled series plotted across them.](../assets/charts/radar.png)
+
 ```kotlin
 val data = RadarDataSet(
     axes = listOf(

@@ -1,9 +1,13 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="" width="112">
+</p>
+
 # Grafima
 
 Charts for Compose Multiplatform. Android and iOS, one codebase.
 
-Five chart types — bar, line, pie, radar, gauge — drawn on `Canvas`, animated,
-and accessible by default.
+Five chart types (bar, line, pie, radar, gauge) drawn on `Canvas`, animated, and
+accessible by default.
 
 ```kotlin
 BarChart(
@@ -18,29 +22,44 @@ BarChart(
 )
 ```
 
+## Why it exists
+
+Γράφημα is the Greek word for chart. I'm Greek, so the name picked itself.
+
+I wanted a charts library I could put in a production app without a list of
+things to fix later. Readable by a screen reader, correct in right-to-left
+layouts, quick to wire up, and cheap to draw. Those four are the parts that take
+longest and are the easiest to postpone, so they came first here.
+
+If you need to move fast and not give those up, that is what this is for.
+
+## What you get
+
+**Accessible.** Every chart is one labelled node, the selection is announced as
+state, and each item gets a named action, so nobody has to land a tap on a moving
+target. [How it works](docs/ACCESSIBILITY.md)
+
+**RTL throughout.** Mirrored properly, down to which end of a bar is rounded.
+
+**Cheap to draw.** Nothing is allocated per frame, and a running animation
+redraws without recomposing.
+
+**Selection is yours.** No chart owns its selection state. You pass it in and get
+changes back.
+
+**Tested.** 101 unit tests and a UI suite on both an Android emulator and an iOS
+simulator, including accessibility contracts every chart has to pass.
+[Test suites](docs/TESTING.md)
+
 ## Documentation
 
-Start with [docs/README.md](docs/README.md), or go straight to a chart:
+Every chart has a guide with a rendered example and the full parameter list:
 
 [Bar](docs/charts/bar.md) · [Line](docs/charts/line.md) ·
 [Pie](docs/charts/pie.md) · [Radar](docs/charts/radar.md) ·
 [Gauge](docs/charts/gauge.md)
 
-## What you get
-
-**Accessibility that works.** Every chart is a single labelled node with a
-description built from your data, selection announced as state, and a custom
-action per entry so screen reader users don't have to hit a target. Contrast is
-checked in CI.
-
-**Animation that behaves.** Charts stagger in and morph between datasets.
-Reduced motion is respected automatically.
-
-**RTL throughout.** Not just mirrored coordinates — the details, down to which
-end of a bar is rounded.
-
-**Selection you control.** No chart owns its selection state. You pass it in and
-get changes back.
+Behaviour shared by every chart is in [Concepts](docs/CONCEPTS.md).
 
 ## Requirements
 
@@ -60,12 +79,30 @@ open iosApp/iosApp.xcodeproj           # iOS, then run from Xcode
 
 ## Contributing
 
-[CONTRIBUTING.md](CONTRIBUTING.md) covers the branching model and what a PR needs
-to pass. [docs/TESTING.md](docs/TESTING.md) covers the test suites and how to run
-them. If you're working with an AI assistant, point it at
-[docs/AI_CONTRIBUTING.md](docs/AI_CONTRIBUTING.md) first — it has the
-conventions and the checks that catch mistakes.
+I'm not just maintaining this, I'm still building it. More chart types and more
+features are coming.
+
+If you want something changed or added, open an issue first so we can agree on
+the shape, then send a PR.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the branching model and what CI checks.
+[docs/TESTING.md](docs/TESTING.md) covers the test suites and how to run them.
+
+## On AI use
+
+I'd rather tell you than let you guess:
+
+- **Code review.** Three passes per branch, each with a different model.
+- **Docs and KDoc.** Drafted with an LLM.
+- **Everything was reviewed by me** before release. The design decisions are mine.
+
+Using an LLM on a contribution is fine. Open the PR from your own GitHub account,
+not a bot's.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0, see [LICENSE](LICENSE).

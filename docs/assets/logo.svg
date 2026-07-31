@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Grafima app icon">
+  <defs>
+    <linearGradient id="ic-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0" stop-color="#191645"/>
+      <stop offset="1" stop-color="#07061A"/>
+    </linearGradient>
+    <radialGradient id="ic-glow" gradientUnits="userSpaceOnUse" cx="120" cy="110" r="330">
+      <stop offset="0" stop-color="#7C3AED" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#7C3AED" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ic-glow2" gradientUnits="userSpaceOnUse" cx="430" cy="440" r="300">
+      <stop offset="0" stop-color="#FF2E7E" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#FF2E7E" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ic-axis" gradientUnits="userSpaceOnUse" x1="405" y1="128" x2="128" y2="405">
+      <stop offset="0" stop-color="#67E8F9"/>
+      <stop offset="0.55" stop-color="#818CF8"/>
+      <stop offset="1" stop-color="#A855F7"/>
+    </linearGradient>
+    <linearGradient id="ic-a" gradientUnits="userSpaceOnUse" x1="352" y1="196" x2="298" y2="289">
+      <stop offset="0" stop-color="#FFC542"/>
+      <stop offset="1" stop-color="#FF7A5C"/>
+    </linearGradient>
+    <linearGradient id="ic-b" gradientUnits="userSpaceOnUse" x1="289" y1="298" x2="196" y2="352">
+      <stop offset="0" stop-color="#FF6A63"/>
+      <stop offset="1" stop-color="#FF2E7E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="114" fill="url(#ic-bg)"/>
+  <rect width="512" height="512" rx="114" fill="url(#ic-glow)"/>
+  <rect width="512" height="512" rx="114" fill="url(#ic-glow2)"/>
+
+  <g transform="translate(53,53) scale(0.78)">
+    <path d="M452 96 H96 V452" fill="none" stroke="url(#ic-axis)" stroke-width="56"
+          stroke-linecap="butt" stroke-linejoin="miter"/>
+    <path d="M382.9 183.7 A300 300 0 0 1 313.5 302.5" fill="none" stroke="url(#ic-a)" stroke-width="56" stroke-linecap="butt"/>
+    <path d="M302.5 313.5 A300 300 0 0 1 183.7 382.9" fill="none" stroke="url(#ic-b)" stroke-width="56" stroke-linecap="butt"/>
+  </g>
+</svg>
