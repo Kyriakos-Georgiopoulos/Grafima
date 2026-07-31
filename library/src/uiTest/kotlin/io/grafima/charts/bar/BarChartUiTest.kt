@@ -22,11 +22,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.customActionLabels
@@ -135,6 +137,56 @@ class BarChartUiTest {
         )
         waitForIdle()
         assertNull(selected, "selection must clear when its entry leaves the dataset")
+    }
+
+    @Test
+    fun tapping_the_selected_bar_clears_it_even_though_the_finger_moves() = runComposeUiTest {
+        var selected by mutableStateOf<BarEntry?>(null)
+        setContent {
+            BarChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectedEntry = selected,
+                onBarSelected = { selected = it }
+            )
+        }
+        val chart = onNodeWithContentDescription("Monthly revenue", substring = true)
+
+        chart.performTouchInput { down(Offset(width * 0.25f, height * 0.85f)); up() }
+        waitForIdle()
+        assertEquals("jan", selected?.id, "the press has to land on the first bar")
+
+        chart.performTouchInput {
+            down(Offset(width * 0.25f, height * 0.85f))
+            moveBy(Offset(2f, 2f))
+            up()
+        }
+        waitForIdle()
+        assertNull(selected, "tapping the selected bar has to clear it")
+    }
+
+    @Test
+    fun dragging_off_the_cleared_bar_onto_another_still_selects_it() = runComposeUiTest {
+        var selected by mutableStateOf<BarEntry?>(dataSet.entries.first())
+        setContent {
+            BarChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectedEntry = selected,
+                onBarSelected = { selected = it }
+            )
+        }
+        waitForIdle()
+
+        onNodeWithContentDescription("Monthly revenue", substring = true).performTouchInput {
+            down(Offset(width * 0.25f, height * 0.85f))
+            moveTo(Offset(width * 0.75f, height * 0.85f))
+            up()
+        }
+        waitForIdle()
+        assertEquals("feb", selected?.id, "clearing one bar must not block dragging onto another")
     }
 
     /**
