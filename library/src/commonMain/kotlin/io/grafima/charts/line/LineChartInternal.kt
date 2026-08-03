@@ -90,6 +90,30 @@ internal fun computeNiceAxisTicks(dataMin: Float, dataMax: Float, tickCount: Int
 }
 
 /**
+ * Axis tick values, honouring a pinned [pinnedMin] or [pinnedMax].
+ *
+ * With neither pinned this is [computeNiceAxisTicks]. With either pinned the range
+ * is divided into [tickCount] equal steps instead: nice-number rounding extends the
+ * range outwards to reach a round step, which would move the edge the caller pinned.
+ */
+internal fun computeAxisTicks(
+    dataMin: Float,
+    dataMax: Float,
+    tickCount: Int,
+    pinnedMin: Float?,
+    pinnedMax: Float?
+): List<Float> {
+    if (pinnedMin == null && pinnedMax == null) {
+        return computeNiceAxisTicks(dataMin, dataMax, tickCount)
+    }
+    val lo = pinnedMin ?: dataMin
+    val hi = pinnedMax ?: dataMax
+    if (tickCount <= 0 || hi <= lo) return listOf(lo, hi)
+    val step = (hi - lo) / tickCount
+    return (0..tickCount).map { lo + it * step }
+}
+
+/**
  * Fritsch-Carlson monotone cubic tangent computation. Operates entirely on
  * pre-allocated [FloatArray] buffers with zero heap allocation.
  *

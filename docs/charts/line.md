@@ -104,6 +104,41 @@ the data, which exaggerates small changes — useful sometimes, misleading other
 `xLabelFormatter` only runs for points that left `label` empty. Set
 `LineDataPoint.label` and it is used as it is.
 
+## Pinning the range
+
+Auto-scaling fits each chart to its own data, which is wrong when several charts
+have to be read against each other. Pin the range and they share a scale:
+
+```kotlin
+axisConfig = LineAxisConfig(
+    yMin = 0f,
+    yMax = 10f,
+    xMin = -1f,
+    xMax = 25f
+)
+```
+
+Each is independent — set one, two, or all four. An unset bound is still
+computed from the data.
+
+A pinned bound is used exactly as given. Nice-number rounding is off for that
+axis, since rounding works by moving the bound outwards to reach a round step,
+and the range is divided into `yTickCount` equal steps instead. Pin `0f..10f`
+with the default five ticks and the labels are 0, 2, 4, 6, 8, 10. Pin `0f..7f`
+and they are 0, 1.4, 2.8 and so on — pick bounds that divide, or format them
+with `yLabelFormatter`.
+
+`yMin` takes precedence over `includeZeroInYRange`.
+
+A line that leaves a pinned range is cut where it crosses the bound and picks up
+again where it comes back, leaving a gap. The gap is the point: a line flattened
+along the top edge would read as a run of values sitting exactly at `yMax`, when
+they are really above it and off the chart. Points outside the range get no dot,
+and the crosshair skips them.
+
+`xMin` is the left edge in LTR and the right edge in RTL, and can be negative —
+useful when the axis starts before zero, like a baseline day of `-1`.
+
 Colors sit on the same config:
 
 ```kotlin
