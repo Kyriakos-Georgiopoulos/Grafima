@@ -90,7 +90,8 @@ it yourself when the data changes if that matters to you.
 axisConfig = LineAxisConfig(
     yTickCount = 5,
     includeZeroInYRange = true,
-    valueFormatter = { "${it.toInt()}k" }
+    yLabelFormatter = { "${it.toInt()}k" },
+    xLabelFormatter = { "Day ${it.toInt()}" }
 )
 ```
 
@@ -99,6 +100,20 @@ your data, so you won't get an axis labelled 3.7, 7.4, 11.1.
 
 `includeZeroInYRange` forces the axis to start at zero. Without it the axis fits
 the data, which exaggerates small changes — useful sometimes, misleading others.
+
+`xLabelFormatter` only runs for points that left `label` empty. Set
+`LineDataPoint.label` and it is used as it is.
+
+Colors sit on the same config:
+
+```kotlin
+axisConfig = LineAxisConfig(
+    axisColor = Color(0xFF94A3B8),
+    labelColor = Color(0xFF475569),
+    gridColor = Color(0xFFF1F5F9),
+    dashedGrid = true
+)
+```
 
 ## Animation
 
