@@ -133,11 +133,19 @@ with `yLabelFormatter`.
 A line that leaves a pinned range is cut where it crosses the bound and picks up
 again where it comes back, leaving a gap. The gap is the point: a line flattened
 along the top edge would read as a run of values sitting exactly at `yMax`, when
-they are really above it and off the chart. Points outside the range get no dot,
-and the crosshair skips them.
+they are really above it and off the chart.
+
+A point outside the range gets no dot, no x-label, no vertical grid line, and no
+crosshair — selecting it draws nothing, though it is still described to a screen
+reader and still reaches `onPointSelected`.
 
 `xMin` is the left edge in LTR and the right edge in RTL, and can be negative —
 useful when the axis starts before zero, like a baseline day of `-1`.
+
+A range that cannot work is ignored rather than obeyed: `yMax` below `yMin`, the
+two equal, a bound below the data with the other left unset, or a `NaN`. Any of
+those would divide by a span of zero or less and stack every point on one edge,
+so the axis silently falls back to fitting the data. Both axes behave this way.
 
 Colors sit on the same config:
 

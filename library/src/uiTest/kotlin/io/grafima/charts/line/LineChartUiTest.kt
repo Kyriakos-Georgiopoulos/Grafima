@@ -22,7 +22,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.customActionLabels
@@ -32,6 +36,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class LineChartUiTest {
@@ -157,5 +162,113 @@ class LineChartUiTest {
         )
         waitForIdle()
         onChartNode().assertExists()
+    }
+
+    private fun ImageBitmap.countColor(color: Color): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val target = color.toArgb()
+        return pixels.count { it == target }
+    }
+
+    /** Red pixels in the right third of the plot, where a stacked series draws none. */
+    private fun ImageBitmap.countColorInRightThird(color: Color): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val target = color.toArgb()
+        return pixels.indices.count { it % width >= width * 2 / 3 && pixels[it] == target }
+    }
+
+    @Test
+    fun an_unusable_pinned_x_range_falls_back_to_the_data_rather_than_stacking_points() =
+        runComposeUiTest {
+            // xMax below every x in the data leaves a negative span, which used to map
+            // every point onto chartLeft and draw the series as one vertical stroke.
+            val farFromOrigin = LineDataSet(
+                series = listOf(
+                    LineSeries(
+                        id = "far",
+                        label = "Far",
+                        points = listOf(
+                            LineDataPoint(x = 30f, y = 10f),
+                            LineDataPoint(x = 35f, y = 25f),
+                            LineDataPoint(x = 40f, y = 18f)
+                        ),
+                        color = Color.Red,
+                        strokeWidth = 4.dp
+                    )
+                ),
+                contentDescription = "Far from the origin"
+            )
+            setContent {
+                LineChart(
+                    dataSet = farFromOrigin,
+                    modifier = Modifier.size(300.dp),
+                    animationConfig = snapAnimations,
+                    axisConfig = LineAxisConfig(xMax = 25f)
+                )
+            }
+            waitForIdle()
+
+            val reached = onChartNode().captureToImage().countColorInRightThird(Color.Red)
+            assertTrue(reached > 0, "the series never reached the right of the plot")
+        }
+
+    private val overTheCeiling = LineDataSet(
+        series = listOf(
+            LineSeries(
+                id = "symptom",
+                label = "Symptom",
+                points = listOf(
+                    LineDataPoint(x = 0f, y = 4f, label = "Mon"),
+                    LineDataPoint(x = 1f, y = 10.05f, label = "Tue"),
+                    LineDataPoint(x = 2f, y = 6f, label = "Wed")
+                )
+            )
+        ),
+        contentDescription = "Symptom score"
+    )
+
+    private val greenRing = LineCrosshairConfig(
+        showTooltip = false,
+        dotBorderColor = Color.Green
+    )
+
+    @Test
+    fun a_point_inside_a_pinned_range_gets_its_crosshair_dot() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = overTheCeiling,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(yMin = 0f, yMax = 10f),
+                crosshairConfig = greenRing,
+                selectedPointIndex = 0
+            )
+        }
+        waitForIdle()
+
+        val ring = onChartNode().captureToImage().countColor(Color.Green)
+        assertTrue(ring > 0, "the crosshair dot for an in-range point never painted")
+    }
+
+    @Test
+    fun a_point_just_past_a_pinned_bound_gets_no_crosshair_dot() = runComposeUiTest {
+        // 10.05 on a 0..10 axis sits about 1.4dp above chartTop, well inside the dot
+        // radius that used to be tolerated, so the ring painted outside the plot.
+        setContent {
+            LineChart(
+                dataSet = overTheCeiling,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(yMin = 0f, yMax = 10f),
+                crosshairConfig = greenRing,
+                selectedPointIndex = 1
+            )
+        }
+        waitForIdle()
+
+        val ring = onChartNode().captureToImage().countColor(Color.Green)
+        assertEquals(0, ring, "a point above yMax still painted a crosshair dot")
     }
 }

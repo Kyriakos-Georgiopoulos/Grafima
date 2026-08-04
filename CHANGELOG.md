@@ -14,7 +14,8 @@ under **Changed** or **Removed** below has a matching diff in that file.
 - `LineAxisConfig.yMin`, `yMax`, `xMin` and `xMax` pin an axis to a fixed range,
   so several charts can share one scale instead of each fitting its own data.
   A pinned bound is used exactly, and a line that leaves the range is cut where
-  it crosses the bound rather than flattened along it. See
+  it crosses the bound rather than flattened along it. A range that cannot work —
+  inverted, empty, or not finite — falls back to fitting the data. See
   [docs/charts/line.md](docs/charts/line.md).
 
 ## [1.0.0] - 2026-07-31

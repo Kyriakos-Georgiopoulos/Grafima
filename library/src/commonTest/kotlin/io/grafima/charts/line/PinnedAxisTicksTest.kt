@@ -18,6 +18,7 @@ package io.grafima.charts.line
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class PinnedAxisTicksTest {
@@ -67,7 +68,7 @@ class PinnedAxisTicksTest {
     }
 
     @Test
-    fun `pinned ticks are evenly spaced and there are tickCount of them`() {
+    fun `pinned ticks are evenly spaced and there is one more of them than tickCount`() {
         val ticks = computeAxisTicks(0f, 3f, 6, pinnedMin = -1f, pinnedMax = 5f)
         assertEquals(7, ticks.size)
         val step = ticks[1] - ticks[0]
@@ -110,5 +111,78 @@ class PinnedAxisTicksTest {
             auto,
             computeAxisTicks(0f, 5f, 4, pinnedMin = 0f, pinnedMax = Float.POSITIVE_INFINITY)
         )
+    }
+
+    @Test
+    fun `an unpinned axis spans the data extent`() {
+        assertEquals(-1f..25f, resolveAxisBounds(-1f, 25f, pinnedMin = null, pinnedMax = null))
+    }
+
+    @Test
+    fun `a pinned x range is used exactly whatever the data does`() {
+        assertEquals(-1f..25f, resolveAxisBounds(0f, 20f, pinnedMin = -1f, pinnedMax = 25f))
+        assertEquals(0f..100f, resolveAxisBounds(-40f, 400f, pinnedMin = 0f, pinnedMax = 100f))
+    }
+
+    @Test
+    fun `pinning one x bound leaves the other on the data`() {
+        assertEquals(-5f..40f, resolveAxisBounds(30f, 40f, pinnedMin = -5f, pinnedMax = null))
+        assertEquals(30f..60f, resolveAxisBounds(30f, 40f, pinnedMin = null, pinnedMax = 60f))
+    }
+
+    @Test
+    fun `an inverted x range falls back to the data instead of stacking every point`() {
+        assertEquals(30f..40f, resolveAxisBounds(30f, 40f, pinnedMin = null, pinnedMax = 25f))
+        assertEquals(0f..10f, resolveAxisBounds(0f, 10f, pinnedMin = 25f, pinnedMax = -1f))
+        assertEquals(0f..10f, resolveAxisBounds(0f, 10f, pinnedMin = 4f, pinnedMax = 4f))
+    }
+
+    @Test
+    fun `an x bound that is not finite falls back to the data`() {
+        assertEquals(0f..10f, resolveAxisBounds(0f, 10f, pinnedMin = Float.NaN, pinnedMax = 25f))
+        assertEquals(
+            0f..10f,
+            resolveAxisBounds(0f, 10f, pinnedMin = 0f, pinnedMax = Float.POSITIVE_INFINITY)
+        )
+    }
+
+    @Test
+    fun `a value on either bound is inside the axis`() {
+        assertTrue(isWithinAxis(0f, 0f, 10f))
+        assertTrue(isWithinAxis(10f, 0f, 10f))
+    }
+
+    @Test
+    fun `a value past a bound is outside even by less than a dot radius would cover`() {
+        assertFalse(isWithinAxis(10.29f, 0f, 10f))
+        assertFalse(isWithinAxis(-0.29f, 0f, 10f))
+    }
+
+    @Test
+    fun `a pinned bound stays inside the tick range it produced for every tick count`() {
+        for (count in 1..12) {
+            val ticks = computeAxisTicks(0f, 3f, count, pinnedMin = 0f, pinnedMax = 10f)
+            assertTrue(
+                isWithinAxis(10f, ticks.first(), ticks.last()),
+                "tickCount $count dropped the pinned maximum ${ticks.last()}"
+            )
+        }
+    }
+
+    @Test
+    fun `an automatic axis keeps every one of its own data values inside it`() {
+        val ranges = listOf(
+            0f to 1f,
+            0.4f to 0.9f,
+            -12.5f to 37.25f,
+            3f to 97f,
+            500f to 600f,
+            0f to 0.001f
+        )
+        ranges.forEach { (lo, hi) ->
+            val ticks = computeAxisTicks(lo, hi, 5, pinnedMin = null, pinnedMax = null)
+            assertTrue(isWithinAxis(lo, ticks.first(), ticks.last()), "auto axis dropped $lo")
+            assertTrue(isWithinAxis(hi, ticks.first(), ticks.last()), "auto axis dropped $hi")
+        }
     }
 }

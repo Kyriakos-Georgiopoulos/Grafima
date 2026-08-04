@@ -121,6 +121,39 @@ internal fun computeAxisTicks(
 }
 
 /**
+ * Axis bounds honouring a pinned [pinnedMin] or [pinnedMax], falling back to the data
+ * extent when the pin cannot produce a usable range — inverted, empty, or not finite.
+ *
+ * A span of zero or less divides every point onto one edge, which reads as a broken
+ * chart rather than as bad input. [computeAxisTicks] rejects the same shapes for y.
+ */
+internal fun resolveAxisBounds(
+    dataMin: Float,
+    dataMax: Float,
+    pinnedMin: Float?,
+    pinnedMax: Float?
+): ClosedFloatingPointRange<Float> {
+    if (pinnedMin == null && pinnedMax == null) return dataMin..dataMax
+    val lo = pinnedMin ?: dataMin
+    val hi = pinnedMax ?: dataMax
+    if (!lo.isFinite() || !hi.isFinite() || hi <= lo) return dataMin..dataMax
+    return lo..hi
+}
+
+/**
+ * Whether [value] falls inside the axis.
+ *
+ * Tested against the value rather than its animated screen position, so a morph
+ * spring overshooting its target cannot blink a mark out. The tolerance covers a
+ * bound that arrived by division — the last tick of a pinned range can land an ulp
+ * short of the number the caller pinned, and the point sitting on it must still draw.
+ */
+internal fun isWithinAxis(value: Float, axisMin: Float, axisMax: Float): Boolean {
+    val tolerance = (axisMax - axisMin) * 1e-5f
+    return value >= axisMin - tolerance && value <= axisMax + tolerance
+}
+
+/**
  * Fritsch-Carlson monotone cubic tangent computation. Operates entirely on
  * pre-allocated [FloatArray] buffers with zero heap allocation.
  *

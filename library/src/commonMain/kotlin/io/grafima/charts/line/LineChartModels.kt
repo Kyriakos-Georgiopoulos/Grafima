@@ -146,10 +146,14 @@ enum class LineCurveType {
  *
  * Set any of [yMin], [yMax], [xMin] or [xMax] to pin that edge instead, which is
  * what several charts on one shared scale need — otherwise each rescales to its
- * own data and they can no longer be compared by height. Pinning turns nice-number
- * rounding off for that axis and divides the range into [yTickCount] equal steps,
- * because rounding would move the edge you just pinned. Data outside a pinned range
- * is clipped to the plot area.
+ * own data and they can no longer be compared by height. Pinning the y-axis turns
+ * nice-number rounding off and divides the range into [yTickCount] equal steps,
+ * because rounding would move the edge you just pinned.
+ *
+ * A line that leaves a pinned range is cut where it crosses the bound, leaving a
+ * gap, and points outside the range get neither a dot nor a crosshair. A pin that
+ * cannot produce a usable range — inverted, empty, or not finite — is ignored and
+ * the axis falls back to fitting the data.
  *
  * @param showGrid Horizontal grid lines at each y-tick value.
  * @param showVerticalGrid Vertical grid lines at each x data point.

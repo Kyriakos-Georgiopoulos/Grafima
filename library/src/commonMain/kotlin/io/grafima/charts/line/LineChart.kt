@@ -165,12 +165,18 @@ fun LineChart(
 
     // ── Data ranges (recomputed only on data change) ──
     val allPoints = remember(renderSeries) { renderSeries.flatMap { it.points } }
-    val xMin = remember(allPoints, axisConfig.xMin) {
-        axisConfig.xMin ?: allPoints.minOfOrNull { it.x } ?: 0f
+    val xDataMin = remember(allPoints) { allPoints.minOfOrNull { it.x } ?: 0f }
+    val xDataMax = remember(allPoints) { allPoints.maxOfOrNull { it.x } ?: 1f }
+    val xBounds = remember(xDataMin, xDataMax, axisConfig.xMin, axisConfig.xMax) {
+        resolveAxisBounds(
+            dataMin = xDataMin,
+            dataMax = xDataMax,
+            pinnedMin = axisConfig.xMin,
+            pinnedMax = axisConfig.xMax
+        )
     }
-    val xMax = remember(allPoints, axisConfig.xMax) {
-        axisConfig.xMax ?: allPoints.maxOfOrNull { it.x } ?: 1f
-    }
+    val xMin = xBounds.start
+    val xMax = xBounds.endInclusive
     val currentXMin by rememberUpdatedState(xMin)
     val currentXMax by rememberUpdatedState(xMax)
 
@@ -275,8 +281,11 @@ fun LineChart(
         }
     }
 
-    val xIsPinned = axisConfig.xMin != null || axisConfig.xMax != null
-    val yIsPinned = axisConfig.yMin != null || axisConfig.yMax != null
+    // Only a range that cuts data needs clipping. A pin wider than the data has
+    // nothing to cut, and clipping it would shave the round cap of a stroke that
+    // ends on the bound — which is what an unpinned chart draws too.
+    val xRangeCutsData = xMin > xDataMin || xMax < xDataMax
+    val yRangeCutsData = yMin > yDataMin || yMax < yDataMax
 
     // ── Cached PathEffect for dashed grid ──
     val dashEffect = remember(axisConfig.dashedGrid) {
@@ -424,8 +433,8 @@ fun LineChart(
         if (axisConfig.showVerticalGrid && firstPoints.size > 1) {
             val gridPx = axisConfig.gridStrokeWidth.toPx()
             firstPoints.forEach { p ->
+                if (!isWithinAxis(p.x, xMin, xMax)) return@forEach
                 val x = mapX(p.x)
-                if (xIsPinned && (x < chartLeft || x > chartRight)) return@forEach
                 drawLine(
                     color = axisConfig.gridColor,
                     start = Offset(x = x, y = chartTop),
@@ -468,10 +477,8 @@ fun LineChart(
         }
 
         // ── 4. Series: area fills and strokes clipped to a pinned range, then dots ──
-        // Only the pinned axis clips: on an auto range the data cannot leave the
-        // plot, and an exact clip would shave a mark that sits on the last tick.
-        val xClipSlack = if (xIsPinned) 0f else size.maxDimension
-        val yClipSlack = if (yIsPinned) 0f else size.maxDimension
+        val xClipSlack = if (xRangeCutsData) 0f else size.maxDimension
+        val yClipSlack = if (yRangeCutsData) 0f else size.maxDimension
         val dotRadiusPx = style.dotRadius.toPx()
         renderSeries.forEach { s ->
             val n = s.points.size
@@ -552,15 +559,11 @@ fun LineChart(
             }
 
             // Dots sit outside the clip so one on a bound keeps all of itself.
-            // The radius of tolerance is for the morph spring, which overshoots
-            // the target: without it a dot on the last tick blinks mid-animation.
             if (style.showDots) {
                 for (i in 0 until n) {
-                    val outsideY = yIsPinned &&
-                        (ys[i] < chartTop - dotRadiusPx || ys[i] > chartBottom + dotRadiusPx)
-                    val outsideX = xIsPinned &&
-                        (xs[i] < chartLeft - dotRadiusPx || xs[i] > chartRight + dotRadiusPx)
-                    if (outsideY || outsideX) continue
+                    val p = s.points[i]
+                    if (!isWithinAxis(p.y, yMin, yMax)) continue
+                    if (!isWithinAxis(p.x, xMin, xMax)) continue
                     drawCircle(
                         color = s.color,
                         radius = dotRadiusPx,
@@ -576,10 +579,7 @@ fun LineChart(
             firstPoints.forEachIndexed { i, p ->
                 if (i % xLabelInterval == 0 && layoutIdx < xLabelLayouts.size) {
                     val layout = xLabelLayouts[layoutIdx++]
-                    val labelX = mapX(p.x)
-                    if (xIsPinned && (labelX < chartLeft || labelX > chartRight)) {
-                        return@forEachIndexed
-                    }
+                    if (!isWithinAxis(p.x, xMin, xMax)) return@forEachIndexed
                     drawText(
                         textLayoutResult = layout,
                         topLeft = Offset(
@@ -595,8 +595,8 @@ fun LineChart(
         selectedPointIndex?.let { idx ->
             val fp = series.firstOrNull() ?: return@let
             if (idx !in fp.points.indices) return@let
+            if (!isWithinAxis(fp.points[idx].x, xMin, xMax)) return@let
             val crossX = mapX(fp.points[idx].x)
-            if (xIsPinned && (crossX < chartLeft || crossX > chartRight)) return@let
 
             drawLine(
                 color = crosshairConfig.lineColor,
@@ -609,12 +609,10 @@ fun LineChart(
             val borderW = crosshairConfig.dotBorderWidth.toPx()
             series.forEach { s ->
                 if (idx < s.points.size) {
+                    if (!isWithinAxis(s.points[idx].y, yMin, yMax)) return@forEach
                     val key = keyMatrix[s.id]?.getOrNull(idx) ?: return@forEach
                     val animY = animationEngine.yAnimatables[key]?.value ?: s.points[idx].y
                     val cy = mapY(animY)
-                    if (yIsPinned && (cy < chartTop - dotR || cy > chartBottom + dotR)) {
-                        return@forEach
-                    }
                     drawCircle(
                         color = crosshairConfig.dotBorderColor,
                         radius = dotR + borderW,
