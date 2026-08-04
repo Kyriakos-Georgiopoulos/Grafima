@@ -275,10 +275,8 @@ fun LineChart(
         }
     }
 
-    val rangeIsPinned = axisConfig.yMin != null ||
-        axisConfig.yMax != null ||
-        axisConfig.xMin != null ||
-        axisConfig.xMax != null
+    val xIsPinned = axisConfig.xMin != null || axisConfig.xMax != null
+    val yIsPinned = axisConfig.yMin != null || axisConfig.yMax != null
 
     // ── Cached PathEffect for dashed grid ──
     val dashEffect = remember(axisConfig.dashedGrid) {
@@ -427,6 +425,7 @@ fun LineChart(
             val gridPx = axisConfig.gridStrokeWidth.toPx()
             firstPoints.forEach { p ->
                 val x = mapX(p.x)
+                if (xIsPinned && (x < chartLeft || x > chartRight)) return@forEach
                 drawLine(
                     color = axisConfig.gridColor,
                     start = Offset(x = x, y = chartTop),
@@ -468,35 +467,37 @@ fun LineChart(
             }
         }
 
-        // ── 4. Series: area fills, line strokes, dots ──
-        // An auto range never puts data outside the plot, so the clip is widened
-        // away rather than left to shave a mark that sits on the top tick.
-        val clipSlack = if (rangeIsPinned) 0f else size.maxDimension
-        clipRect(
-            left = chartLeft - clipSlack,
-            top = chartTop - clipSlack,
-            right = chartRight + clipSlack,
-            bottom = chartBottom + clipSlack
-        ) {
-            renderSeries.forEachIndexed { _, s ->
-                val n = s.points.size
-                if (n == 0) return@forEachIndexed
-                val keys = keyMatrix[s.id] ?: return@forEachIndexed
-                val xs = xBuffers[s.id] ?: return@forEachIndexed
-                val ys = yBuffers[s.id] ?: return@forEachIndexed
-                val tans = tangentBuffers[s.id] ?: return@forEachIndexed
-                val delts = deltasBuffers[s.id] ?: return@forEachIndexed
+        // ── 4. Series: area fills and strokes clipped to a pinned range, then dots ──
+        // Only the pinned axis clips: on an auto range the data cannot leave the
+        // plot, and an exact clip would shave a mark that sits on the last tick.
+        val xClipSlack = if (xIsPinned) 0f else size.maxDimension
+        val yClipSlack = if (yIsPinned) 0f else size.maxDimension
+        val dotRadiusPx = style.dotRadius.toPx()
+        renderSeries.forEach { s ->
+            val n = s.points.size
+            if (n == 0) return@forEach
+            val keys = keyMatrix[s.id] ?: return@forEach
+            val xs = xBuffers[s.id] ?: return@forEach
+            val ys = yBuffers[s.id] ?: return@forEach
+            val tans = tangentBuffers[s.id] ?: return@forEach
+            val delts = deltasBuffers[s.id] ?: return@forEach
 
-                // Fill pre-allocated buffers with animated screen positions
-                for (i in 0 until n) {
-                    val animY = animationEngine.yAnimatables[keys[i]]?.value ?: 0f
-                    xs[i] = mapX(s.points[i].x)
-                    ys[i] = mapY(animY)
-                }
-                if (style.curveType == LineCurveType.MonotoneCubic && n >= 2) {
-                    computeMonotoneTangents(xs = xs, ys = ys, tangents = tans, deltas = delts, n = n)
-                }
+            // Fill pre-allocated buffers with animated screen positions
+            for (i in 0 until n) {
+                val animY = animationEngine.yAnimatables[keys[i]]?.value ?: 0f
+                xs[i] = mapX(s.points[i].x)
+                ys[i] = mapY(animY)
+            }
+            if (style.curveType == LineCurveType.MonotoneCubic && n >= 2) {
+                computeMonotoneTangents(xs = xs, ys = ys, tangents = tans, deltas = delts, n = n)
+            }
 
+            clipRect(
+                left = chartLeft - xClipSlack,
+                top = chartTop - yClipSlack,
+                right = chartRight + xClipSlack,
+                bottom = chartBottom + yClipSlack
+            ) {
                 // Area fill (one Brush creation per gradient series per frame, acceptable)
                 if (s.fillAlpha > 0f || s.fillGradientColors.isNotEmpty()) {
                     areaPath.reset()
@@ -549,19 +550,20 @@ fun LineChart(
                     drawPath(path = linePath, color = s.color, style = strokeStyle)
                 }
             }
-        }
 
-        // Drawn outside the clip so a dot on a bound keeps all of itself.
-        if (style.showDots) {
-            val dotR = style.dotRadius.toPx()
-            renderSeries.forEach { s ->
-                val xs = xBuffers[s.id] ?: return@forEach
-                val ys = yBuffers[s.id] ?: return@forEach
-                for (i in s.points.indices) {
-                    if (ys[i] < chartTop || ys[i] > chartBottom) continue
+            // Dots sit outside the clip so one on a bound keeps all of itself.
+            // The radius of tolerance is for the morph spring, which overshoots
+            // the target: without it a dot on the last tick blinks mid-animation.
+            if (style.showDots) {
+                for (i in 0 until n) {
+                    val outsideY = yIsPinned &&
+                        (ys[i] < chartTop - dotRadiusPx || ys[i] > chartBottom + dotRadiusPx)
+                    val outsideX = xIsPinned &&
+                        (xs[i] < chartLeft - dotRadiusPx || xs[i] > chartRight + dotRadiusPx)
+                    if (outsideY || outsideX) continue
                     drawCircle(
                         color = s.color,
-                        radius = dotR,
+                        radius = dotRadiusPx,
                         center = Offset(x = xs[i], y = ys[i])
                     )
                 }
@@ -574,6 +576,10 @@ fun LineChart(
             firstPoints.forEachIndexed { i, p ->
                 if (i % xLabelInterval == 0 && layoutIdx < xLabelLayouts.size) {
                     val layout = xLabelLayouts[layoutIdx++]
+                    val labelX = mapX(p.x)
+                    if (xIsPinned && (labelX < chartLeft || labelX > chartRight)) {
+                        return@forEachIndexed
+                    }
                     drawText(
                         textLayoutResult = layout,
                         topLeft = Offset(
@@ -590,6 +596,7 @@ fun LineChart(
             val fp = series.firstOrNull() ?: return@let
             if (idx !in fp.points.indices) return@let
             val crossX = mapX(fp.points[idx].x)
+            if (xIsPinned && (crossX < chartLeft || crossX > chartRight)) return@let
 
             drawLine(
                 color = crosshairConfig.lineColor,
@@ -605,7 +612,9 @@ fun LineChart(
                     val key = keyMatrix[s.id]?.getOrNull(idx) ?: return@forEach
                     val animY = animationEngine.yAnimatables[key]?.value ?: s.points[idx].y
                     val cy = mapY(animY)
-                    if (cy < chartTop || cy > chartBottom) return@forEach
+                    if (yIsPinned && (cy < chartTop - dotR || cy > chartBottom + dotR)) {
+                        return@forEach
+                    }
                     drawCircle(
                         color = crosshairConfig.dotBorderColor,
                         radius = dotR + borderW,

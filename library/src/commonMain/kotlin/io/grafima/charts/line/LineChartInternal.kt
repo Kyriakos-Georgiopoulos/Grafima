@@ -95,6 +95,10 @@ internal fun computeNiceAxisTicks(dataMin: Float, dataMax: Float, tickCount: Int
  * With neither pinned this is [computeNiceAxisTicks]. With either pinned the range
  * is divided into [tickCount] equal steps instead: nice-number rounding extends the
  * range outwards to reach a round step, which would move the edge the caller pinned.
+ *
+ * A pin that cannot produce a usable range — inverted, empty, or not finite — is
+ * ignored in favour of the automatic range. Honouring it would collapse every point
+ * onto one line, which reads as a broken chart rather than as bad input.
  */
 internal fun computeAxisTicks(
     dataMin: Float,
@@ -108,7 +112,10 @@ internal fun computeAxisTicks(
     }
     val lo = pinnedMin ?: dataMin
     val hi = pinnedMax ?: dataMax
-    if (tickCount <= 0 || hi <= lo) return listOf(lo, hi)
+    if (!lo.isFinite() || !hi.isFinite() || hi <= lo) {
+        return computeNiceAxisTicks(dataMin, dataMax, tickCount)
+    }
+    if (tickCount <= 0) return listOf(lo, hi)
     val step = (hi - lo) / tickCount
     return (0..tickCount).map { lo + it * step }
 }

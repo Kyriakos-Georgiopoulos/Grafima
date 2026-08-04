@@ -84,9 +84,31 @@ class PinnedAxisTicksTest {
     }
 
     @Test
-    fun `degenerate pinned inputs fall back to the two bounds`() {
+    fun `a tick count of zero falls back to the two bounds`() {
         assertEquals(listOf(0f, 10f), computeAxisTicks(0f, 5f, 0, pinnedMin = 0f, pinnedMax = 10f))
-        assertEquals(listOf(9f, 3f), computeAxisTicks(0f, 5f, 4, pinnedMin = 9f, pinnedMax = 3f))
-        assertEquals(listOf(4f, 4f), computeAxisTicks(0f, 5f, 4, pinnedMin = 4f, pinnedMax = 4f))
+    }
+
+    @Test
+    fun `an inverted pinned range is ignored rather than collapsing the chart`() {
+        val auto = computeNiceAxisTicks(0f, 5f, 4)
+        assertEquals(auto, computeAxisTicks(0f, 5f, 4, pinnedMin = 9f, pinnedMax = 3f))
+        assertEquals(auto, computeAxisTicks(0f, 5f, 4, pinnedMin = 4f, pinnedMax = 4f))
+    }
+
+    @Test
+    fun `a maximum pinned below the data is ignored rather than inverting the axis`() {
+        val ticks = computeAxisTicks(20f, 50f, 5, pinnedMin = null, pinnedMax = 10f)
+        assertTrue(ticks.first() < ticks.last(), "axis inverted: $ticks")
+        assertEquals(computeNiceAxisTicks(20f, 50f, 5), ticks)
+    }
+
+    @Test
+    fun `a bound that is not finite is ignored rather than poisoning every tick`() {
+        val auto = computeNiceAxisTicks(0f, 5f, 4)
+        assertEquals(auto, computeAxisTicks(0f, 5f, 4, pinnedMin = Float.NaN, pinnedMax = 10f))
+        assertEquals(
+            auto,
+            computeAxisTicks(0f, 5f, 4, pinnedMin = 0f, pinnedMax = Float.POSITIVE_INFINITY)
+        )
     }
 }
