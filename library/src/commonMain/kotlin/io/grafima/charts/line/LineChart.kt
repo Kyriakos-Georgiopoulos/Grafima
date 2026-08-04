@@ -366,6 +366,7 @@ fun LineChart(
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var lastHapticIndex = nearest(down.position.x)
+                    if (lastHapticIndex < 0) return@awaitEachGesture
                     currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
                     currentOnPointSelected(lastHapticIndex)
                     while (true) {
@@ -373,6 +374,10 @@ fun LineChart(
                         val change = event.changes.firstOrNull() ?: break
                         if (!change.pressed) break
                         val index = nearest(change.position.x)
+                        if (index < 0) {
+                            change.consume()
+                            continue
+                        }
                         if (index != lastHapticIndex) {
                             lastHapticIndex = index
                             currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
@@ -548,8 +553,8 @@ fun LineChart(
                         path = linePath,
                         brush = Brush.horizontalGradient(
                             colors = s.strokeGradientColors,
-                            startX = xs[0],
-                            endX = xs[n - 1]
+                            startX = if (isRtl) chartRight else chartLeft,
+                            endX = if (isRtl) chartLeft else chartRight
                         ),
                         style = strokeStyle
                     )

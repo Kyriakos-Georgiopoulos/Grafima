@@ -18,6 +18,16 @@ under **Changed** or **Removed** below has a matching diff in that file.
   inverted, empty, or not finite — falls back to fitting the data. See
   [docs/charts/line.md](docs/charts/line.md).
 
+### Changed
+
+- `LineSeries.strokeGradientColors` now spans the x axis rather than the series'
+  own first and last points, so the same color sits at the same x on every series
+  and on every chart sharing that axis. Identical for a single series whose points
+  span the whole axis, which is the unpinned case.
+- The line chart no longer selects a point that lies outside a pinned x range.
+  Such points are not drawn, and the label gutter beside the plot takes touches,
+  so dragging into it used to select something that rendered nothing.
+
 ## [1.0.0] - 2026-07-31
 
 First release.

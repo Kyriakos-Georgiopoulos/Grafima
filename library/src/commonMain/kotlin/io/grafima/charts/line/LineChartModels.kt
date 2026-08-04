@@ -93,9 +93,10 @@ internal val LineDataPoint.spokenLabel: String
  * @param strokeWidth Thickness of the line stroke.
  * @param fillGradientColors Overrides the auto-generated area fill gradient with
  *   explicit colors. Applied as a top-to-bottom vertical gradient.
- * @param strokeGradientColors When set with 2+ colors, the line stroke renders
- *   as a horizontal gradient mapped from the leftmost to the rightmost data point.
- *   Falls back to solid [color] when empty.
+ * @param strokeGradientColors When set with 2+ colors, the line stroke renders as
+ *   a horizontal gradient spanning the x axis, so the same color sits at the same
+ *   x on every series and on every chart sharing that axis. Falls back to solid
+ *   [color] when empty.
  */
 @Immutable
 data class LineSeries(

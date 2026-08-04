@@ -77,8 +77,24 @@ class CrosshairMathTest {
     }
 
     @Test
-    fun `an empty list returns index zero`() {
-        assertEquals(0, nearestPointIndex(emptyList(), 150f, 0f, 2f, 100f, 300f, isRtl = false))
+    fun `an empty list has no nearest point`() {
+        assertEquals(-1, nearestPointIndex(emptyList(), 150f, 0f, 2f, 100f, 300f, isRtl = false))
+    }
+
+    @Test
+    fun `a point outside the axis is never the nearest one`() {
+        val straddling = listOf(
+            LineDataPoint(x = -5f, y = 1f),
+            LineDataPoint(x = 1f, y = 2f),
+            LineDataPoint(x = 2f, y = 3f)
+        )
+        assertEquals(1, nearestPointIndex(straddling, 20f, 0f, 2f, 100f, 300f, isRtl = false))
+    }
+
+    @Test
+    fun `an axis with no point inside it has no nearest point`() {
+        val offAxis = listOf(LineDataPoint(x = 40f, y = 1f), LineDataPoint(x = 50f, y = 2f))
+        assertEquals(-1, nearestPointIndex(offAxis, 200f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     /** A pre-abstinence baseline at day -1: the axis has to start below zero. */

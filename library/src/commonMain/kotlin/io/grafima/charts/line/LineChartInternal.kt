@@ -54,7 +54,14 @@ internal fun mapDataXToCanvas(
     return if (isRtl) chartRight - (raw - chartLeft) else raw
 }
 
-/** Index of the point whose canvas X is nearest to [touchX]; 0 when [points] is empty. */
+/**
+ * Index of the point whose canvas X is nearest to [touchX], or -1 when there is
+ * none to pick.
+ *
+ * Points outside [xMin]..[xMax] are not candidates. They are not drawn, and the
+ * label gutter beside the plot still takes touches — without this, dragging into
+ * it selects a point that renders nothing while still announcing itself.
+ */
 internal fun nearestPointIndex(
     points: List<LineDataPoint>,
     touchX: Float,
@@ -63,9 +70,20 @@ internal fun nearestPointIndex(
     chartLeft: Float,
     chartRight: Float,
     isRtl: Boolean
-): Int = points.indices.minByOrNull {
-    abs(mapDataXToCanvas(points[it].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
-} ?: 0
+): Int {
+    var nearest = -1
+    var shortest = Float.MAX_VALUE
+    for (i in points.indices) {
+        if (!isWithinAxis(points[i].x, xMin, xMax)) continue
+        val distance =
+            abs(mapDataXToCanvas(points[i].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
+        if (distance < shortest) {
+            shortest = distance
+            nearest = i
+        }
+    }
+    return nearest
+}
 
 /**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly
