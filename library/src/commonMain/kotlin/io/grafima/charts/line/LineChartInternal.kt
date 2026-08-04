@@ -54,7 +54,14 @@ internal fun mapDataXToCanvas(
     return if (isRtl) chartRight - (raw - chartLeft) else raw
 }
 
-/** Index of the point whose canvas X is nearest to [touchX]; 0 when [points] is empty. */
+/**
+ * Index of the point whose canvas X is nearest to [touchX], or -1 when there is
+ * none to pick.
+ *
+ * With [restrictToAxis] a point whose own x lies outside [xMin]..[xMax] is not a
+ * candidate. Its marks are not drawn, so selecting it would move the crosshair
+ * somewhere the reader can see nothing.
+ */
 internal fun nearestPointIndex(
     points: List<LineDataPoint>,
     touchX: Float,
@@ -62,10 +69,22 @@ internal fun nearestPointIndex(
     xMax: Float,
     chartLeft: Float,
     chartRight: Float,
-    isRtl: Boolean
-): Int = points.indices.minByOrNull {
-    abs(mapDataXToCanvas(points[it].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
-} ?: 0
+    isRtl: Boolean,
+    restrictToAxis: Boolean = true
+): Int {
+    var nearest = -1
+    var shortest = Float.MAX_VALUE
+    for (i in points.indices) {
+        if (restrictToAxis && !isWithinAxis(points[i].x, xMin, xMax)) continue
+        val distance =
+            abs(mapDataXToCanvas(points[i].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
+        if (distance < shortest) {
+            shortest = distance
+            nearest = i
+        }
+    }
+    return nearest
+}
 
 /**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly
@@ -87,6 +106,72 @@ internal fun computeNiceAxisTicks(dataMin: Float, dataMax: Float, tickCount: Int
     val niceMax = ceil(dataMax / niceStep) * niceStep
     val count = ((niceMax - niceMin) / niceStep + 0.5f).toInt()
     return (0..count).map { niceMin + it * niceStep }
+}
+
+/**
+ * Axis tick values, honouring a pinned [pinnedMin] or [pinnedMax].
+ *
+ * With neither pinned this is [computeNiceAxisTicks]. With either pinned the range
+ * is divided into [tickCount] equal steps instead: nice-number rounding extends the
+ * range outwards to reach a round step, which would move the edge the caller pinned.
+ *
+ * A pin that cannot produce a usable range — inverted, empty, or not finite — is
+ * ignored in favour of the automatic range. Honouring it would collapse every point
+ * onto one line, which reads as a broken chart rather than as bad input.
+ */
+internal fun computeAxisTicks(
+    dataMin: Float,
+    dataMax: Float,
+    tickCount: Int,
+    pinnedMin: Float?,
+    pinnedMax: Float?
+): List<Float> {
+    if (pinnedMin == null && pinnedMax == null) {
+        return computeNiceAxisTicks(dataMin, dataMax, tickCount)
+    }
+    val lo = pinnedMin ?: dataMin
+    val hi = pinnedMax ?: dataMax
+    if (!lo.isFinite() || !hi.isFinite() || hi <= lo) {
+        return computeNiceAxisTicks(dataMin, dataMax, tickCount)
+    }
+    if (tickCount <= 0) return listOf(lo, hi)
+    val step = (hi - lo) / tickCount
+    // The last tick is [hi] itself: lo + tickCount * step lands an ulp short for
+    // counts that do not divide the span, and a bound pinned to 31 labels as 30.
+    return (0..tickCount).map { if (it == tickCount) hi else lo + it * step }
+}
+
+/**
+ * Axis bounds honouring a pinned [pinnedMin] or [pinnedMax], falling back to the data
+ * extent when the pin cannot produce a usable range — inverted, empty, or not finite.
+ *
+ * A span of zero or less divides every point onto one edge, which reads as a broken
+ * chart rather than as bad input. [computeAxisTicks] rejects the same shapes for y.
+ */
+internal fun resolveAxisBounds(
+    dataMin: Float,
+    dataMax: Float,
+    pinnedMin: Float?,
+    pinnedMax: Float?
+): ClosedFloatingPointRange<Float> {
+    if (pinnedMin == null && pinnedMax == null) return dataMin..dataMax
+    val lo = pinnedMin ?: dataMin
+    val hi = pinnedMax ?: dataMax
+    if (!lo.isFinite() || !hi.isFinite() || hi <= lo) return dataMin..dataMax
+    return lo..hi
+}
+
+/**
+ * Whether [value] falls inside the axis.
+ *
+ * Tested against the value rather than its animated screen position, so a morph
+ * spring overshooting its target cannot blink a mark out. The tolerance covers a
+ * bound that arrived by division — the last tick of a pinned range can land an ulp
+ * short of the number the caller pinned, and the point sitting on it must still draw.
+ */
+internal fun isWithinAxis(value: Float, axisMin: Float, axisMax: Float): Boolean {
+    val tolerance = (axisMax - axisMin) * 1e-5f
+    return value >= axisMin - tolerance && value <= axisMax + tolerance
 }
 
 /**

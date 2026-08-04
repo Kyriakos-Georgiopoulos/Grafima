@@ -93,9 +93,10 @@ internal val LineDataPoint.spokenLabel: String
  * @param strokeWidth Thickness of the line stroke.
  * @param fillGradientColors Overrides the auto-generated area fill gradient with
  *   explicit colors. Applied as a top-to-bottom vertical gradient.
- * @param strokeGradientColors When set with 2+ colors, the line stroke renders
- *   as a horizontal gradient mapped from the leftmost to the rightmost data point.
- *   Falls back to solid [color] when empty.
+ * @param strokeGradientColors When set with 2+ colors, the line stroke renders as
+ *   a horizontal gradient spanning the x axis, so the same color sits at the same
+ *   x on every series and on every chart sharing that axis. Falls back to solid
+ *   [color] when empty.
  */
 @Immutable
 data class LineSeries(
@@ -144,6 +145,17 @@ enum class LineCurveType {
  * (1, 2, 5 multiples) so tick labels are always clean values like 0, 20, 40, 60
  * rather than 0, 17.4, 34.8.
  *
+ * Set any of [yMin], [yMax], [xMin] or [xMax] to pin that edge instead, which is
+ * what several charts on one shared scale need — otherwise each rescales to its
+ * own data and they can no longer be compared by height. Pinning the y-axis turns
+ * nice-number rounding off and divides the range into [yTickCount] equal steps,
+ * because rounding would move the edge you just pinned.
+ *
+ * A line that leaves a pinned range is cut where it crosses the bound, leaving a
+ * gap, and points outside the range get neither a dot nor a crosshair. A pin that
+ * cannot produce a usable range — inverted, empty, or not finite — is ignored and
+ * the axis falls back to fitting the data.
+ *
  * @param showGrid Horizontal grid lines at each y-tick value.
  * @param showVerticalGrid Vertical grid lines at each x data point.
  * @param gridColor Grid line color. Use a very light tone to avoid overwhelming data.
@@ -161,11 +173,18 @@ enum class LineCurveType {
  *   integers. Override for currency, percentages, or decimal formatting.
  * @param includeZeroInYRange When true, the y-axis always starts at or below 0.
  *   Set to false for datasets where all values are large (e.g. 500..600) to zoom in.
+ *   Ignored when [yMin] is set.
  * @param showXLabels Show labels below the x-axis.
  * @param showYLabels Show labels beside the y-axis.
  * @param maxXLabels Upper bound on visible x-labels. When more data points exist,
  *   labels are thinned by showing every Nth label. Prevents crowding.
  * @param dashedGrid Render grid lines as dashed instead of solid.
+ * @param yMin Pins the bottom of the y-axis. Null auto-computes it from the data.
+ * @param yMax Pins the top of the y-axis. Null auto-computes it from the data.
+ * @param xMin Pins the left of the x-axis (the right in RTL). Null uses the
+ *   smallest x in the data.
+ * @param xMax Pins the right of the x-axis (the left in RTL). Null uses the
+ *   largest x in the data.
  */
 @Immutable
 data class LineAxisConfig(
@@ -184,7 +203,11 @@ data class LineAxisConfig(
     val showXLabels: Boolean = true,
     val showYLabels: Boolean = true,
     val maxXLabels: Int = 12,
-    val dashedGrid: Boolean = false
+    val dashedGrid: Boolean = false,
+    val yMin: Float? = null,
+    val yMax: Float? = null,
+    val xMin: Float? = null,
+    val xMax: Float? = null
 )
 
 /**

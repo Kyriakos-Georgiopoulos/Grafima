@@ -77,7 +77,60 @@ class CrosshairMathTest {
     }
 
     @Test
-    fun `an empty list returns index zero`() {
-        assertEquals(0, nearestPointIndex(emptyList(), 150f, 0f, 2f, 100f, 300f, isRtl = false))
+    fun `an empty list has no nearest point`() {
+        assertEquals(-1, nearestPointIndex(emptyList(), 150f, 0f, 2f, 100f, 300f, isRtl = false))
+    }
+
+    @Test
+    fun `a point outside the axis is never the nearest one`() {
+        val straddling = listOf(
+            LineDataPoint(x = -5f, y = 1f),
+            LineDataPoint(x = 1f, y = 2f),
+            LineDataPoint(x = 2f, y = 3f)
+        )
+        assertEquals(1, nearestPointIndex(straddling, 20f, 0f, 2f, 100f, 300f, isRtl = false))
+    }
+
+    @Test
+    fun `an axis with no point inside it has no nearest point`() {
+        val offAxis = listOf(LineDataPoint(x = 40f, y = 1f), LineDataPoint(x = 50f, y = 2f))
+        assertEquals(-1, nearestPointIndex(offAxis, 200f, 0f, 2f, 100f, 300f, isRtl = false))
+    }
+
+    /** A pre-abstinence baseline at day -1: the axis has to start below zero. */
+    private val baseline = listOf(
+        LineDataPoint(x = -1f, y = 5f),
+        LineDataPoint(x = 0f, y = 6f),
+        LineDataPoint(x = 1f, y = 7f)
+    )
+
+    @Test
+    fun `a negative axis minimum puts its own value on the left edge`() {
+        assertEquals(100f, mapDataXToCanvas(-1f, -1f, 25f, 100f, 300f, isRtl = false))
+    }
+
+    @Test
+    fun `a negative axis minimum lands on the right edge in RTL`() {
+        assertEquals(300f, mapDataXToCanvas(-1f, -1f, 25f, 100f, 300f, isRtl = true))
+    }
+
+    @Test
+    fun `an axis starting below the data insets the data from the edge`() {
+        val atDataMin = mapDataXToCanvas(0f, 0f, 12f, 100f, 300f, isRtl = false)
+        val pinnedBelow = mapDataXToCanvas(0f, -1f, 12f, 100f, 300f, isRtl = false)
+        assertEquals(100f, atDataMin)
+        assertEquals(115.384f, pinnedBelow, 1e-2f)
+    }
+
+    @Test
+    fun `a touch at a point drawn position still snaps to it across a negative range`() {
+        baseline.forEachIndexed { index, point ->
+            val drawnX = mapDataXToCanvas(point.x, -1f, 25f, 100f, 300f, isRtl = false)
+            assertEquals(
+                index,
+                nearestPointIndex(baseline, drawnX, -1f, 25f, 100f, 300f, isRtl = false),
+                "point ${point.x} drawn at $drawnX did not snap back to index $index"
+            )
+        }
     }
 }

@@ -104,6 +104,65 @@ the data, which exaggerates small changes — useful sometimes, misleading other
 `xLabelFormatter` only runs for points that left `label` empty. Set
 `LineDataPoint.label` and it is used as it is.
 
+## Pinning the range
+
+Auto-scaling fits each chart to its own data, which is wrong when several charts
+have to be read against each other. Pin the range and they share a scale:
+
+```kotlin
+axisConfig = LineAxisConfig(
+    yMin = 0f,
+    yMax = 10f,
+    xMin = -1f,
+    xMax = 25f
+)
+```
+
+Each is independent — set one, two, or all four. An unset bound is still
+computed from the data.
+
+A pinned bound is used exactly as given. Nice-number rounding is off for that
+axis, since rounding works by moving the bound outwards to reach a round step,
+and the range is divided into `yTickCount` equal steps instead. Pin `0f..10f`
+with the default five ticks and the labels are 0, 2, 4, 6, 8, 10. Pin `0f..7f`
+and they are 0, 1.4, 2.8 and so on — pick bounds that divide, or format them
+with `yLabelFormatter`.
+
+`yMin` takes precedence over `includeZeroInYRange`.
+
+A line that leaves a pinned range is cut where it crosses the bound and picks up
+again where it comes back, leaving a gap. The gap is the point: a line flattened
+along the top edge would read as a run of values sitting exactly at `yMax`, when
+they are really above it and off the chart.
+
+The two axes suppress different things, because a point off the x axis has no
+column to draw in while a point off the y axis still has one:
+
+- **Outside the x range**: no dot, no x-label, no vertical grid line and no
+  crosshair at all. It cannot be selected either — touch snaps to the nearest
+  point that is on the axis, and no "Select …" action is published for it.
+- **Outside the y range**: no dot. The crosshair line and its tooltip still
+  appear, because the point has a position along the x axis and its value is
+  worth reading even when it sits off the top.
+
+The chart's own description still counts every point, because they are all still
+in your data — override `chartDescriptionBuilder` if you would rather it did not.
+
+The area fill is not interrupted by the gap. It is the area *under* the curve, and
+where the curve is above `yMax` that area genuinely covers the full height of the
+plot, so it is drawn up to the bound.
+
+Setting `selectedPointIndex` yourself is never filtered, so a chart can still be
+asked to select a point that is off the x axis. Nothing is drawn for it.
+
+`xMin` is the left edge in LTR and the right edge in RTL, and can be negative —
+useful when the axis starts before zero, like a baseline day of `-1`.
+
+A range that cannot work is ignored rather than obeyed: `yMax` below `yMin`, the
+two equal, a bound below the data with the other left unset, or a `NaN`. Any of
+those would divide by a span of zero or less and stack every point on one edge,
+so the axis silently falls back to fitting the data. Both axes behave this way.
+
 Colors sit on the same config:
 
 ```kotlin

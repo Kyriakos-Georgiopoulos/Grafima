@@ -27,6 +27,10 @@ Every interactive chart publishes one custom action per item — bar, slice, ser
 or point — plus a clear action when something is selected. Screen reader users
 reach these through the actions menu; they don't need to hit a target.
 
+The one exception is a line chart with a pinned x range: points outside it are not
+drawn and get no action, because selecting one would move the crosshair somewhere
+nothing is visible. See [the line chart guide](charts/line.md).
+
 Give your entries distinct labels. Two bars both labelled "Q1" produce two
 identical actions and one of them becomes unreachable.
 
