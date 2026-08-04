@@ -58,9 +58,9 @@ internal fun mapDataXToCanvas(
  * Index of the point whose canvas X is nearest to [touchX], or -1 when there is
  * none to pick.
  *
- * Points outside [xMin]..[xMax] are not candidates. They are not drawn, and the
- * label gutter beside the plot still takes touches — without this, dragging into
- * it selects a point that renders nothing while still announcing itself.
+ * With [restrictToAxis] a point whose own x lies outside [xMin]..[xMax] is not a
+ * candidate. Its marks are not drawn, so selecting it would move the crosshair
+ * somewhere the reader can see nothing.
  */
 internal fun nearestPointIndex(
     points: List<LineDataPoint>,
@@ -69,12 +69,13 @@ internal fun nearestPointIndex(
     xMax: Float,
     chartLeft: Float,
     chartRight: Float,
-    isRtl: Boolean
+    isRtl: Boolean,
+    restrictToAxis: Boolean = true
 ): Int {
     var nearest = -1
     var shortest = Float.MAX_VALUE
     for (i in points.indices) {
-        if (!isWithinAxis(points[i].x, xMin, xMax)) continue
+        if (restrictToAxis && !isWithinAxis(points[i].x, xMin, xMax)) continue
         val distance =
             abs(mapDataXToCanvas(points[i].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
         if (distance < shortest) {
@@ -135,7 +136,9 @@ internal fun computeAxisTicks(
     }
     if (tickCount <= 0) return listOf(lo, hi)
     val step = (hi - lo) / tickCount
-    return (0..tickCount).map { lo + it * step }
+    // The last tick is [hi] itself: lo + tickCount * step lands an ulp short for
+    // counts that do not divide the span, and a bound pinned to 31 labels as 30.
+    return (0..tickCount).map { if (it == tickCount) hi else lo + it * step }
 }
 
 /**

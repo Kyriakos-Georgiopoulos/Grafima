@@ -235,6 +235,41 @@ class LineChartUiTest {
     )
 
     @Test
+    fun a_pinned_x_range_publishes_no_select_action_for_a_point_outside_it() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = overTheCeiling,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(xMin = 1f)
+            )
+        }
+        waitForIdle()
+
+        val labels = onChartNode().customActionLabels()
+        assertFalse(labels.any { it.contains("Mon") }, "Mon is off the axis but got $labels")
+        assertTrue(labels.any { it.contains("Tue") }, "Tue is on the axis but got $labels")
+        assertTrue(labels.any { it.contains("Wed") }, "Wed is on the axis but got $labels")
+    }
+
+    @Test
+    fun an_unpinned_chart_publishes_a_select_action_for_every_point() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = overTheCeiling,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        val labels = onChartNode().customActionLabels()
+        listOf("Mon", "Tue", "Wed").forEach { day ->
+            assertTrue(labels.any { it.contains(day) }, "$day missing from $labels")
+        }
+    }
+
+    @Test
     fun a_point_inside_a_pinned_range_gets_its_crosshair_dot() = runComposeUiTest {
         setContent {
             LineChart(

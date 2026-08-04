@@ -147,13 +147,29 @@ class PinnedAxisTicksTest {
     }
 
     @Test
+    fun `the last tick is the pinned maximum itself for every tick count`() {
+        val awkward = listOf(
+            Triple(0f, 31f, 7),
+            Triple(0f, 13f, 11),
+            Triple(-100f, -43f, 7),
+            Triple(0f, 10f, 3)
+        )
+        for ((lo, hi, count) in awkward) {
+            val ticks = computeAxisTicks(0f, 1f, count, pinnedMin = lo, pinnedMax = hi)
+            assertEquals(hi, ticks.last(), "pinned $lo..$hi over $count steps")
+            assertEquals(lo, ticks.first(), "pinned $lo..$hi over $count steps")
+            assertEquals(hi.toInt(), ticks.last().toInt(), "top label for $lo..$hi over $count")
+        }
+    }
+
+    @Test
     fun `a value on either bound is inside the axis`() {
         assertTrue(isWithinAxis(0f, 0f, 10f))
         assertTrue(isWithinAxis(10f, 0f, 10f))
     }
 
     @Test
-    fun `a value past a bound is outside even by less than a dot radius would cover`() {
+    fun `a value just past a bound is outside the axis`() {
         assertFalse(isWithinAxis(10.29f, 0f, 10f))
         assertFalse(isWithinAxis(-0.29f, 0f, 10f))
     }
