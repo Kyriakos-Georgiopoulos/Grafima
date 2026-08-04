@@ -281,9 +281,7 @@ fun LineChart(
         }
     }
 
-    // Only a range that cuts data needs clipping. A pin wider than the data has
-    // nothing to cut, and clipping it would shave the round cap of a stroke that
-    // ends on the bound — which is what an unpinned chart draws too.
+    // Clipping a range with nothing outside it would only shave a cap on the bound.
     val xRangeCutsData = xMin > xDataMin || xMax < xDataMax
     val yRangeCutsData = yMin > yDataMin || yMax < yDataMax
 
@@ -323,9 +321,8 @@ fun LineChart(
                 customActions = buildList {
                     val points = series.firstOrNull()?.points.orEmpty()
                     if (points.isNotEmpty()) {
-                        // Named, not next/previous: stepping leaves the listener
-                        // counting along the axis to work out where they landed.
                         points.forEachIndexed { index, point ->
+                            if (!isWithinAxis(point.x, xMin, xMax)) return@forEachIndexed
                             add(
                                 CustomAccessibilityAction(label = "Select ${point.spokenLabel}") {
                                     onPointSelected(index)
@@ -366,9 +363,10 @@ fun LineChart(
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var lastHapticIndex = nearest(down.position.x)
-                    if (lastHapticIndex < 0) return@awaitEachGesture
-                    currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
-                    currentOnPointSelected(lastHapticIndex)
+                    if (lastHapticIndex >= 0) {
+                        currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                        currentOnPointSelected(lastHapticIndex)
+                    }
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)
                         val change = event.changes.firstOrNull() ?: break
@@ -481,7 +479,7 @@ fun LineChart(
             }
         }
 
-        // ── 4. Series: area fills and strokes clipped to a pinned range, then dots ──
+        // ── 4. Series: area fills, line strokes, then dots ──
         val xClipSlack = if (xRangeCutsData) 0f else size.maxDimension
         val yClipSlack = if (yRangeCutsData) 0f else size.maxDimension
         val dotRadiusPx = style.dotRadius.toPx()

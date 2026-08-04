@@ -135,9 +135,14 @@ again where it comes back, leaving a gap. The gap is the point: a line flattened
 along the top edge would read as a run of values sitting exactly at `yMax`, when
 they are really above it and off the chart.
 
-A point outside the range gets no dot, no x-label, no vertical grid line, and no
-crosshair — selecting it draws nothing, though it is still described to a screen
-reader and still reaches `onPointSelected`.
+A point outside the range gets no dot, no x-label, no vertical grid line and no
+crosshair, and it cannot be selected: touch snaps to the nearest point that is on
+the axis, and no "Select …" action is published for it. The chart's own
+description still counts it, because it is still in your data — override
+`chartDescriptionBuilder` if you would rather it did not.
+
+Setting `selectedPointIndex` yourself is not filtered, so a chart can still be
+asked to select a point that is off the axis. Nothing is drawn for it.
 
 `xMin` is the left edge in LTR and the right edge in RTL, and can be negative —
 useful when the axis starts before zero, like a baseline day of `-1`.
