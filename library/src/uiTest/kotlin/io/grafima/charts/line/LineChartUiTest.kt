@@ -189,6 +189,21 @@ class LineChartUiTest {
         return pixels.count { it == target }
     }
 
+    private fun Int.isReddish(): Boolean {
+        val r = (this shr 16) and 0xFF
+        val g = (this shr 8) and 0xFF
+        val b = this and 0xFF
+        return r > 120 && g < 90 && b < 90
+    }
+
+    private fun ImageBitmap.reddishInRows(rows: IntRange): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        return rows.sumOf { y ->
+            (0 until width).count { x -> pixels[y * width + x].isReddish() }
+        }
+    }
+
     /**
      * Pixels that are recognisably red, per horizontal third. Rotated text is
      * resampled, so an exact colour match finds almost none of its glyphs.
@@ -400,6 +415,58 @@ class LineChartUiTest {
         val (left, _, right) = onChartNode().captureToImage().reddishPerThird()
         assertTrue(right > 0, "the y title was not painted on the right")
         assertEquals(0, left, "the y title was painted on the left as well")
+    }
+
+    @Test
+    fun a_long_y_axis_title_is_trimmed_rather_than_drawn_past_the_plot() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(120.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(
+                    showXLabels = false,
+                    showYLabels = false,
+                    showGrid = false,
+                    labelColor = Color.Red,
+                    yAxisTitle = "An axis title far longer than this chart is tall"
+                )
+            )
+        }
+        waitForIdle()
+
+        // Rotated, so an untrimmed title would run off the top and the bottom.
+        val image = onChartNode().captureToImage()
+        assertEquals(0, image.reddishInRows(0 until 4), "the title ran off the top")
+        assertEquals(
+            0,
+            image.reddishInRows(image.height - 4 until image.height),
+            "the title ran off the bottom"
+        )
+    }
+
+    @Test
+    fun the_x_axis_title_is_painted_below_the_plot_not_across_it() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(
+                    showXLabels = false,
+                    showYLabels = false,
+                    showGrid = false,
+                    labelColor = Color.Red,
+                    xAxisTitle = "Month"
+                )
+            )
+        }
+        waitForIdle()
+
+        val image = onChartNode().captureToImage()
+        val bottomBand = (image.height * 4 / 5) until image.height
+        assertTrue(image.reddishInRows(bottomBand) > 0, "the x title was not painted at the bottom")
+        assertEquals(0, image.reddishInRows(0 until image.height * 4 / 5), "the x title sat too high")
     }
 
     @Test
