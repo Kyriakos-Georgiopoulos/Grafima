@@ -37,9 +37,13 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@v6
       # Style first: it is the cheapest signal, so a formatting slip fails in
-      # seconds instead of after the full build and test run.
+      # seconds instead of after the full build and test run. buildSrc is a
+      # separate build — the root task does not reach it, and Gradle only ever
+      # builds its jar, so its check has to be asked for by name.
       - name: Check formatting
-        run: ./gradlew ktlintCheck
+        run: |
+          ./gradlew ktlintCheck
+          ./gradlew -p buildSrc ktlintCheck
       - name: Build, lint, and run JVM tests
         run: ./gradlew build
       # Fails if the public API drifts from library/api/. Run
@@ -97,6 +101,33 @@ jobs:
         with:
           name: android-ui-reports
           path: library/build/reports/androidTests/**
+
+  # The Android job's `./gradlew build` already compiles and tests the jvm
+  # target, but a failure there reads as an Android failure. This job owns the
+  # desktop signal, and adds the one thing `build` never does: assembling the
+  # runtime image, which is what catches a wrong mainClass or an unresolvable
+  # module. Packaging into a .deb or .dmg needs OS tooling and proves no more.
+  desktop:
+    name: Desktop build & JVM tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Run the JVM test suite
+        run: ./gradlew :library:jvmTest
+      - name: Assemble the desktop sample
+        run: ./gradlew :desktopApp:createDistributable
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-reports
+          path: library/build/reports/tests/**
 
   # macOS minutes bill at 10× — this job is kept lean: compile the iOS
   # targets, link the sample framework, and run the full test suite

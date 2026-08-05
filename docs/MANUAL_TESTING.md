@@ -14,6 +14,9 @@ Run the sample app:
 # Android
 ./gradlew :androidApp:installDebug
 
+# Desktop
+./gradlew :desktopApp:run
+
 # iOS — open iosApp/iosApp.xcodeproj in Xcode and run, or see TESTING.md
 ```
 
@@ -62,6 +65,15 @@ Enable: **Settings → Accessibility → VoiceOver**, or triple-click the side b
 - [ ] Compare the wording against TalkBack — they share source strings and
       should read equivalently.
 
+### Desktop — VoiceOver, Narrator or Orca
+
+Compose exposes the same semantics through the platform's accessibility bridge,
+so this is a spot check rather than a third full pass.
+
+- [ ] The chart is reachable and announced as one element.
+- [ ] The gauge is exposed as a progress indicator, not as plain text.
+- [ ] Selection changes are announced.
+
 ---
 
 ## 2. Display and input
@@ -84,7 +96,8 @@ Enable: **Settings → Accessibility → VoiceOver**, or triple-click the side b
 
 - [ ] **Reduce motion.** Android: *Settings → Accessibility → Remove animations*.
       iOS: *Settings → Accessibility → Motion → Reduce Motion*. Charts should
-      appear instantly with no entry animation.
+      appear instantly with no entry animation. Desktop reads no OS setting at
+      all, so test it there by providing `LocalReduceMotion`.
       **Known limitation:** the OS setting is read once when the chart enters
       composition, so toggling it takes effect on the next launch rather than
       immediately. A host that needs live control can provide
@@ -104,6 +117,20 @@ The sample uses tidy numbers. Try awkward ones:
 - [ ] Zero and very small values — do they render, and are they still selectable?
 - [ ] Very long labels — truncated gracefully rather than overlapping.
 - [ ] An empty dataset — renders empty, no crash.
+
+---
+
+## 5. Desktop
+
+A window resizes continuously and is driven by a pointer, neither of which a
+phone does.
+
+- [ ] **Resize.** Drag the window from large to small and back. Charts reflow;
+      labels don't overlap or clip at either end.
+- [ ] **Pointer.** Drag across the line chart — the crosshair follows and the
+      tooltip tracks it. Click a bar, slice or vertex to select it.
+- [ ] **Resize mid-animation.** Press Update Data, then resize while it runs.
+      No crash, no stuck animation.
 
 ---
 

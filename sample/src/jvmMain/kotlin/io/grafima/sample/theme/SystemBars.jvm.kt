@@ -14,16 +14,10 @@
  * limitations under the License.
  */
 
-package io.grafima.charts
+package io.grafima.sample.theme
 
 import androidx.compose.runtime.Composable
 
-/**
- * Always false. The JVM exposes no portable reduce-motion setting, and reading the
- * real one means JNI on Windows and an Objective-C bridge on macOS.
- *
- * A desktop host that can answer should provide [LocalReduceMotion], which takes
- * precedence over this.
- */
+/** A desktop window has no system bars; the window manager owns its chrome. */
 @Composable
-internal actual fun rememberReduceMotion(): Boolean = false
+actual fun SystemBarsEffect(darkTheme: Boolean) = Unit
