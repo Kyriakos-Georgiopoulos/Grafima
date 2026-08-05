@@ -38,7 +38,15 @@ kotlin {
 
     iosArm64()
     iosSimulatorArm64()
-    jvm()
+
+    // Compose Multiplatform's own desktop artifacts are Java 11. Without a target
+    // here the published jar takes the bytecode level of whichever JDK built the
+    // release, and a consumer on an older one fails at class load.
+    jvm {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
