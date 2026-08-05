@@ -9,7 +9,8 @@ plugins {
 kotlin {
     // Dumps the public API to api/. `checkKotlinAbi` fails when it drifts, so
     // API changes surface as a reviewable diff instead of shipping unnoticed.
-    // The dump covers the klib targets, which is the whole public surface:
+    // Two dumps, because the formats differ: api/library.klib.api for the iOS
+    // targets, api/jvm/library.api for the JVM one. Android needs neither —
     // androidMain holds no public API, only an internal `actual`.
     @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
     abiValidation {
@@ -38,6 +39,15 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
+    // Compose Multiplatform's own desktop artifacts are Java 11. Without a target
+    // here the published jar takes the bytecode level of whichever JDK built the
+    // release, and a consumer on an older one fails at class load.
+    jvm {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             // Compose types appear in Grafima's public API -> exposed via `api`.
@@ -49,6 +59,13 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+        }
+
+        // Skiko's native library, which a desktop app loads at startup and a plain
+        // unit test does not. Without it, merely constructing an AxisConfig throws:
+        // its dashEffect default calls through to Skia.
+        jvmTest.dependencies {
+            implementation(compose.desktop.currentOs)
         }
 
         // Compose UI tests live in src/uiTest and are compiled into BOTH test

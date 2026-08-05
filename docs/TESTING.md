@@ -1,6 +1,6 @@
 # Testing
 
-Grafima's tests live in `:library` and run on two platforms from a single
+Grafima's tests live in `:library` and run on every platform from a single
 `commonTest` source set, plus a shared UI suite.
 
 [MANUAL_TESTING.md](MANUAL_TESTING.md) covers what automation can't reach —
@@ -8,7 +8,7 @@ screen-reader announcements, animation feel, and readability on real displays.
 
 | Source set | What lives there | Runs on |
 |---|---|---|
-| `library/src/commonTest` | Chart math, animation engines, accessibility string defaults | JVM **and** iOS simulator |
+| `library/src/commonTest` | Chart math, animation engines, accessibility string defaults | Android's JVM, the desktop JVM **and** the iOS simulator |
 | `library/src/uiTest` | Compose UI tests (`runComposeUiTest`): semantics, accessibility actions, pixel regression | iOS simulator **and** Android device/emulator |
 
 `src/uiTest` isn't a Kotlin source set of its own — the directory is added to
@@ -20,6 +20,9 @@ targets.
 ```bash
 # JVM (fast — runs everything in commonTest)
 ./gradlew :library:testAndroid
+
+# The same suite on the desktop JVM
+./gradlew :library:jvmTest
 
 # iOS simulator (commonTest + the UI suite)
 ./gradlew :library:iosSimulatorArm64Test
@@ -34,6 +37,10 @@ targets.
 Requirements: JDK 17+ (Android Studio's bundled JBR works); a Mac with Xcode
 and an iOS simulator runtime for the iOS tasks; a device with USB debugging or
 a running emulator for `connectedAndroidDeviceTest`.
+
+`:desktopApp:run` works on the JBR, but packaging (`createDistributable`,
+`packageDistributionForCurrentOS`) does not: the JBR ships without `jpackage`.
+Point `JAVA_HOME` at a full JDK for those.
 
 The iOS test task defaults to the **iPhone 17 Pro** simulator. If your machine
 doesn't have that device, pass any available one:
@@ -56,6 +63,7 @@ xcrun simctl list devices available
 HTML reports land in:
 
 - `library/build/reports/tests/testAndroidHostTest/index.html`
+- `library/build/reports/tests/jvmTest/index.html`
 - `library/build/reports/tests/iosSimulatorArm64Test/index.html`
 
 Test names are plain-English sentences, so the report reads as a behavior
@@ -83,9 +91,11 @@ swap"*.
 
 ## Public API
 
-`library/api/library.klib.api` records Grafima's public API. CI fails if the
-code drifts from it, so API changes show up as a reviewable diff rather than
-slipping through unnoticed.
+Two files record Grafima's public API, because the tools emit different
+formats: `library/api/library.klib.api` for the iOS targets and
+`library/api/jvm/library.api` for the JVM one. CI fails if the code drifts from
+either, so API changes show up as a reviewable diff rather than slipping
+through unnoticed.
 
 ```bash
 # Did I change the public API?
@@ -95,5 +105,6 @@ slipping through unnoticed.
 ./gradlew :library:updateKotlinAbi
 ```
 
-The dump covers the klib targets, which is the entire public surface:
-`androidMain` contains no public API, only an internal `actual`.
+Between them the two dumps cover the entire public surface. Android needs no
+dump of its own: `androidMain` contains no public API, only an internal
+`actual`.

@@ -4,7 +4,7 @@
 
 # Grafima
 
-Charts for Compose Multiplatform. Android and iOS, one codebase.
+Charts for Compose Multiplatform. Android, iOS and desktop, one codebase.
 
 Five chart types (bar, line, pie, radar, gauge) drawn on `Canvas`, animated, and
 accessible by default.
@@ -94,14 +94,16 @@ Behaviour shared by every chart is in [Concepts](docs/CONCEPTS.md).
 - Android minSdk 24
 - iOS: `iosArm64` and `iosSimulatorArm64` (Apple silicon simulators; Compose
   Multiplatform publishes no `iosX64`)
+- Desktop: the `jvm` target, for Compose for Desktop hosts
 - Kotlin 2.3.21, Compose Multiplatform 1.11.1
 
 ## Running the sample
 
-The `sample` module holds the demo UI shared by both apps.
+The `sample` module holds the demo UI shared by all three apps.
 
 ```bash
 ./gradlew :androidApp:installDebug     # Android
+./gradlew :desktopApp:run              # Desktop
 open iosApp/iosApp.xcodeproj           # iOS, then run from Xcode
 ```
 
@@ -115,6 +117,10 @@ the shape, then send a PR.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the branching model and what CI checks.
 [docs/TESTING.md](docs/TESTING.md) covers the test suites and how to run them.
+
+## Contributors
+
+Thanks to [everyone who has contributed](https://github.com/Kyriakos-Georgiopoulos/Grafima/graphs/contributors).
 
 ## On AI use
 

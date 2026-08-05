@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package io.grafima.sample.theme
+package io.grafima.charts
 
 import androidx.compose.runtime.Composable
 
 /**
- * Matches the system bars to the app's theme.
+ * Always false. The JVM exposes no portable reduce-motion setting, and reading the
+ * real one means JNI on Windows and an Objective-C bridge on macOS.
  *
- * On Android that means flipping the status bar icons between dark and light,
- * and hiding the navigation bar until the user swipes for it. iOS manages its
- * own status bar and a desktop window has no system bars at all, so the
- * actuals there do nothing.
+ * A desktop host that can answer should provide [LocalReduceMotion], which takes
+ * precedence over this.
  */
 @Composable
-expect fun SystemBarsEffect(darkTheme: Boolean)
+internal actual fun rememberReduceMotion(): Boolean = false

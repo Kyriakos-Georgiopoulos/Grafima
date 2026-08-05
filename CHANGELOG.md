@@ -4,14 +4,21 @@ Notable changes to Grafima. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Grafima's public API is recorded in `library/api/library.klib.api`. Any entry
-under **Changed** or **Removed** that alters a signature has a matching diff in
-that file; entries that only change behaviour do not.
+Grafima's public API is recorded in `library/api/library.klib.api` and
+`library/api/jvm/library.api`. Any entry under **Changed** or **Removed** that
+alters a signature has a matching diff in those files; entries that only change
+behaviour do not.
 
 ## [Unreleased]
 
 ### Added
 
+- A `jvm` target, so the charts run on Compose for Desktop as well as Android and
+  iOS, and a `desktopApp` running the sample in a window. Needs Java 11 or newer,
+  matching Compose Multiplatform's own desktop artifacts. Reduce motion is the one
+  thing desktop cannot read for itself: the JVM exposes no portable setting, so
+  charts animate unless your host provides `LocalReduceMotion`.
+  Thanks to [Lauren Darcey](https://github.com/ldarcey).
 - `LineAxisConfig.yMin`, `yMax`, `xMin` and `xMax` pin an axis to a fixed range,
   so several charts can share one scale instead of each fitting its own data.
   A pinned bound is used exactly, and a line that leaves the range is cut where

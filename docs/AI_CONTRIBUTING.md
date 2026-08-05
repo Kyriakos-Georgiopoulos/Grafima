@@ -8,20 +8,21 @@ Point your assistant at this file before it writes anything.
 
 ## What this project is
 
-A Kotlin Multiplatform charting library for Compose. Android and iOS, from one
-`commonMain` source set. Charts draw to a `Canvas`; there are no Android or iOS
-views involved.
+A Kotlin Multiplatform charting library for Compose. Android, iOS and desktop,
+from one `commonMain` source set. Charts draw to a `Canvas`; there are no
+platform views involved.
 
 ```
 library/src/commonMain     all chart code lives here
 library/src/androidMain    one file: the reduce-motion actual
 library/src/iosMain        one file: the reduce-motion actual
-library/src/commonTest     runs on JVM and iOS
+library/src/jvmMain        one file: the reduce-motion actual, a desktop stub
+library/src/commonTest     runs on Android's JVM, the desktop JVM and iOS
 library/src/uiTest         Compose UI tests, run on iOS simulator and Android device
 ```
 
-If you find yourself adding a second file to `androidMain` or `iosMain`, stop
-and reconsider. Almost nothing here is platform-specific.
+If you find yourself adding a second file to `androidMain`, `iosMain` or
+`jvmMain`, stop and reconsider. Almost nothing here is platform-specific.
 
 ## The rules that actually matter
 

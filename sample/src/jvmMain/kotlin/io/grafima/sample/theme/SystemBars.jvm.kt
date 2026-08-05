@@ -18,13 +18,6 @@ package io.grafima.sample.theme
 
 import androidx.compose.runtime.Composable
 
-/**
- * Matches the system bars to the app's theme.
- *
- * On Android that means flipping the status bar icons between dark and light,
- * and hiding the navigation bar until the user swipes for it. iOS manages its
- * own status bar and a desktop window has no system bars at all, so the
- * actuals there do nothing.
- */
+/** A desktop window has no system bars; the window manager owns its chrome. */
 @Composable
-expect fun SystemBarsEffect(darkTheme: Boolean)
+actual fun SystemBarsEffect(darkTheme: Boolean) = Unit
