@@ -3,9 +3,7 @@ name: CI
 on:
   push:
     branches: [main, develop]
-    paths-ignore: ['**.md', 'docs/**', '.gitignore']
   pull_request:
-    paths-ignore: ['**.md', 'docs/**', '.gitignore']
   # Lets any branch be run manually from the Actions tab, without opening a PR.
   workflow_dispatch:
 
@@ -22,11 +20,65 @@ env:
   ANDROID_API_LEVEL: 30
 
 jobs:
+  # Documentation used to be skipped with paths-ignore, but `develop` and `main`
+  # require the three jobs below, and a workflow that never runs never reports —
+  # a docs-only PR sat on "Expected — waiting for status to be reported" forever.
+  # Deciding here instead keeps one workflow owning those three check names.
+  # A job skipped by `if` reports success to branch protection, so a docs-only
+  # change satisfies the requirement without paying for a build or an emulator.
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Decide whether anything outside the docs changed
+        id: filter
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            pull_request)
+              # Explicit refspec: checkout only creates a tracking ref for the
+              # branch it checked out, so origin/<base> is not there to diff against.
+              base="${{ github.base_ref }}"
+              git fetch --no-tags --quiet origin "+refs/heads/$base:refs/remotes/origin/$base"
+              files=$(git diff --name-only "origin/$base...HEAD")
+              ;;
+            push)
+              before="${{ github.event.before }}"
+              # A new branch reports an all-zero "before" and has nothing to diff.
+              if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+                echo "code=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              files=$(git diff --name-only "$before" "${{ github.sha }}")
+              ;;
+            *)
+              echo "code=true" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          echo "Changed files:"
+          echo "$files"
+          if [ -z "$files" ]; then
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          elif printf '%s\n' "$files" | grep -qvE '(\.md$|^docs/|^\.gitignore$)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Runs on every push at 1× the minute rate. iOS compilation tasks are
   # automatically skipped on Linux hosts, so this covers the Android app,
   # lint, and the JVM run of the commonTest suites.
   android:
     name: Android build & JVM tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -66,6 +118,8 @@ jobs:
   # Ubuntu bills at 1× and exposes KVM, so the emulator is hardware-accelerated.
   android-ui:
     name: Android UI tests (emulator)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -109,6 +163,8 @@ jobs:
   # module. Packaging into a .deb or .dmg needs OS tooling and proves no more.
   desktop:
     name: Desktop build & JVM tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -134,6 +190,8 @@ jobs:
   # (commonTest + UI tests) on a simulator.
   ios:
     name: iOS build & simulator tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
