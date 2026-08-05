@@ -264,9 +264,8 @@ fun LineChart(
     val yTitleLayout = remember(yTitle, labelStyle) {
         yTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
     }
-    val titleCache = remember(xTitle, yTitle, labelStyle) {
-        mutableMapOf<String, TextLayoutResult>()
-    }
+    val xFittedTitle = remember(xTitle, labelStyle) { FittedTitle() }
+    val yFittedTitle = remember(yTitle, labelStyle) { FittedTitle() }
     val currentYTitleHeight by rememberUpdatedState(yTitleLayout?.size?.height?.toFloat() ?: 0f)
 
     val tooltipStyle = remember(crosshairConfig.tooltipTextColor, crosshairConfig.tooltipFontSize) {
@@ -658,42 +657,57 @@ fun LineChart(
         }
 
         // ── 5b. Axis titles ──
-        // Cached, so a title that needs trimming is re-measured per width rather
-        // than per frame.
-        fun fitted(layout: TextLayoutResult, text: String, available: Float): TextLayoutResult {
-            if (available <= 0f || layout.size.width <= available) return layout
-            return titleCache.getOrPut("$text|${available.toInt()}") {
-                textMeasurer.measure(
+        // Null when there is no room at all: drawing the full-length title would
+        // put it across the plot. Re-measured per width rather than per frame.
+        fun fitted(
+            measured: TextLayoutResult,
+            text: String,
+            available: Float,
+            slot: FittedTitle
+        ): TextLayoutResult? {
+            if (available <= 0f) return null
+            if (measured.size.width <= available) return measured
+            val target = available.toInt()
+            if (slot.width != target) {
+                slot.width = target
+                slot.layout = textMeasurer.measure(
                     text = text,
                     style = labelStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    constraints = Constraints(maxWidth = available.toInt())
+                    constraints = Constraints(maxWidth = target)
+                )
+            }
+            return slot.layout
+        }
+
+        // Positioned by the unconstrained height the insets reserved, never by the
+        // trimmed one, so a title cannot drift out of the band it was given.
+        val xMeasured = xTitleLayout
+        if (xTitle != null && xMeasured != null) {
+            fitted(xMeasured, xTitle, chartRight - chartLeft, xFittedTitle)?.let { layout ->
+                drawText(
+                    textLayoutResult = layout,
+                    topLeft = Offset(
+                        x = chartLeft + (chartRight - chartLeft - layout.size.width) / 2f,
+                        y = size.height - labelGapPx - xMeasured.size.height
+                    )
                 )
             }
         }
-
-        xTitleLayout?.let { measured ->
-            val layout = fitted(measured, xTitle!!, chartRight - chartLeft)
-            drawText(
-                textLayoutResult = layout,
-                topLeft = Offset(
-                    x = chartLeft + (chartRight - chartLeft - layout.size.width) / 2f,
-                    y = size.height - labelGapPx - layout.size.height
-                )
-            )
-        }
-        yTitleLayout?.let { measured ->
+        val yMeasured = yTitleLayout
+        if (yTitle != null && yMeasured != null) {
             // Rotated, so the space it has to fit is the plot's height.
-            val layout = fitted(measured, yTitle!!, chartBottom - chartTop)
-            val half = layout.size.height / 2f
-            val cx = if (isRtl) size.width - labelGapPx - half else labelGapPx + half
-            val cy = chartTop + (chartBottom - chartTop) / 2f
-            rotate(degrees = -90f, pivot = Offset(cx, cy)) {
-                drawText(
-                    textLayoutResult = layout,
-                    topLeft = Offset(cx - layout.size.width / 2f, cy - half)
-                )
+            fitted(yMeasured, yTitle, chartBottom - chartTop, yFittedTitle)?.let { layout ->
+                val half = yMeasured.size.height / 2f
+                val cx = if (isRtl) size.width - labelGapPx - half else labelGapPx + half
+                val cy = chartTop + (chartBottom - chartTop) / 2f
+                rotate(degrees = -90f, pivot = Offset(cx, cy)) {
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(cx - layout.size.width / 2f, cy - half)
+                    )
+                }
             }
         }
 

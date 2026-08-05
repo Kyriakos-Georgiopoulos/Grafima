@@ -20,6 +20,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.text.TextLayoutResult
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
@@ -159,6 +160,18 @@ internal fun resolveAxisBounds(
     val hi = pinnedMax ?: dataMax
     if (!lo.isFinite() || !hi.isFinite() || hi <= lo) return dataMin..dataMax
     return lo..hi
+}
+
+/**
+ * One axis title trimmed to the space it has, kept across frames.
+ *
+ * Only the newest is worth holding: the width changes when the chart is resized,
+ * and a cache keyed by width would grow for every pixel a window drag passes
+ * through.
+ */
+internal class FittedTitle {
+    var width: Int = -1
+    var layout: TextLayoutResult? = null
 }
 
 /**
