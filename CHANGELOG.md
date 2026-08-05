@@ -14,7 +14,8 @@ behaviour do not.
 ### Added
 
 - A `jvm` target, so the charts run on Compose for Desktop as well as Android and
-  iOS, and a `desktopApp` running the sample in a window. Reduce motion is the one
+  iOS, and a `desktopApp` running the sample in a window. Needs Java 11 or newer,
+  matching Compose Multiplatform's own desktop artifacts. Reduce motion is the one
   thing desktop cannot read for itself: the JVM exposes no portable setting, so
   charts animate unless your host provides `LocalReduceMotion`.
   Thanks to [Lauren Darcey](https://github.com/ldarcey).

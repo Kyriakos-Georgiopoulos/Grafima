@@ -112,9 +112,13 @@ abstract class GenerateIcons : DefaultTask() {
             "icp4" to 16, "icp5" to 32, "ic11" to 32, "ic12" to 64, "ic07" to 128,
             "ic13" to 256, "ic08" to 256, "ic14" to 512, "ic09" to 512, "ic10" to 1024
         )
+        // Retina variants share a pixel size with their standard counterpart,
+        // so 10 entries only need 7 renders.
+        val pngs = entries.map { it.second }.distinct().associateWith { scaledPng(artwork, it) }
+
         val body = ByteArrayOutputStream()
         entries.forEach { (type, size) ->
-            val png = scaledPng(artwork, size)
+            val png = pngs.getValue(size)
             body.write(type.toByteArray(Charsets.US_ASCII))
             body.write(ByteBuffer.allocate(4).putInt(8 + png.size).array())
             body.write(png)
