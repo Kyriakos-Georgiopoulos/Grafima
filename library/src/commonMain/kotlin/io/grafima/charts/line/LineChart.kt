@@ -323,8 +323,14 @@ fun LineChart(
     val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet))
-            xTitle?.let { append("X axis: $it. ") }
-            yTitle?.let { append("Y axis: $it. ") }
+            // A custom builder need not end in a separator, and without one the
+            // titles run into its last word as a single spoken token.
+            fun sentence(text: String) {
+                if (isNotEmpty() && !last().isWhitespace()) append(' ')
+                append(text)
+            }
+            xTitle?.let { sentence("X axis: $it.") }
+            yTitle?.let { sentence("Y axis: $it.") }
         }
     }
     val selectedDescription = remember(selectedPointIndex, series, a11yConfig) {

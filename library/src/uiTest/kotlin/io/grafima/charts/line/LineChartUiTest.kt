@@ -359,6 +359,23 @@ class LineChartUiTest {
         }
 
     @Test
+    fun a_custom_description_does_not_run_into_the_axis_titles() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                a11yConfig = LineA11yConfig(chartDescriptionBuilder = { "Revenue by month" }),
+                axisConfig = LineAxisConfig(xAxisTitle = "Month")
+            )
+        }
+        waitForIdle()
+
+        val spoken = onChartNode().contentDescription()
+        assertTrue("month X axis" in spoken, "the title ran into the description: $spoken")
+    }
+
+    @Test
     fun a_blank_axis_title_is_treated_as_absent_rather_than_announced_empty() = runComposeUiTest {
         setContent {
             LineChart(
