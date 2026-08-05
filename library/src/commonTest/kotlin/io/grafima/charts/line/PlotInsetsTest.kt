@@ -84,8 +84,9 @@ class PlotInsetsTest {
     }
 
     @Test
-    fun `a zero-height title costs nothing at all`() {
-        assertEquals(insets(), insets(yTitleHeight = 0f, xTitleHeight = 0f))
+    fun `a zero-height title costs nothing but any height also costs a gap`() {
+        assertEquals(38f, insets(yTitleHeight = 0f).left)
+        assertEquals(38f + 1f + 8f, insets(yTitleHeight = 1f).left)
     }
 
     @Test
