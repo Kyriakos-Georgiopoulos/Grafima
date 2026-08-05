@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" name="sample">
-    <output-path>$PROJECT_DIR$/sample/build/libs</output-path>
-    <root id="archive" name="sample.jar">
-      <element id="module-output" name="Grafima.sample.androidMain" />
-    </root>
-  </artifact>
-</component>
