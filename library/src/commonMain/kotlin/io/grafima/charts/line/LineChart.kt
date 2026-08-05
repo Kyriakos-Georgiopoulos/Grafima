@@ -323,10 +323,14 @@ fun LineChart(
     val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet))
-            // A custom builder need not end in a separator, and without one the
-            // titles run into its last word as a single spoken token.
+            // A custom builder need not end in one, and without a full stop a
+            // screen reader runs the titles into its last word unbroken.
             fun sentence(text: String) {
-                if (isNotEmpty() && !last().isWhitespace()) append(' ')
+                val end = trimEnd().lastOrNull()
+                if (end != null) {
+                    if (end !in ".!?") append('.')
+                    if (!last().isWhitespace()) append(' ')
+                }
                 append(text)
             }
             xTitle?.let { sentence("X axis: $it.") }

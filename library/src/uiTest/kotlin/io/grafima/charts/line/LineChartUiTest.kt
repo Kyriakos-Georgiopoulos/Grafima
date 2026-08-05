@@ -416,7 +416,7 @@ class LineChartUiTest {
         waitForIdle()
 
         val spoken = onChartNode().contentDescription()
-        assertTrue("month X axis" in spoken, "the title ran into the description: $spoken")
+        assertTrue("month. X axis" in spoken, "the title ran into the description: $spoken")
     }
 
     @Test
