@@ -32,6 +32,7 @@ jobs:
         check:
           - Android build & JVM tests
           - Android UI tests (emulator)
+          - Desktop build & JVM tests
           - iOS build & simulator tests
     steps:
       - name: Report as passed

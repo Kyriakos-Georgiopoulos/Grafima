@@ -64,6 +64,10 @@ the selection actually changes.
 When the OS reports reduced motion, animations collapse to instant. You don't
 have to do anything.
 
+On desktop that is the one thing you do have to do yourself. The JVM exposes no
+portable reduce-motion setting, so the chart assumes motion is wanted; read the
+platform preference in your app and provide `LocalReduceMotion`.
+
 To control it yourself — a preview, a screenshot test, or your own in-app
 toggle — provide `LocalReduceMotion`:
 
