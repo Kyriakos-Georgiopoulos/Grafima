@@ -214,7 +214,7 @@ fun LineChart(
             fontWeight = FontWeight.Medium
         )
     }
-    val yLabelLayouts = remember(yTickValues, labelStyle, axisConfig.yLabelFormatter) {
+    val yLabelLayouts = remember(yTickValues, labelStyle, textMeasurer, axisConfig.yLabelFormatter) {
         yTickValues.map { v ->
             textMeasurer.measure(
                 text = axisConfig.yLabelFormatter(v),
@@ -236,6 +236,7 @@ fun LineChart(
     val xLabelLayouts = remember(
         firstPoints,
         labelStyle,
+        textMeasurer,
         xLabelInterval,
         axisConfig.xLabelFormatter,
         axisConfig.showXLabels
@@ -258,14 +259,14 @@ fun LineChart(
 
     // Unconstrained, because the insets need the full line height. Length is
     // trimmed at draw time, which cannot change that height.
-    val xTitleLayout = remember(xTitle, labelStyle) {
+    val xTitleLayout = remember(xTitle, labelStyle, textMeasurer) {
         xTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
     }
-    val yTitleLayout = remember(yTitle, labelStyle) {
+    val yTitleLayout = remember(yTitle, labelStyle, textMeasurer) {
         yTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
     }
-    val xFittedTitle = remember(xTitle, labelStyle) { FittedTitle() }
-    val yFittedTitle = remember(yTitle, labelStyle) { FittedTitle() }
+    val xFittedTitle = remember(xTitle, labelStyle, textMeasurer) { FittedTitle() }
+    val yFittedTitle = remember(yTitle, labelStyle, textMeasurer) { FittedTitle() }
     val currentYTitleHeight by rememberUpdatedState(yTitleLayout?.size?.height?.toFloat() ?: 0f)
 
     val tooltipStyle = remember(crosshairConfig.tooltipTextColor, crosshairConfig.tooltipFontSize) {
