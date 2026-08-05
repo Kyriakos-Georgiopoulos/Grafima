@@ -5,11 +5,32 @@ Notable changes to Grafima. The format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Grafima's public API is recorded in `library/api/library.klib.api`. Any entry
-under **Changed** or **Removed** below has a matching diff in that file.
+under **Changed** or **Removed** that alters a signature has a matching diff in
+that file; entries that only change behaviour do not.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `LineAxisConfig.yMin`, `yMax`, `xMin` and `xMax` pin an axis to a fixed range,
+  so several charts can share one scale instead of each fitting its own data.
+  A pinned bound is used exactly, and a line that leaves the range is cut where
+  it crosses the bound rather than flattened along it. A range that cannot work —
+  inverted, empty, or not finite — falls back to fitting the data. See
+  [docs/charts/line.md](docs/charts/line.md).
+
+### Changed
+
+- `LineSeries.strokeGradientColors` now spans the x axis rather than the series'
+  own first and last points, so the same color sits at the same x on every series
+  and on every chart sharing that axis. Identical for a single series whose points
+  span the whole axis, which is the unpinned case.
+- The line chart no longer selects a point that lies outside a pinned x range,
+  by touch or through a screen reader's actions menu. Such points are not drawn,
+  so selecting one moved the crosshair somewhere nothing was visible.
+- `LineAxisConfig` gained four constructor parameters, which changes the generated
+  constructor and `copy` signatures. Source-compatible, but an app built against
+  1.0.0 must be recompiled against this release rather than swapped in place.
 
 ## [1.0.0] - 2026-07-31
 

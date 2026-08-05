@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -164,21 +165,39 @@ fun LineChart(
 
     // ── Data ranges (recomputed only on data change) ──
     val allPoints = remember(renderSeries) { renderSeries.flatMap { it.points } }
-    val xMin = remember(allPoints) { allPoints.minOfOrNull { it.x } ?: 0f }
-    val xMax = remember(allPoints) { allPoints.maxOfOrNull { it.x } ?: 1f }
+    val xDataMin = remember(allPoints) { allPoints.minOfOrNull { it.x } ?: 0f }
+    val xDataMax = remember(allPoints) { allPoints.maxOfOrNull { it.x } ?: 1f }
+    val xBounds = remember(xDataMin, xDataMax, axisConfig.xMin, axisConfig.xMax) {
+        resolveAxisBounds(
+            dataMin = xDataMin,
+            dataMax = xDataMax,
+            pinnedMin = axisConfig.xMin,
+            pinnedMax = axisConfig.xMax
+        )
+    }
+    val xMin = xBounds.start
+    val xMax = xBounds.endInclusive
     val currentXMin by rememberUpdatedState(xMin)
     val currentXMax by rememberUpdatedState(xMax)
 
     val yDataMax = remember(allPoints) { allPoints.maxOfOrNull { it.y } ?: 1f }
-    val yDataMin = remember(allPoints, axisConfig.includeZeroInYRange) {
-        val raw = allPoints.minOfOrNull { it.y } ?: 0f
-        if (axisConfig.includeZeroInYRange) min(0f, raw) else raw
+    val yRawMin = remember(allPoints) { allPoints.minOfOrNull { it.y } ?: 0f }
+    val yDataMin = remember(yRawMin, axisConfig.includeZeroInYRange) {
+        if (axisConfig.includeZeroInYRange) min(0f, yRawMin) else yRawMin
     }
-    val yTickValues = remember(yDataMin, yDataMax, axisConfig.yTickCount) {
-        computeNiceAxisTicks(
+    val yTickValues = remember(
+        yDataMin,
+        yDataMax,
+        axisConfig.yTickCount,
+        axisConfig.yMin,
+        axisConfig.yMax
+    ) {
+        computeAxisTicks(
             dataMin = yDataMin,
             dataMax = yDataMax,
-            tickCount = axisConfig.yTickCount
+            tickCount = axisConfig.yTickCount,
+            pinnedMin = axisConfig.yMin,
+            pinnedMax = axisConfig.yMax
         )
     }
     val yMin = yTickValues.firstOrNull() ?: 0f
@@ -262,6 +281,20 @@ fun LineChart(
         }
     }
 
+    // Clipping a range with nothing outside it would only shave a cap on the bound.
+    // Guards apply only to a pinned axis. An automatic one already contains its
+    // data, so testing it can only misfire on a float rounding of its own ticks.
+    val xIsPinned = axisConfig.xMin != null || axisConfig.xMax != null
+    val yIsPinned = axisConfig.yMin != null || axisConfig.yMax != null
+    val currentXIsPinned by rememberUpdatedState(xIsPinned)
+
+    // Per edge, not per axis: an axis that cuts at one end must not clip the other,
+    // where a mark sitting on the bound would lose its outer half.
+    val lowXCuts = xIsPinned && xMin > xDataMin
+    val highXCuts = xIsPinned && xMax < xDataMax
+    val topCuts = yIsPinned && yMax < yDataMax
+    val bottomCuts = yIsPinned && yMin > yRawMin
+
     // ── Cached PathEffect for dashed grid ──
     val dashEffect = remember(axisConfig.dashedGrid) {
         if (axisConfig.dashedGrid) PathEffect.dashPathEffect(floatArrayOf(8f, 6f)) else null
@@ -301,6 +334,7 @@ fun LineChart(
                         // Named, not next/previous: stepping leaves the listener
                         // counting along the axis to work out where they landed.
                         points.forEachIndexed { index, point ->
+                            if (xIsPinned && !isWithinAxis(point.x, xMin, xMax)) return@forEachIndexed
                             add(
                                 CustomAccessibilityAction(label = "Select ${point.spokenLabel}") {
                                     onPointSelected(index)
@@ -336,18 +370,25 @@ fun LineChart(
                     val axMin = currentXMin
                     val axMax = currentXMax
 
+                    val restrict = currentXIsPinned
                     fun nearest(touchX: Float): Int =
-                        nearestPointIndex(fp, touchX, axMin, axMax, cLeft, cRight, rtl)
+                        nearestPointIndex(fp, touchX, axMin, axMax, cLeft, cRight, rtl, restrict)
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var lastHapticIndex = nearest(down.position.x)
-                    currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
-                    currentOnPointSelected(lastHapticIndex)
+                    if (lastHapticIndex >= 0) {
+                        currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                        currentOnPointSelected(lastHapticIndex)
+                    }
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)
                         val change = event.changes.firstOrNull() ?: break
                         if (!change.pressed) break
                         val index = nearest(change.position.x)
+                        if (index < 0) {
+                            change.consume()
+                            continue
+                        }
                         if (index != lastHapticIndex) {
                             lastHapticIndex = index
                             currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
@@ -408,6 +449,7 @@ fun LineChart(
         if (axisConfig.showVerticalGrid && firstPoints.size > 1) {
             val gridPx = axisConfig.gridStrokeWidth.toPx()
             firstPoints.forEach { p ->
+                if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) return@forEach
                 val x = mapX(p.x)
                 drawLine(
                     color = axisConfig.gridColor,
@@ -450,15 +492,24 @@ fun LineChart(
             }
         }
 
-        // ── 4. Series: area fills, line strokes, dots ──
-        renderSeries.forEachIndexed { _, s ->
+        // ── 4. Series: area fills, line strokes, then dots ──
+        // xMin is the left edge in LTR and the right edge in RTL.
+        val leftCuts = if (isRtl) highXCuts else lowXCuts
+        val rightCuts = if (isRtl) lowXCuts else highXCuts
+        val noClip = size.maxDimension
+        val leftSlack = if (leftCuts) 0f else noClip
+        val rightSlack = if (rightCuts) 0f else noClip
+        val topSlack = if (topCuts) 0f else noClip
+        val bottomSlack = if (bottomCuts) 0f else noClip
+        val dotRadiusPx = style.dotRadius.toPx()
+        renderSeries.forEach { s ->
             val n = s.points.size
-            if (n == 0) return@forEachIndexed
-            val keys = keyMatrix[s.id] ?: return@forEachIndexed
-            val xs = xBuffers[s.id] ?: return@forEachIndexed
-            val ys = yBuffers[s.id] ?: return@forEachIndexed
-            val tans = tangentBuffers[s.id] ?: return@forEachIndexed
-            val delts = deltasBuffers[s.id] ?: return@forEachIndexed
+            if (n == 0) return@forEach
+            val keys = keyMatrix[s.id] ?: return@forEach
+            val xs = xBuffers[s.id] ?: return@forEach
+            val ys = yBuffers[s.id] ?: return@forEach
+            val tans = tangentBuffers[s.id] ?: return@forEach
+            val delts = deltasBuffers[s.id] ?: return@forEach
 
             // Fill pre-allocated buffers with animated screen positions
             for (i in 0 until n) {
@@ -470,65 +521,77 @@ fun LineChart(
                 computeMonotoneTangents(xs = xs, ys = ys, tangents = tans, deltas = delts, n = n)
             }
 
-            // Area fill (one Brush creation per gradient series per frame, acceptable)
-            if (s.fillAlpha > 0f || s.fillGradientColors.isNotEmpty()) {
-                areaPath.reset()
-                areaPath.buildArea(
+            clipRect(
+                left = chartLeft - leftSlack,
+                top = chartTop - topSlack,
+                right = chartRight + rightSlack,
+                bottom = chartBottom + bottomSlack
+            ) {
+                // Area fill (one Brush creation per gradient series per frame, acceptable)
+                if (s.fillAlpha > 0f || s.fillGradientColors.isNotEmpty()) {
+                    areaPath.reset()
+                    areaPath.buildArea(
+                        xs = xs,
+                        ys = ys,
+                        tangents = tans,
+                        n = n,
+                        chartBottom = chartBottom,
+                        curveType = style.curveType
+                    )
+                    val brush = if (s.fillGradientColors.size >= 2) {
+                        Brush.verticalGradient(
+                            colors = s.fillGradientColors,
+                            startY = chartTop,
+                            endY = chartBottom
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                s.color.copy(alpha = s.fillAlpha),
+                                Color.Transparent
+                            ), startY = chartTop, endY = chartBottom
+                        )
+                    }
+                    drawPath(path = areaPath, brush = brush)
+                }
+
+                // Line stroke: gradient or solid
+                linePath.reset()
+                linePath.buildCurve(
                     xs = xs,
                     ys = ys,
                     tangents = tans,
                     n = n,
-                    chartBottom = chartBottom,
                     curveType = style.curveType
                 )
-                val brush = if (s.fillGradientColors.size >= 2) {
-                    Brush.verticalGradient(
-                        colors = s.fillGradientColors,
-                        startY = chartTop,
-                        endY = chartBottom
+                val strokeStyle = Stroke(width = s.strokeWidth.toPx(), cap = StrokeCap.Round)
+                if (s.strokeGradientColors.size >= 2) {
+                    drawPath(
+                        path = linePath,
+                        brush = Brush.horizontalGradient(
+                            colors = s.strokeGradientColors,
+                            startX = if (isRtl) chartRight else chartLeft,
+                            endX = if (isRtl) chartLeft else chartRight
+                        ),
+                        style = strokeStyle
                     )
                 } else {
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            s.color.copy(alpha = s.fillAlpha),
-                            Color.Transparent
-                        ), startY = chartTop, endY = chartBottom
+                    drawPath(path = linePath, color = s.color, style = strokeStyle)
+                }
+            }
+
+            // Dots sit outside the clip so one on a bound keeps all of itself.
+            if (style.showDots) {
+                for (i in 0 until n) {
+                    val p = s.points[i]
+                    if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
+                    if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
+                    drawCircle(
+                        color = s.color,
+                        radius = dotRadiusPx,
+                        center = Offset(x = xs[i], y = ys[i])
                     )
                 }
-                drawPath(path = areaPath, brush = brush)
-            }
-
-            // Line stroke: gradient or solid
-            linePath.reset()
-            linePath.buildCurve(
-                xs = xs,
-                ys = ys,
-                tangents = tans,
-                n = n,
-                curveType = style.curveType
-            )
-            val strokeStyle = Stroke(width = s.strokeWidth.toPx(), cap = StrokeCap.Round)
-            if (s.strokeGradientColors.size >= 2) {
-                drawPath(
-                    path = linePath,
-                    brush = Brush.horizontalGradient(
-                        colors = s.strokeGradientColors,
-                        startX = xs[0],
-                        endX = xs[n - 1]
-                    ),
-                    style = strokeStyle
-                )
-            } else {
-                drawPath(path = linePath, color = s.color, style = strokeStyle)
-            }
-
-            if (style.showDots) {
-                val dotR = style.dotRadius.toPx()
-                for (i in 0 until n) drawCircle(
-                    color = s.color,
-                    radius = dotR,
-                    center = Offset(x = xs[i], y = ys[i])
-                )
             }
         }
 
@@ -537,7 +600,10 @@ fun LineChart(
             var layoutIdx = 0
             firstPoints.forEachIndexed { i, p ->
                 if (i % xLabelInterval == 0 && layoutIdx < xLabelLayouts.size) {
+                    // After the increment: a skipped label still consumes its
+                    // layout, or every later label lands on the wrong point.
                     val layout = xLabelLayouts[layoutIdx++]
+                    if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) return@forEachIndexed
                     drawText(
                         textLayoutResult = layout,
                         topLeft = Offset(
@@ -553,6 +619,7 @@ fun LineChart(
         selectedPointIndex?.let { idx ->
             val fp = series.firstOrNull() ?: return@let
             if (idx !in fp.points.indices) return@let
+            if (xIsPinned && !isWithinAxis(fp.points[idx].x, xMin, xMax)) return@let
             val crossX = mapX(fp.points[idx].x)
 
             drawLine(
@@ -566,6 +633,7 @@ fun LineChart(
             val borderW = crosshairConfig.dotBorderWidth.toPx()
             series.forEach { s ->
                 if (idx < s.points.size) {
+                    if (yIsPinned && !isWithinAxis(s.points[idx].y, yMin, yMax)) return@forEach
                     val key = keyMatrix[s.id]?.getOrNull(idx) ?: return@forEach
                     val animY = animationEngine.yAnimatables[key]?.value ?: s.points[idx].y
                     val cy = mapY(animY)

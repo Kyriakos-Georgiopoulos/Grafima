@@ -1,0 +1,38 @@
+name: CI (docs-only)
+
+# CI skips documentation changes via paths-ignore, but `develop` and `main`
+# require its three checks to pass. A required check that never runs never
+# reports, so a docs-only PR would sit on "Expected — waiting for status to be
+# reported" and could only be merged by overriding branch protection.
+#
+# This reports the same three contexts as CI, so a docs PR merges on its own
+# without paying for a build, an emulator or a 10× macOS runner. The paths below
+# are the inverse of CI's paths-ignore: keep the two lists in step.
+on:
+  pull_request:
+    paths: ['**.md', 'docs/**', '.gitignore']
+
+concurrency:
+  # Deliberately not CI's group — sharing one would cancel the real run on a PR
+  # that touches both docs and code.
+  group: ci-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  skip:
+    # Branch protection matches required checks by job name, so each of these
+    # must stay character-for-character identical to the job names in ci.yml.
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    strategy:
+      matrix:
+        check:
+          - Android build & JVM tests
+          - Android UI tests (emulator)
+          - iOS build & simulator tests
+    steps:
+      - name: Report as passed
+        run: echo "Documentation-only change — ${{ matrix.check }} has nothing to run."

@@ -74,8 +74,9 @@ redraws without recomposing.
 **Selection is yours.** No chart owns its selection state. You pass it in and get
 changes back.
 
-**Tested.** 101 unit tests and a UI suite on both an Android emulator and an iOS
-simulator, including accessibility contracts every chart has to pass.
+**Tested.** A unit suite on the JVM and an iOS simulator, and a UI suite on an
+Android emulator and an iOS simulator, including accessibility contracts every
+chart has to pass.
 [Test suites](docs/TESTING.md)
 
 ## Documentation
