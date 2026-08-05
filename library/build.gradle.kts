@@ -105,7 +105,7 @@ mavenPublishing {
         name.set("Grafima")
         description.set(
             "Charts for Compose Multiplatform: bar, line, pie, radar and gauge, drawn on " +
-                "Canvas with animations, accessibility and RTL support on Android and iOS."
+                "Canvas with animations, accessibility and RTL support on Android, iOS and desktop."
         )
         inceptionYear.set("2026")
         url.set("https://github.com/Kyriakos-Georgiopoulos/Grafima")
