@@ -185,6 +185,10 @@ enum class LineCurveType {
  *   smallest x in the data.
  * @param xMax Pins the right of the x-axis (the left in RTL). Null uses the
  *   largest x in the data.
+ * @param xAxisTitle Names the x-axis below its labels, for the unit the numbers
+ *   are in. Null or blank draws nothing. Screen readers announce it too.
+ * @param yAxisTitle Names the y-axis, drawn rotated beside its labels — on the
+ *   left, or the right in RTL. Null or blank draws nothing.
  */
 @Immutable
 data class LineAxisConfig(
@@ -207,7 +211,9 @@ data class LineAxisConfig(
     val yMin: Float? = null,
     val yMax: Float? = null,
     val xMin: Float? = null,
-    val xMax: Float? = null
+    val xMax: Float? = null,
+    val xAxisTitle: String? = null,
+    val yAxisTitle: String? = null
 )
 
 /**

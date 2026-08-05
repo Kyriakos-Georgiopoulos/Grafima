@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -59,6 +60,8 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.rememberEffectiveReduceMotion
@@ -249,6 +252,23 @@ fun LineChart(
         if (xLabelLayouts.isEmpty()) 0f else xLabelLayouts.maxOf { it.size.height }.toFloat()
     }
 
+    // Blank counts as absent, decided once so the layout, the drawing and the
+    // spoken description cannot disagree about whether a title exists.
+    val xTitle = axisConfig.xAxisTitle?.takeIf { it.isNotBlank() }
+    val yTitle = axisConfig.yAxisTitle?.takeIf { it.isNotBlank() }
+
+    // Measured unconstrained: this gives the line height the plot insets need.
+    // Length is trimmed to the space at draw time, which cannot change the height.
+    val xTitleLayout = remember(xTitle, labelStyle) {
+        xTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
+    }
+    val yTitleLayout = remember(yTitle, labelStyle) {
+        yTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
+    }
+    val titleCache = remember(xTitle, yTitle, labelStyle) {
+        mutableMapOf<String, TextLayoutResult>()
+    }
+
     val tooltipStyle = remember(crosshairConfig.tooltipTextColor, crosshairConfig.tooltipFontSize) {
         TextStyle(
             color = crosshairConfig.tooltipTextColor,
@@ -301,8 +321,15 @@ fun LineChart(
     }
 
     // ── Accessibility ──
-    val baseDescription =
-        remember(dataSet, a11yConfig) { a11yConfig.chartDescriptionBuilder(dataSet) }
+    // Axis titles carry the unit the numbers are in, so they are spoken too. Only
+    // when set: unset, the description is exactly what the builder produced.
+    val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle) {
+        buildString {
+            append(a11yConfig.chartDescriptionBuilder(dataSet))
+            xTitle?.let { append("X axis: $it. ") }
+            yTitle?.let { append("Y axis: $it. ") }
+        }
+    }
     val selectedDescription = remember(selectedPointIndex, series, a11yConfig) {
         selectedPointIndex?.let { idx -> a11yConfig.selectedPointDescriptionBuilder(idx, series) }
             ?: ""
@@ -311,6 +338,7 @@ fun LineChart(
     val tooltipCache = remember { mutableMapOf<String, TextLayoutResult>() }
     val linePath = remember { Path() }
     val areaPath = remember { Path() }
+    val plotInsets = remember { PlotInsets() }
 
     // ── Animation lifecycle ──
     SideEffect { animationEngine.syncAnimatables(series) }
@@ -405,18 +433,22 @@ fun LineChart(
 
         val labelGapPx = style.labelGap.toPx()
 
-        // RTL-aware chart area: Y labels flip from left to right
-        val chartLeft =
-            if (isRtl) labelGapPx else (if (axisConfig.showYLabels) maxYLabelWidth + labelGapPx else labelGapPx)
-        val chartRight =
-            if (isRtl && axisConfig.showYLabels) {
-                size.width - maxYLabelWidth - labelGapPx
-            } else {
-                size.width - labelGapPx
-            }
-        val chartBottom =
-            size.height - (if (axisConfig.showXLabels) maxXLabelHeight + labelGapPx else labelGapPx)
-        val chartTop = labelGapPx
+        // RTL-aware chart area: Y labels and the Y title flip from left to right
+        val insets = computePlotInsets(
+            into = plotInsets,
+            width = size.width,
+            height = size.height,
+            gap = labelGapPx,
+            yLabelWidth = if (axisConfig.showYLabels) maxYLabelWidth else 0f,
+            xLabelHeight = if (axisConfig.showXLabels) maxXLabelHeight else 0f,
+            yTitleHeight = yTitleLayout?.size?.height?.toFloat() ?: 0f,
+            xTitleHeight = xTitleLayout?.size?.height?.toFloat() ?: 0f,
+            isRtl = isRtl
+        )
+        val chartLeft = insets.left
+        val chartRight = insets.right
+        val chartBottom = insets.bottom
+        val chartTop = insets.top
         val chartWidth = chartRight - chartLeft
         val chartHeight = chartBottom - chartTop
         val xRange = xMax - xMin
@@ -612,6 +644,47 @@ fun LineChart(
                         )
                     )
                 }
+            }
+        }
+
+        // ── 5b. Axis titles ──
+        // A title longer than the side it names is ellipsised rather than drawn
+        // over the plot. Re-measured once per width, not per frame, and never
+        // taller than the unconstrained layout the insets were built from.
+        fun fitted(layout: TextLayoutResult, text: String, available: Float): TextLayoutResult {
+            if (available <= 0f || layout.size.width <= available) return layout
+            return titleCache.getOrPut("$text|${available.toInt()}") {
+                textMeasurer.measure(
+                    text = text,
+                    style = labelStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    constraints = Constraints(maxWidth = available.toInt())
+                )
+            }
+        }
+
+        xTitleLayout?.let { measured ->
+            val layout = fitted(measured, xTitle!!, chartRight - chartLeft)
+            drawText(
+                textLayoutResult = layout,
+                topLeft = Offset(
+                    x = chartLeft + (chartRight - chartLeft - layout.size.width) / 2f,
+                    y = size.height - labelGapPx - layout.size.height
+                )
+            )
+        }
+        yTitleLayout?.let { measured ->
+            // Rotated, so the space it has to fit is the plot's height.
+            val layout = fitted(measured, yTitle!!, chartBottom - chartTop)
+            val half = layout.size.height / 2f
+            val cx = if (isRtl) size.width - labelGapPx - half else labelGapPx + half
+            val cy = chartTop + (chartBottom - chartTop) / 2f
+            rotate(degrees = -90f, pivot = Offset(cx, cy)) {
+                drawText(
+                    textLayoutResult = layout,
+                    topLeft = Offset(cx - layout.size.width / 2f, cy - half)
+                )
             }
         }
 

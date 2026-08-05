@@ -34,6 +34,10 @@ nothing is visible. See [the line chart guide](charts/line.md).
 Give your entries distinct labels. Two bars both labelled "Q1" produce two
 identical actions and one of them becomes unreachable.
 
+A line chart's `xAxisTitle` and `yAxisTitle` are appended to its description, so
+the numbers reach a screen reader with the unit they are in. Set neither and the
+description is exactly what the builder produced.
+
 ## Changing the wording
 
 Every chart takes an `a11yConfig` with builders for its text. Override any of

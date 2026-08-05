@@ -18,6 +18,7 @@ package io.grafima.charts.line
 
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -25,10 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.contentDescription
 import io.grafima.charts.customActionLabels
 import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
@@ -305,5 +309,118 @@ class LineChartUiTest {
 
         val ring = onChartNode().captureToImage().countColor(Color.Green)
         assertEquals(0, ring, "a point above yMax still painted a crosshair dot")
+    }
+
+    @Test
+    fun axis_titles_are_spoken_so_the_numbers_carry_their_unit() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(xAxisTitle = "Month", yAxisTitle = "Euros")
+            )
+        }
+        waitForIdle()
+
+        val spoken = onChartNode().contentDescription()
+        assertTrue("X axis: Month." in spoken, "x axis title was not announced: $spoken")
+        assertTrue("Y axis: Euros." in spoken, "y axis title was not announced: $spoken")
+    }
+
+    @Test
+    fun a_chart_without_axis_titles_announces_exactly_what_the_builder_produced() =
+        runComposeUiTest {
+            setContent {
+                LineChart(
+                    dataSet = dataSet,
+                    modifier = Modifier.size(300.dp),
+                    animationConfig = snapAnimations
+                )
+            }
+            waitForIdle()
+
+            val spoken = onChartNode().contentDescription()
+            assertEquals(LineA11yConfig().chartDescriptionBuilder(dataSet), spoken)
+        }
+
+    @Test
+    fun a_blank_axis_title_is_treated_as_absent_rather_than_announced_empty() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(xAxisTitle = "   ", yAxisTitle = "")
+            )
+        }
+        waitForIdle()
+
+        val spoken = onChartNode().contentDescription()
+        assertFalse("X axis:" in spoken, "a blank title was announced: $spoken")
+        assertFalse("Y axis:" in spoken, "a blank title was announced: $spoken")
+    }
+
+    @Test
+    fun an_axis_title_is_actually_painted_and_not_merely_reserved_space() = runComposeUiTest {
+        // Labels off, so the only text the label colour can come from is a title.
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(
+                    showXLabels = false,
+                    showYLabels = false,
+                    showGrid = false,
+                    labelColor = Color.Red,
+                    xAxisTitle = "Month"
+                )
+            )
+        }
+        waitForIdle()
+
+        val painted = onChartNode().captureToImage().countColor(Color.Red)
+        assertTrue(painted > 0, "the x axis title reserved space but drew nothing")
+    }
+
+    @Test
+    fun a_chart_with_no_axis_title_paints_none_of_the_title_colour() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(
+                    showXLabels = false,
+                    showYLabels = false,
+                    showGrid = false,
+                    labelColor = Color.Red
+                )
+            )
+        }
+        waitForIdle()
+
+        assertEquals(0, onChartNode().captureToImage().countColor(Color.Red))
+    }
+
+    @Test
+    fun axis_titles_survive_a_right_to_left_layout() = runComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                LineChart(
+                    dataSet = dataSet,
+                    modifier = Modifier.size(300.dp),
+                    animationConfig = snapAnimations,
+                    axisConfig = LineAxisConfig(xAxisTitle = "Month", yAxisTitle = "Euros")
+                )
+            }
+        }
+        waitForIdle()
+
+        // Mirroring is a paint concern; the a11y contract must be unchanged.
+        val spoken = onChartNode().contentDescription()
+        assertTrue("X axis: Month." in spoken, "RTL lost the x axis title: $spoken")
+        assertTrue("Y axis: Euros." in spoken, "RTL lost the y axis title: $spoken")
     }
 }
