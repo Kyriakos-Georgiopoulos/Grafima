@@ -120,8 +120,7 @@ the shape, then send a PR.
 
 ## Contributors
 
-- [Lauren Darcey](https://github.com/ldarcey) — the `jvm` target that desktop
-  support is built on
+Thanks to [everyone who has contributed](https://github.com/Kyriakos-Georgiopoulos/Grafima/graphs/contributors).
 
 ## On AI use
 
