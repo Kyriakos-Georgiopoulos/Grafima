@@ -189,6 +189,25 @@ class LineChartUiTest {
         return pixels.count { it == target }
     }
 
+    /**
+     * Pixels that are recognisably red, per horizontal third. Rotated text is
+     * resampled, so an exact colour match finds almost none of its glyphs.
+     */
+    private fun ImageBitmap.reddishPerThird(): List<Int> {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val thirds = IntArray(3)
+        pixels.forEachIndexed { i, p ->
+            val r = (p shr 16) and 0xFF
+            val g = (p shr 8) and 0xFF
+            val b = p and 0xFF
+            if (r > 120 && g < 90 && b < 90) {
+                thirds[minOf(2, (i % width) * 3 / width)]++
+            }
+        }
+        return thirds.toList()
+    }
+
     /** Red pixels in the right third of the plot, where a stacked series draws none. */
     private fun ImageBitmap.countColorInRightThird(color: Color): Int {
         val pixels = IntArray(width * height)
@@ -357,6 +376,31 @@ class LineChartUiTest {
             val spoken = onChartNode().contentDescription()
             assertEquals(LineA11yConfig().chartDescriptionBuilder(dataSet), spoken)
         }
+
+    @Test
+    fun the_y_axis_title_is_painted_on_the_right_in_a_right_to_left_layout() = runComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                LineChart(
+                    dataSet = dataSet,
+                    modifier = Modifier.size(300.dp),
+                    animationConfig = snapAnimations,
+                    axisConfig = LineAxisConfig(
+                        showXLabels = false,
+                        showYLabels = false,
+                        showGrid = false,
+                        labelColor = Color.Red,
+                        yAxisTitle = "Euros"
+                    )
+                )
+            }
+        }
+        waitForIdle()
+
+        val (left, _, right) = onChartNode().captureToImage().reddishPerThird()
+        assertTrue(right > 0, "the y title was not painted on the right")
+        assertEquals(0, left, "the y title was painted on the left as well")
+    }
 
     @Test
     fun a_custom_description_does_not_run_into_the_axis_titles() = runComposeUiTest {
