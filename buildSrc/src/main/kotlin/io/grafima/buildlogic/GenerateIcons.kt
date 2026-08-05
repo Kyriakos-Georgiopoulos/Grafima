@@ -58,7 +58,9 @@ abstract class GenerateIcons : DefaultTask() {
         require(artwork.width == artwork.height) { "Source artwork must be square" }
 
         val rounded = roundedForMacOs(artwork)
-        write(squareIcon, scaledPng(artwork, artwork.width))
+        // Copied rather than re-encoded: the artwork is already the PNG this
+        // needs, and round-tripping it only adds an opaque alpha channel.
+        write(squareIcon, source.get().asFile.readBytes())
         write(macOsIcon, scaledPng(rounded, rounded.width))
         write(icns, icns(rounded))
         write(ico, ico(artwork))
