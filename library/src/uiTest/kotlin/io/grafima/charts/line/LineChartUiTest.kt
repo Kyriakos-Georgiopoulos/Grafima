@@ -23,12 +23,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -39,6 +41,7 @@ import io.grafima.charts.performCustomAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -166,6 +169,17 @@ class LineChartUiTest {
         )
         waitForIdle()
         onChartNode().assertExists()
+    }
+
+    /** The x of the column holding most of [color], or null when it is absent. */
+    private fun ImageBitmap.columnOf(color: Color): Float? {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val target = color.toArgb()
+        val perColumn = IntArray(width)
+        pixels.forEachIndexed { i, p -> if (p == target) perColumn[i % width]++ }
+        val best = perColumn.indices.maxByOrNull { perColumn[it] } ?: return null
+        return if (perColumn[best] == 0) null else best.toFloat()
     }
 
     private fun ImageBitmap.countColor(color: Color): Int {
@@ -359,6 +373,53 @@ class LineChartUiTest {
         val spoken = onChartNode().contentDescription()
         assertFalse("X axis:" in spoken, "a blank title was announced: $spoken")
         assertFalse("Y axis:" in spoken, "a blank title was announced: $spoken")
+    }
+
+    @Test
+    fun the_crosshair_lands_under_the_finger_when_a_y_axis_title_is_set() = runComposeUiTest {
+        val many = LineDataSet(
+            series = listOf(
+                LineSeries(
+                    id = "revenue",
+                    label = "Revenue",
+                    points = (0..39).map { LineDataPoint(x = it.toFloat(), y = (it % 5).toFloat()) }
+                )
+            ),
+            contentDescription = "Forty points"
+        )
+        var picked by mutableStateOf<Int?>(null)
+        setContent {
+            LineChart(
+                dataSet = many,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = LineAxisConfig(
+                    yAxisTitle = "Discomfort strength",
+                    showGrid = false
+                ),
+                crosshairConfig = LineCrosshairConfig(
+                    lineColor = Color.Magenta,
+                    lineWidth = 5.dp,
+                    showTooltip = false
+                ),
+                selectedPointIndex = picked,
+                onPointSelected = { picked = it }
+            )
+        }
+
+        val width = onChartNode().fetchSemanticsNode().size.width
+        val tapX = width * 0.4f
+        onChartNode().performTouchInput { down(Offset(tapX, 4f)) }
+        waitForIdle()
+
+        assertNotNull(picked, "the touch selected nothing")
+        val crosshairX = onChartNode().captureToImage().columnOf(Color.Magenta)
+        assertNotNull(crosshairX, "no crosshair was drawn for selection $picked")
+        val tolerance = width * 0.02f
+        assertTrue(
+            kotlin.math.abs(crosshairX - tapX) <= tolerance,
+            "crosshair drew at $crosshairX for a touch at $tapX (point $picked)"
+        )
     }
 
     @Test

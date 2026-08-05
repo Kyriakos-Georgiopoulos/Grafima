@@ -227,6 +227,7 @@ fun LineChart(
         if (yLabelLayouts.isEmpty()) 0f else yLabelLayouts.maxOf { it.size.width }.toFloat()
     }
     val currentMaxYLabelWidth by rememberUpdatedState(maxYLabelWidth)
+    val currentShowYLabels by rememberUpdatedState(axisConfig.showYLabels)
 
     val firstPoints = series.firstOrNull()?.points ?: emptyList()
     val xLabelInterval = remember(firstPoints, axisConfig.maxXLabels) {
@@ -252,13 +253,11 @@ fun LineChart(
         if (xLabelLayouts.isEmpty()) 0f else xLabelLayouts.maxOf { it.size.height }.toFloat()
     }
 
-    // Blank counts as absent, decided once so the layout, the drawing and the
-    // spoken description cannot disagree about whether a title exists.
     val xTitle = axisConfig.xAxisTitle?.takeIf { it.isNotBlank() }
     val yTitle = axisConfig.yAxisTitle?.takeIf { it.isNotBlank() }
 
-    // Measured unconstrained: this gives the line height the plot insets need.
-    // Length is trimmed to the space at draw time, which cannot change the height.
+    // Unconstrained, because the insets need the full line height. Length is
+    // trimmed at draw time, which cannot change that height.
     val xTitleLayout = remember(xTitle, labelStyle) {
         xTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
     }
@@ -268,6 +267,7 @@ fun LineChart(
     val titleCache = remember(xTitle, yTitle, labelStyle) {
         mutableMapOf<String, TextLayoutResult>()
     }
+    val currentYTitleHeight by rememberUpdatedState(yTitleLayout?.size?.height?.toFloat() ?: 0f)
 
     val tooltipStyle = remember(crosshairConfig.tooltipTextColor, crosshairConfig.tooltipFontSize) {
         TextStyle(
@@ -321,8 +321,6 @@ fun LineChart(
     }
 
     // ── Accessibility ──
-    // Axis titles carry the unit the numbers are in, so they are spoken too. Only
-    // when set: unset, the description is exactly what the builder produced.
     val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet))
@@ -339,6 +337,7 @@ fun LineChart(
     val linePath = remember { Path() }
     val areaPath = remember { Path() }
     val plotInsets = remember { PlotInsets() }
+    val gestureInsets = remember { PlotInsets() }
 
     // ── Animation lifecycle ──
     SideEffect { animationEngine.syncAnimatables(series) }
@@ -392,9 +391,21 @@ fun LineChart(
                     val den = currentDensity
                     val gap = with(den) { style.labelGap.toPx() }
                     val rtl = currentIsRtl
-                    val yLabelW = currentMaxYLabelWidth
-                    val cLeft = if (rtl) gap else yLabelW + gap
-                    val cRight = if (rtl) size.width - yLabelW - gap else size.width - gap
+                    // Must match the draw pass, or touch selects a point other than
+                    // the one under the finger. Own scratch: not the draw coroutine.
+                    val rect = computePlotInsets(
+                        into = gestureInsets,
+                        width = size.width.toFloat(),
+                        height = size.height.toFloat(),
+                        gap = gap,
+                        yLabelWidth = if (currentShowYLabels) currentMaxYLabelWidth else 0f,
+                        xLabelHeight = 0f,
+                        yTitleHeight = currentYTitleHeight,
+                        xTitleHeight = 0f,
+                        isRtl = rtl
+                    )
+                    val cLeft = rect.left
+                    val cRight = rect.right
                     val axMin = currentXMin
                     val axMax = currentXMax
 
@@ -433,7 +444,6 @@ fun LineChart(
 
         val labelGapPx = style.labelGap.toPx()
 
-        // RTL-aware chart area: Y labels and the Y title flip from left to right
         val insets = computePlotInsets(
             into = plotInsets,
             width = size.width,
@@ -648,9 +658,8 @@ fun LineChart(
         }
 
         // ── 5b. Axis titles ──
-        // A title longer than the side it names is ellipsised rather than drawn
-        // over the plot. Re-measured once per width, not per frame, and never
-        // taller than the unconstrained layout the insets were built from.
+        // Cached, so a title that needs trimming is re-measured per width rather
+        // than per frame.
         fun fitted(layout: TextLayoutResult, text: String, available: Float): TextLayoutResult {
             if (available <= 0f || layout.size.width <= available) return layout
             return titleCache.getOrPut("$text|${available.toInt()}") {
