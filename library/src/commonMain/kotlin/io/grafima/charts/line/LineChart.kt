@@ -327,11 +327,12 @@ fun LineChart(
             val titles = a11yConfig.axisTitleDescriptionBuilder(xTitle, yTitle)
             if (titles.isNotBlank()) {
                 // A custom builder need not end in one, and without a full stop a
-                // screen reader runs the titles into its last word unbroken.
-                val end = trimEnd().lastOrNull()
-                if (end != null) {
-                    if (end !in ".!?") append('.')
-                    if (!last().isWhitespace()) append(' ')
+                // screen reader runs the titles into its last word unbroken. Only
+                // a letter or digit is unfinished — any script's punctuation is not.
+                setLength(trimEnd().length)
+                if (isNotEmpty()) {
+                    if (last().isLetterOrDigit()) append('.')
+                    append(' ')
                 }
                 append(titles)
             }

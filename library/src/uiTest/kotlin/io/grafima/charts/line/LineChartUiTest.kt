@@ -494,6 +494,22 @@ class LineChartUiTest {
     }
 
     @Test
+    fun a_description_ending_in_other_punctuation_keeps_it() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                a11yConfig = LineA11yConfig(chartDescriptionBuilder = { "Revenue by month;" }),
+                axisConfig = LineAxisConfig(xAxisTitle = "Month")
+            )
+        }
+        waitForIdle()
+
+        assertEquals("Revenue by month; X axis: Month.", onChartNode().contentDescription())
+    }
+
+    @Test
     fun a_custom_description_does_not_run_into_the_axis_titles() = runComposeUiTest {
         setContent {
             LineChart(
