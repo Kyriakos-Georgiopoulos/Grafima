@@ -79,17 +79,21 @@ fun themedBarStyle(): ChartStyle {
 fun themedLineAxis(
     yTickCount: Int = 5,
     dashedGrid: Boolean = false,
-    xLabels: List<String> = emptyList()
+    xLabels: List<String> = emptyList(),
+    xAxisTitle: String? = null,
+    yAxisTitle: String? = null
 ): LineAxisConfig {
     val colors = LocalDemoColors.current
-    return remember(colors, yTickCount, dashedGrid, xLabels) {
+    return remember(colors, yTickCount, dashedGrid, xLabels, xAxisTitle, yAxisTitle) {
         LineAxisConfig(
             gridColor = colors.grid,
             axisColor = colors.grid,
             labelColor = colors.axisLabel,
             yTickCount = yTickCount,
             dashedGrid = dashedGrid,
-            xLabelFormatter = { x -> xLabels.getOrElse(x.toInt()) { "" } }
+            xLabelFormatter = { x -> xLabels.getOrElse(x.toInt()) { "" } },
+            xAxisTitle = xAxisTitle,
+            yAxisTitle = yAxisTitle
         )
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.text.TextLayoutResult
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
@@ -159,6 +160,61 @@ internal fun resolveAxisBounds(
     val hi = pinnedMax ?: dataMax
     if (!lo.isFinite() || !hi.isFinite() || hi <= lo) return dataMin..dataMax
     return lo..hi
+}
+
+/**
+ * One axis title trimmed to the space it has, kept across frames.
+ *
+ * Only the newest is worth holding: the width changes when the chart is resized,
+ * and a cache keyed by width would grow for every pixel a window drag passes
+ * through.
+ */
+internal class FittedTitle {
+    var width: Int = -1
+    var layout: TextLayoutResult? = null
+}
+
+/**
+ * The plot rectangle, once labels and axis titles have taken their room.
+ *
+ * Mutable and reused: [computePlotInsets] runs on every frame, and a fresh object
+ * per frame is a per-frame allocation the draw pass does not otherwise make.
+ */
+internal data class PlotInsets(
+    var left: Float = 0f,
+    var top: Float = 0f,
+    var right: Float = 0f,
+    var bottom: Float = 0f
+)
+
+/**
+ * Carves the plot rectangle out of the canvas, writing into [into].
+ *
+ * Y labels and the y title sit on the left, and mirror to the right in RTL. A y
+ * title is drawn rotated, so the width it claims is [yTitleHeight] — its measured
+ * height — not its length.
+ *
+ * Each element costs [gap] on top of its own size, and contributes nothing when
+ * its size is zero, which keeps the rectangle identical to the untitled case.
+ */
+internal fun computePlotInsets(
+    into: PlotInsets,
+    width: Float,
+    height: Float,
+    gap: Float,
+    yLabelWidth: Float,
+    xLabelHeight: Float,
+    yTitleHeight: Float,
+    xTitleHeight: Float,
+    isRtl: Boolean
+): PlotInsets {
+    val yBand = yLabelWidth + if (yTitleHeight > 0f) yTitleHeight + gap else 0f
+    val xBand = xLabelHeight + if (xTitleHeight > 0f) xTitleHeight + gap else 0f
+    into.left = gap + if (isRtl) 0f else yBand
+    into.top = gap
+    into.right = width - gap - if (isRtl) yBand else 0f
+    into.bottom = height - gap - xBand
+    return into
 }
 
 /**

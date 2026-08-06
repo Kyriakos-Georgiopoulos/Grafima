@@ -19,6 +19,10 @@ behaviour do not.
   thing desktop cannot read for itself: the JVM exposes no portable setting, so
   charts animate unless your host provides `LocalReduceMotion`.
   Thanks to [Lauren Darcey](https://github.com/ldarcey).
+- `LineAxisConfig.xAxisTitle` and `yAxisTitle` name an axis, so the numbers on it
+  carry their unit. The y title is drawn rotated beside its labels, on the right
+  in RTL, and both are announced to screen readers. See
+  [docs/charts/line.md](docs/charts/line.md).
 - `LineAxisConfig.yMin`, `yMax`, `xMin` and `xMax` pin an axis to a fixed range,
   so several charts can share one scale instead of each fitting its own data.
   A pinned bound is used exactly, and a line that leaves the range is cut where
@@ -35,9 +39,16 @@ behaviour do not.
 - The line chart no longer selects a point that lies outside a pinned x range,
   by touch or through a screen reader's actions menu. Such points are not drawn,
   so selecting one moved the crosshair somewhere nothing was visible.
-- `LineAxisConfig` gained four constructor parameters, which changes the generated
-  constructor and `copy` signatures. Source-compatible, but an app built against
-  1.0.0 must be recompiled against this release rather than swapped in place.
+- `LineAxisConfig` gained six constructor parameters and `LineA11yConfig` one,
+  which changes their generated constructor and `copy` signatures.
+  Source-compatible, but an app built against 1.0.0 must be recompiled against
+  this release rather than swapped in place.
+
+### Fixed
+
+- A line chart's crosshair tooltip kept the text colour it was first drawn with,
+  so a theme change while the crosshair was up left the old colour on the new
+  panel. It is also redrawn now when the display density changes.
 
 ## [1.0.0] - 2026-07-31
 

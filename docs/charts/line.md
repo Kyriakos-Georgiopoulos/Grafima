@@ -104,6 +104,29 @@ the data, which exaggerates small changes — useful sometimes, misleading other
 `xLabelFormatter` only runs for points that left `label` empty. Set
 `LineDataPoint.label` and it is used as it is.
 
+## Axis titles
+
+Labels give the numbers; a title gives them their unit.
+
+```kotlin
+axisConfig = LineAxisConfig(
+    xAxisTitle = "Days",
+    yAxisTitle = "Discomfort strength"
+)
+```
+
+The x title sits centred below the x labels. The y title is drawn rotated,
+reading bottom to top, outside its labels — on the left, or on the right in RTL,
+along with the rest of the axis.
+
+Both are announced to screen readers, appended to the chart's description as
+"X axis: Days. Y axis: Discomfort strength." Override
+`LineA11yConfig.axisTitleDescriptionBuilder` to reword or translate that. A title
+left null or blank draws nothing and adds nothing to the description, and the
+chart keeps exactly the space it had before.
+
+Titles inherit `labelColor` and `labelFontSize`.
+
 ## Pinning the range
 
 Auto-scaling fits each chart to its own data, which is wrong when several charts

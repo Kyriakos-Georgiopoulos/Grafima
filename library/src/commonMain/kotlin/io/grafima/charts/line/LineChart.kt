@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -59,6 +60,8 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.rememberEffectiveReduceMotion
@@ -211,7 +214,7 @@ fun LineChart(
             fontWeight = FontWeight.Medium
         )
     }
-    val yLabelLayouts = remember(yTickValues, labelStyle, axisConfig.yLabelFormatter) {
+    val yLabelLayouts = remember(yTickValues, labelStyle, textMeasurer, axisConfig.yLabelFormatter) {
         yTickValues.map { v ->
             textMeasurer.measure(
                 text = axisConfig.yLabelFormatter(v),
@@ -224,6 +227,7 @@ fun LineChart(
         if (yLabelLayouts.isEmpty()) 0f else yLabelLayouts.maxOf { it.size.width }.toFloat()
     }
     val currentMaxYLabelWidth by rememberUpdatedState(maxYLabelWidth)
+    val currentShowYLabels by rememberUpdatedState(axisConfig.showYLabels)
 
     val firstPoints = series.firstOrNull()?.points ?: emptyList()
     val xLabelInterval = remember(firstPoints, axisConfig.maxXLabels) {
@@ -232,6 +236,7 @@ fun LineChart(
     val xLabelLayouts = remember(
         firstPoints,
         labelStyle,
+        textMeasurer,
         xLabelInterval,
         axisConfig.xLabelFormatter,
         axisConfig.showXLabels
@@ -248,6 +253,21 @@ fun LineChart(
     val maxXLabelHeight = remember(xLabelLayouts) {
         if (xLabelLayouts.isEmpty()) 0f else xLabelLayouts.maxOf { it.size.height }.toFloat()
     }
+
+    val xTitle = axisConfig.xAxisTitle?.takeIf { it.isNotBlank() }
+    val yTitle = axisConfig.yAxisTitle?.takeIf { it.isNotBlank() }
+
+    // Unconstrained, because the insets need the full line height. Length is
+    // trimmed at draw time, which cannot change that height.
+    val xTitleLayout = remember(xTitle, labelStyle, textMeasurer) {
+        xTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
+    }
+    val yTitleLayout = remember(yTitle, labelStyle, textMeasurer) {
+        yTitle?.let { textMeasurer.measure(text = it, style = labelStyle, maxLines = 1) }
+    }
+    val xFittedTitle = remember(xTitle, labelStyle, textMeasurer) { FittedTitle() }
+    val yFittedTitle = remember(yTitle, labelStyle, textMeasurer) { FittedTitle() }
+    val currentYTitleHeight by rememberUpdatedState(yTitleLayout?.size?.height?.toFloat() ?: 0f)
 
     val tooltipStyle = remember(crosshairConfig.tooltipTextColor, crosshairConfig.tooltipFontSize) {
         TextStyle(
@@ -301,16 +321,35 @@ fun LineChart(
     }
 
     // ── Accessibility ──
-    val baseDescription =
-        remember(dataSet, a11yConfig) { a11yConfig.chartDescriptionBuilder(dataSet) }
+    val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle) {
+        buildString {
+            append(a11yConfig.chartDescriptionBuilder(dataSet))
+            val titles = a11yConfig.axisTitleDescriptionBuilder(xTitle, yTitle)
+            if (titles.isNotBlank()) {
+                // A custom builder need not end in one, and without a full stop a
+                // screen reader runs the titles into its last word unbroken. Only
+                // a letter or digit is unfinished — any script's punctuation is not.
+                setLength(trimEnd().length)
+                if (isNotEmpty()) {
+                    if (last().isLetterOrDigit()) append('.')
+                    append(' ')
+                }
+                append(titles)
+            }
+        }
+    }
     val selectedDescription = remember(selectedPointIndex, series, a11yConfig) {
         selectedPointIndex?.let { idx -> a11yConfig.selectedPointDescriptionBuilder(idx, series) }
             ?: ""
     }
 
-    val tooltipCache = remember { mutableMapOf<String, TextLayoutResult>() }
+    val tooltipCache = remember(textMeasurer, tooltipStyle) {
+        mutableMapOf<String, TextLayoutResult>()
+    }
     val linePath = remember { Path() }
     val areaPath = remember { Path() }
+    val plotInsets = remember { PlotInsets() }
+    val gestureInsets = remember { PlotInsets() }
 
     // ── Animation lifecycle ──
     SideEffect { animationEngine.syncAnimatables(series) }
@@ -364,9 +403,21 @@ fun LineChart(
                     val den = currentDensity
                     val gap = with(den) { style.labelGap.toPx() }
                     val rtl = currentIsRtl
-                    val yLabelW = currentMaxYLabelWidth
-                    val cLeft = if (rtl) gap else yLabelW + gap
-                    val cRight = if (rtl) size.width - yLabelW - gap else size.width - gap
+                    // Must match the draw pass, or touch selects a point other than
+                    // the one under the finger. Own scratch: not the draw coroutine.
+                    val rect = computePlotInsets(
+                        into = gestureInsets,
+                        width = size.width.toFloat(),
+                        height = size.height.toFloat(),
+                        gap = gap,
+                        yLabelWidth = if (currentShowYLabels) currentMaxYLabelWidth else 0f,
+                        xLabelHeight = 0f,
+                        yTitleHeight = currentYTitleHeight,
+                        xTitleHeight = 0f,
+                        isRtl = rtl
+                    )
+                    val cLeft = rect.left
+                    val cRight = rect.right
                     val axMin = currentXMin
                     val axMax = currentXMax
 
@@ -405,18 +456,21 @@ fun LineChart(
 
         val labelGapPx = style.labelGap.toPx()
 
-        // RTL-aware chart area: Y labels flip from left to right
-        val chartLeft =
-            if (isRtl) labelGapPx else (if (axisConfig.showYLabels) maxYLabelWidth + labelGapPx else labelGapPx)
-        val chartRight =
-            if (isRtl && axisConfig.showYLabels) {
-                size.width - maxYLabelWidth - labelGapPx
-            } else {
-                size.width - labelGapPx
-            }
-        val chartBottom =
-            size.height - (if (axisConfig.showXLabels) maxXLabelHeight + labelGapPx else labelGapPx)
-        val chartTop = labelGapPx
+        val insets = computePlotInsets(
+            into = plotInsets,
+            width = size.width,
+            height = size.height,
+            gap = labelGapPx,
+            yLabelWidth = if (axisConfig.showYLabels) maxYLabelWidth else 0f,
+            xLabelHeight = if (axisConfig.showXLabels) maxXLabelHeight else 0f,
+            yTitleHeight = yTitleLayout?.size?.height?.toFloat() ?: 0f,
+            xTitleHeight = xTitleLayout?.size?.height?.toFloat() ?: 0f,
+            isRtl = isRtl
+        )
+        val chartLeft = insets.left
+        val chartRight = insets.right
+        val chartBottom = insets.bottom
+        val chartTop = insets.top
         val chartWidth = chartRight - chartLeft
         val chartHeight = chartBottom - chartTop
         val xRange = xMax - xMin
@@ -610,6 +664,61 @@ fun LineChart(
                             x = mapX(p.x) - layout.size.width / 2f,
                             y = chartBottom + labelGapPx
                         )
+                    )
+                }
+            }
+        }
+
+        // ── 5b. Axis titles ──
+        // Null when there is no room at all: drawing the full-length title would
+        // put it across the plot. Re-measured per width rather than per frame.
+        fun fitted(
+            measured: TextLayoutResult,
+            text: String,
+            available: Float,
+            slot: FittedTitle
+        ): TextLayoutResult? {
+            if (available <= 0f) return null
+            if (measured.size.width <= available) return measured
+            val target = available.toInt()
+            if (slot.width != target) {
+                slot.width = target
+                slot.layout = textMeasurer.measure(
+                    text = text,
+                    style = labelStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    constraints = Constraints(maxWidth = target)
+                )
+            }
+            return slot.layout
+        }
+
+        // Positioned by the unconstrained height the insets reserved, never by the
+        // trimmed one, so a title cannot drift out of the band it was given.
+        val xMeasured = xTitleLayout
+        if (xTitle != null && xMeasured != null) {
+            fitted(xMeasured, xTitle, chartRight - chartLeft, xFittedTitle)?.let { layout ->
+                drawText(
+                    textLayoutResult = layout,
+                    topLeft = Offset(
+                        x = chartLeft + (chartRight - chartLeft - layout.size.width) / 2f,
+                        y = size.height - labelGapPx - xMeasured.size.height
+                    )
+                )
+            }
+        }
+        val yMeasured = yTitleLayout
+        if (yTitle != null && yMeasured != null) {
+            // Rotated, so the space it has to fit is the plot's height.
+            fitted(yMeasured, yTitle, chartBottom - chartTop, yFittedTitle)?.let { layout ->
+                val half = yMeasured.size.height / 2f
+                val cx = if (isRtl) size.width - labelGapPx - half else labelGapPx + half
+                val cy = chartTop + (chartBottom - chartTop) / 2f
+                rotate(degrees = -90f, pivot = Offset(cx, cy)) {
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(cx - layout.size.width / 2f, cy - half)
                     )
                 }
             }

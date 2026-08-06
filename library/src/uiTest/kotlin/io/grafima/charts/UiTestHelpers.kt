@@ -47,6 +47,10 @@ internal fun ComposeUiTest.onChartNodeWithRole(): SemanticsNodeInteraction =
 internal fun SemanticsNodeInteraction.customActionLabels(): List<String> =
     fetchSemanticsNode().config[SemanticsActions.CustomActions].map { it.label }
 
+/** What a screen reader would read out for this node, joined as one string. */
+internal fun SemanticsNodeInteraction.contentDescription(): String =
+    fetchSemanticsNode().config[SemanticsProperties.ContentDescription].joinToString(" ")
+
 /**
  * Invokes a chart's custom accessibility action by its visible label via the
  * official test API, failing with the list of available labels when absent.

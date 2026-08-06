@@ -342,7 +342,9 @@ internal fun LineChartDemoScreen(
                         axisConfig = themedLineAxis(
                             yTickCount = 5,
                             dashedGrid = true,
-                            xLabels = MonthLabels
+                            xLabels = MonthLabels,
+                            xAxisTitle = "Month",
+                            yAxisTitle = "Thousands of euros"
                         ),
                         crosshairConfig = themedCrosshair(),
                         selectedPointIndex = selectedIdx,

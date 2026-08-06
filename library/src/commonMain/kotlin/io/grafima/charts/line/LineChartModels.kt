@@ -162,8 +162,8 @@ enum class LineCurveType {
  * @param gridStrokeWidth Grid line width. 1.dp is standard.
  * @param axisColor Color for the x-axis and y-axis baseline.
  * @param axisStrokeWidth Width of axis lines.
- * @param labelColor Text color for both x and y labels.
- * @param labelFontSize Font size for axis labels.
+ * @param labelColor Text color for the x and y labels and the axis titles.
+ * @param labelFontSize Font size for the axis labels and the axis titles.
  * @param yTickCount Desired number of y-axis intervals. The actual count may differ
  *   slightly due to nice-number rounding (e.g. 5 requested, 6 produced if the range
  *   rounds better that way).
@@ -185,6 +185,10 @@ enum class LineCurveType {
  *   smallest x in the data.
  * @param xMax Pins the right of the x-axis (the left in RTL). Null uses the
  *   largest x in the data.
+ * @param xAxisTitle Names the x-axis below its labels, for the unit the numbers
+ *   are in. Null or blank draws nothing. Screen readers announce it too.
+ * @param yAxisTitle Names the y-axis, drawn rotated beside its labels — on the
+ *   left, or the right in RTL. Null or blank draws nothing.
  */
 @Immutable
 data class LineAxisConfig(
@@ -207,7 +211,9 @@ data class LineAxisConfig(
     val yMin: Float? = null,
     val yMax: Float? = null,
     val xMin: Float? = null,
-    val xMax: Float? = null
+    val xMax: Float? = null,
+    val xAxisTitle: String? = null,
+    val yAxisTitle: String? = null
 )
 
 /**
@@ -308,6 +314,10 @@ data class LineAnimationConfig(
  * @param selectedPointDescriptionBuilder Appended to the base description when
  *   the crosshair is active. Announces the value at the selected point for each
  *   series. TalkBack reads this on each crosshair move.
+ * @param axisTitleDescriptionBuilder Announces [LineAxisConfig.xAxisTitle] and
+ *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
+ *   null when unset. Override to translate the wording; return an empty string to
+ *   leave the titles unspoken.
  */
 @Stable
 data class LineA11yConfig(
@@ -330,5 +340,15 @@ data class LineA11yConfig(
                 }
             }
         }
-    }
+    },
+    val axisTitleDescriptionBuilder: (xAxisTitle: String?, yAxisTitle: String?) -> String =
+        { xAxisTitle, yAxisTitle ->
+            buildString {
+                xAxisTitle?.let { append("X axis: $it.") }
+                yAxisTitle?.let {
+                    if (isNotEmpty()) append(' ')
+                    append("Y axis: $it.")
+                }
+            }
+        }
 )
