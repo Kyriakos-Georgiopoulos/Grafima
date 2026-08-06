@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.DashPattern
 import io.grafima.charts.bar.AxisConfig
 import io.grafima.charts.bar.ChartStyle
 import io.grafima.charts.line.LineAxisConfig
@@ -79,7 +80,7 @@ fun themedBarStyle(): ChartStyle {
 @Composable
 fun themedLineAxis(
     yTickCount: Int = 5,
-    dashedGrid: Boolean = false,
+    gridDashPattern: DashPattern? = null,
     xLabels: List<String> = emptyList(),
     xAxisTitle: String? = null,
     yAxisTitle: String? = null,
@@ -89,7 +90,7 @@ fun themedLineAxis(
     return remember(
         colors,
         yTickCount,
-        dashedGrid,
+        gridDashPattern,
         xLabels,
         xAxisTitle,
         yAxisTitle,
@@ -100,7 +101,7 @@ fun themedLineAxis(
             axisColor = colors.grid,
             labelColor = colors.axisLabel,
             yTickCount = yTickCount,
-            dashedGrid = dashedGrid,
+            gridDashPattern = gridDashPattern,
             xLabelFormatter = { x -> xLabels.getOrElse(x.toInt()) { "" } },
             xAxisTitle = xAxisTitle,
             yAxisTitle = yAxisTitle,

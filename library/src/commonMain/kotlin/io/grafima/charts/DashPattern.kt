@@ -82,6 +82,16 @@ internal fun dashIntervalsOf(pattern: DashPattern?, density: Density): FloatArra
  * Built once and held, never per frame.
  */
 internal class DashStroke(val effect: PathEffect?, val cap: StrokeCap) {
+
+    /**
+     * The cap for a grid line, which has always drawn with square ends.
+     *
+     * A round cap would bulge half the stroke past the plot at each end — invisible
+     * at 1dp and plain at 12dp. A dashed grid still takes [cap], since that is what
+     * keeps its gaps open.
+     */
+    val gridCap: StrokeCap get() = if (effect == null) StrokeCap.Butt else cap
+
     companion object {
         /** An undashed line: no effect, and the round ends every solid line has. */
         val Solid = DashStroke(effect = null, cap = StrokeCap.Round)

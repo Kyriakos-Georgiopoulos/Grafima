@@ -274,16 +274,59 @@ internal fun valueLabelLeft(
 ): Float = (pointX - labelWidth / 2f).coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
 
 /**
+ * Where the label of a vertical reference line sits.
+ *
+ * Beside the line on the side the axis runs towards, so it trails the line as the
+ * reader's eye does, and on the other side when there is no room. Clamped into the
+ * plot either way: unclamped it runs off the canvas, or over the axis labels.
+ */
+internal fun referenceLabelLeft(
+    lineX: Float,
+    labelWidth: Float,
+    gap: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean
+): Float {
+    val before = lineX - gap - labelWidth
+    val after = lineX + gap
+    val preferred = if (isRtl) before else after
+    val fits = if (isRtl) preferred >= chartLeft else preferred + labelWidth <= chartRight
+    val chosen = if (fits) preferred else if (isRtl) after else before
+    return chosen.coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
+}
+
+/**
+ * Where the label of a horizontal reference line sits: at the end the axis runs
+ * towards, clamped into the plot.
+ */
+internal fun referenceLabelEndLeft(
+    labelWidth: Float,
+    gap: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean
+): Float {
+    val end = if (isRtl) chartLeft + gap else chartRight - gap - labelWidth
+    return end.coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
+}
+
+/**
  * Draws a reference line's label where nothing else has been drawn, and records the
  * room it took so a value label does not land on it.
+ *
+ * A label wider than the plot is dropped rather than clipped: there is nowhere to
+ * put it where it would read.
  */
 internal fun DrawScope.drawReferenceLabel(
     layout: TextLayoutResult,
     left: Float,
     top: Float,
     boxes: LabelBoxes,
-    gap: Float
+    gap: Float,
+    plotWidth: Float
 ) {
+    if (layout.size.width > plotWidth) return
     val free = boxes.takeIfFree(
         left = left - gap,
         top = top,

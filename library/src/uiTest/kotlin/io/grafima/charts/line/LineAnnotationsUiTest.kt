@@ -655,6 +655,44 @@ class LineAnnotationsUiTest {
     }
 
     @Test
+    fun an_empty_label_leaves_the_point_bare_without_crowding_out_the_rest() =
+        runComposeUiTest {
+            // The documented way to print only the last point. A zero-width layout
+            // still claimed a box, and on a crowded series those phantom boxes
+            // turned away the one label the caller actually asked for.
+            // Every point at the same height, so the empty ones tile the very band
+            // the real label needs.
+            val level = LineDataSet(
+                series = listOf(
+                    LineSeries(
+                        id = "s",
+                        label = "S",
+                        points = List(24) { LineDataPoint(x = it.toFloat(), y = 10f) },
+                        color = Color.Blue
+                    )
+                ),
+                contentDescription = "Level"
+            )
+            setContent {
+                Chart(
+                    data = level,
+                    axisConfig = LineAxisConfig(
+                        showGrid = false,
+                        showXLabels = false,
+                        showYLabels = false
+                    ),
+                    style = labelStyle { s, p -> if (p == s.points.last()) "88888" else "" }
+                )
+            }
+            waitForIdle()
+
+            assertTrue(
+                onRoot().captureToImage().countReddish() > 0,
+                "the only label asked for was crowded out by empty ones"
+            )
+        }
+
+    @Test
     fun labels_that_would_collide_are_dropped_rather_than_stacked() = runComposeUiTest {
         // Identical text on every point, so the ink is a straight count of how many
         // were drawn.

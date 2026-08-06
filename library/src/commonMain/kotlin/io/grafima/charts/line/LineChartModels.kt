@@ -62,15 +62,15 @@ data class LineDataPoint(
 /** The tone axis labels and the legend share. Guarded by `ColorContrastTest`. */
 internal val AxisLabelGrey = Color(0xFF64748B)
 
+/** What [LineAxisConfig.dashedGrid] meant, in dp rather than the raw pixels it used. */
+internal val LegacyDashedGrid = DashPattern(dash = 2.5.dp, gap = 2.dp)
+
 /**
  * How value labels are printed by default. Guarded by `ColorContrastTest`.
  *
  * Darker than [AxisLabelGrey]: these sit inside the plot, over grid lines and area
  * fills rather than on the background.
  */
-/** What [LineAxisConfig.dashedGrid] meant, in dp rather than the raw pixels it used. */
-internal val LegacyDashedGrid = DashPattern(dash = 2.5.dp, gap = 2.dp)
-
 internal val ValueLabelTextStyle = TextStyle(
     color = Color(0xFF334155),
     fontSize = 10.sp,
@@ -174,15 +174,17 @@ enum class ReferenceLineAxis {
  *
  * @param value Where on [axis] the line sits, in data units.
  * @param axis Whether [value] is an x or a y.
- * @param label Drawn beside the line, in the line's own colour, so a sighted reader
- *   knows what the threshold is. Null draws nothing. It takes a box like a value
- *   label and claims it first, so the two never print over each other.
+ * @param label Drawn beside the line, in the line's own colour and at
+ *   [LineAxisConfig.labelFontSize], so a sighted reader knows what the threshold
+ *   is. Null or blank draws nothing. It takes a box like a value label and claims
+ *   it first, so the two never print over each other.
  * @param color Line color.
  * @param strokeWidth Line thickness.
  * @param dashPattern Dashes the line. Null draws solid.
- * @param contentDescription What a screen reader calls this line. Defaults to
- *   [label], so naming a line once names it for everyone; set it to say something
- *   fuller than the plot has room for. Null or blank leaves it unannounced.
+ * @param contentDescription What a screen reader calls this line, when the drawn
+ *   [label] is not what it should hear — a fuller form than the plot has room for.
+ *   Left null, the label is spoken, so naming a line once names it for everyone. A
+ *   line with neither is drawn but not announced.
  * @param includeInRange Widens the axis to reach this line when the data does not.
  *   A target is usually above what has been achieved so far, and an axis fitted to
  *   the data alone would leave the line off the chart entirely. Set false to leave
@@ -202,9 +204,19 @@ data class ReferenceLine(
     val color: Color = AxisLabelGrey,
     val strokeWidth: Dp = 1.dp,
     val dashPattern: DashPattern? = null,
-    val contentDescription: String? = label,
+    val contentDescription: String? = null,
     val includeInRange: Boolean = true
 )
+
+/**
+ * What a screen reader calls this line: its [ReferenceLine.contentDescription], or
+ * its [ReferenceLine.label] when it has none. Null when it has neither.
+ *
+ * Resolved on read rather than defaulted in the constructor, because `copy()` never
+ * re-runs a default — `copy(label = "Limit")` would keep announcing the old name.
+ */
+val ReferenceLine.spokenLabel: String?
+    get() = contentDescription?.takeIf(String::isNotBlank) ?: label?.takeIf(String::isNotBlank)
 
 /** The [ReferenceLine] values that [axis] must be wide enough to show. */
 internal fun List<ReferenceLine>.boundsOn(axis: ReferenceLineAxis): List<Float> =
@@ -480,9 +492,11 @@ data class LineAnimationConfig(
  *   null when unset. Override to translate the wording; return an empty string to
  *   leave the titles unspoken.
  * @param referenceLineDescriptionBuilder Announces the thresholds drawn across the
- *   plot, which a sighted reader gets from the lines themselves. Only lines given a
- *   [ReferenceLine.contentDescription] are named. Return an empty string to leave
- *   them unspoken.
+ *   plot, which a sighted reader gets from the lines themselves. Given only the
+ *   lines that fall inside the axis range, and none at all for a chart with no
+ *   series, since those draw nothing. A line is named by its
+ *   [ReferenceLine.spokenLabel] — its `contentDescription`, or its `label`. Return
+ *   an empty string to leave them unspoken.
  */
 @Stable
 data class LineA11yConfig(
@@ -517,7 +531,7 @@ data class LineA11yConfig(
             }
         },
     val referenceLineDescriptionBuilder: (List<ReferenceLine>) -> String = { lines ->
-        val named = lines.mapNotNull { it.contentDescription?.takeIf(String::isNotBlank) }
+        val named = lines.mapNotNull { it.spokenLabel }
         when (named.size) {
             0 -> ""
             1 -> "Reference line: ${named.first()}."

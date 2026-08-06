@@ -409,7 +409,7 @@ internal fun LineChartDemoScreen(
                         style = chartStyle,
                         axisConfig = themedLineAxis(
                             yTickCount = 5,
-                            dashedGrid = true,
+                            gridDashPattern = DashPattern(dash = 2.dp, gap = 3.dp),
                             xLabels = MonthLabels,
                             xAxisTitle = "Month",
                             yAxisTitle = "Thousands of euros",

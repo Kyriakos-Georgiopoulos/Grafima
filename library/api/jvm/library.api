@@ -452,6 +452,10 @@ public final class io/grafima/charts/line/LineChartKt {
 	public static final fun LineChart-ZZBILEE (Lio/grafima/charts/line/LineDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/line/LineChartStyle;Lio/grafima/charts/line/LineAxisConfig;Lio/grafima/charts/line/LineCrosshairConfig;Lio/grafima/charts/line/LineAnimationConfig;Lio/grafima/charts/line/LineA11yConfig;Ljava/lang/Integer;Landroidx/compose/ui/hapticfeedback/HapticFeedbackType;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
 }
 
+public final class io/grafima/charts/line/LineChartModelsKt {
+	public static final fun getSpokenLabel (Lio/grafima/charts/line/ReferenceLine;)Ljava/lang/String;
+}
+
 public final class io/grafima/charts/line/LineChartStyle {
 	public static final field $stable I
 	public synthetic fun <init> (Lio/grafima/charts/line/LineCurveType;ZFFFLio/grafima/charts/line/LineValueLabelConfig;ILkotlin/jvm/internal/DefaultConstructorMarker;)V

@@ -132,6 +132,53 @@ class ValueLabelPlacementTest {
         assertEquals(0, screenOrderIndex(step = 0, count = 1, isRtl = true))
     }
 
+    private fun refLeft(lineX: Float, width: Float = 40f, rtl: Boolean = false) =
+        referenceLabelLeft(
+            lineX = lineX,
+            labelWidth = width,
+            gap = 4f,
+            chartLeft = plotLeft,
+            chartRight = plotRight,
+            isRtl = rtl
+        )
+
+    @Test
+    fun `a vertical line's label trails it along the axis`() {
+        assertEquals(204f, refLeft(lineX = 200f))
+        assertEquals(156f, refLeft(lineX = 200f, rtl = true))
+    }
+
+    @Test
+    fun `a label with no room on its own side goes to the other`() {
+        // 296 + 4 + 40 overruns the right edge, so it falls back to 296 - 4 - 40.
+        assertEquals(252f, refLeft(lineX = 296f))
+        // 102 - 4 - 40 is left of the plot, so it falls back to 102 + 4.
+        assertEquals(106f, refLeft(lineX = plotLeft + 2f, rtl = true))
+    }
+
+    @Test
+    fun `a vertical line's label is never drawn outside the plot`() {
+        // Unclamped this ran off the canvas, or over the axis labels in RTL.
+        assertTrue(refLeft(lineX = plotLeft) >= plotLeft)
+        assertTrue(refLeft(lineX = plotRight) + 40f <= plotRight)
+        assertTrue(refLeft(lineX = plotLeft, rtl = true) >= plotLeft)
+        assertTrue(refLeft(lineX = plotRight, rtl = true) + 40f <= plotRight)
+    }
+
+    @Test
+    fun `a horizontal line's label sits at the end the axis runs towards`() {
+        val ltr = referenceLabelEndLeft(40f, 4f, plotLeft, plotRight, isRtl = false)
+        val rtl = referenceLabelEndLeft(40f, 4f, plotLeft, plotRight, isRtl = true)
+        assertEquals(plotRight - 44f, ltr)
+        assertEquals(plotLeft + 4f, rtl)
+    }
+
+    @Test
+    fun `a label wider than the plot starts at its left edge in both directions`() {
+        assertEquals(plotLeft, refLeft(lineX = 200f, width = 500f))
+        assertEquals(plotLeft, referenceLabelEndLeft(500f, 4f, plotLeft, plotRight, isRtl = true))
+    }
+
     @Test
     fun `the first label to ask for a box gets it`() {
         val boxes = LabelBoxes(capacity = 4)

@@ -56,7 +56,7 @@ internal fun DrawScope.drawVerticalGrid(
                         y = yPos
                     ),
                     strokeWidth = 1.dp.toPx(),
-                    cap = gridDash.cap,
+                    cap = gridDash.gridCap,
                     pathEffect = gridDash.effect
                 )
             }
@@ -118,7 +118,7 @@ internal fun DrawScope.drawHorizontalGrid(
                     start = Offset(x = gridX, y = topPadPx),
                     end = Offset(x = gridX, y = chartBottom),
                     strokeWidth = 1.dp.toPx(),
-                    cap = gridDash.cap,
+                    cap = gridDash.gridCap,
                     pathEffect = gridDash.effect
                 )
             }

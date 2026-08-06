@@ -70,7 +70,9 @@ behaviour do not.
   1.0.0 must be recompiled against this release rather than swapped in place.
 - `LineAxisConfig.dashedGrid` is deprecated in favour of `gridDashPattern`, which
   says how long a dash is rather than only whether there is one, and says it in dp.
-  A grid is solid by default as before, and `dashedGrid = true` still works.
+  A grid is solid by default as before, and `dashedGrid = true` still works — now
+  as a dp pattern rather than the raw 8px/6px it used, so it is the same size on
+  every screen: near enough unchanged at 3x, finer below it, desktop included.
 - `bar.AxisConfig.dashEffect` is deprecated in favour of `gridDashPattern`, and now
   defaults to null. A `PathEffect` compares by identity, so every default
   `AxisConfig()` was unequal to every other and defeated the recomposition skipping

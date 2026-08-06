@@ -386,8 +386,19 @@ fun LineChart(
             renderSeries.associate { s ->
                 s.id to s.points.map { p ->
                     val text = valueLabels.formatter(s, p)
-                    measured.getOrPut(text) {
-                        textMeasurer.measure(text = text, style = valueLabelStyle, maxLines = 1)
+                    // Null, not a zero-width layout: an empty label is how a caller
+                    // prints only the points they want, and a box for one it never
+                    // draws would turn the real labels away.
+                    if (text.isBlank()) {
+                        null
+                    } else {
+                        measured.getOrPut(text) {
+                            textMeasurer.measure(
+                                text = text,
+                                style = valueLabelStyle,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }
@@ -576,7 +587,7 @@ fun LineChart(
                     start = Offset(x = chartLeft, y = y),
                     end = Offset(x = chartRight, y = y),
                     strokeWidth = gridPx,
-                    cap = gridDash.cap,
+                    cap = gridDash.gridCap,
                     pathEffect = gridDash.effect
                 )
             }
@@ -591,7 +602,7 @@ fun LineChart(
                     start = Offset(x = x, y = chartTop),
                     end = Offset(x = x, y = chartBottom),
                     strokeWidth = gridPx,
-                    cap = gridDash.cap,
+                    cap = gridDash.gridCap,
                     pathEffect = gridDash.effect
                 )
             }
@@ -763,15 +774,23 @@ fun LineChart(
                         pathEffect = dash.effect
                     )
                     referenceLabelLayouts.getOrNull(i)?.let { layout ->
-                        // Beside the top of the line, on the side with the room.
                         val gap = labelGapPx / 2f
-                        val right = x + gap
-                        val lx = if (right + layout.size.width <= chartRight) {
-                            right
-                        } else {
-                            x - gap - layout.size.width
-                        }
-                        drawReferenceLabel(layout, lx, chartTop + gap, labelBoxes, gap)
+                        val lx = referenceLabelLeft(
+                            lineX = x,
+                            labelWidth = layout.size.width.toFloat(),
+                            gap = gap,
+                            chartLeft = chartLeft,
+                            chartRight = chartRight,
+                            isRtl = isRtl
+                        )
+                        drawReferenceLabel(
+                            layout = layout,
+                            left = lx,
+                            top = chartTop + gap,
+                            boxes = labelBoxes,
+                            gap = gap,
+                            plotWidth = chartRight - chartLeft
+                        )
                     }
                 }
 
@@ -788,10 +807,23 @@ fun LineChart(
                     referenceLabelLayouts.getOrNull(i)?.let { layout ->
                         // At the trailing end, above the line, or below it at the top.
                         val gap = labelGapPx / 2f
-                        val lx = if (isRtl) chartLeft + gap else chartRight - gap - layout.size.width
+                        val lx = referenceLabelEndLeft(
+                            labelWidth = layout.size.width.toFloat(),
+                            gap = gap,
+                            chartLeft = chartLeft,
+                            chartRight = chartRight,
+                            isRtl = isRtl
+                        )
                         val above = y - gap - layout.size.height
                         val ly = if (above >= chartTop) above else y + gap
-                        drawReferenceLabel(layout, lx, ly, labelBoxes, gap)
+                        drawReferenceLabel(
+                            layout = layout,
+                            left = lx,
+                            top = ly,
+                            boxes = labelBoxes,
+                            gap = gap,
+                            plotWidth = chartRight - chartLeft
+                        )
                     }
                 }
             }
@@ -822,7 +854,7 @@ fun LineChart(
                     val p = s.points[i]
                     if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
                     if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
-                    val layout = layouts[i]
+                    val layout = layouts[i] ?: continue
                     val labelWidth = layout.size.width
                     val lx = valueLabelLeft(
                         pointX = xs[i],

@@ -18,6 +18,7 @@ package io.grafima.charts.line
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /** Pins the default TalkBack/VoiceOver strings so they don't drift unnoticed. */
 class LineA11yDefaultsTest {
@@ -83,6 +84,49 @@ class LineA11yDefaultsTest {
 
     private fun reference(description: String?) =
         ReferenceLine(value = 1f, axis = ReferenceLineAxis.X, contentDescription = description)
+
+    @Test
+    fun `a line is spoken by its label when it carries no description of its own`() {
+        assertEquals(
+            "Reference line: Target.",
+            config.referenceLineDescriptionBuilder(
+                listOf(ReferenceLine(value = 1f, axis = ReferenceLineAxis.Y, label = "Target"))
+            )
+        )
+    }
+
+    @Test
+    fun `a description says what the drawn label cannot fit`() {
+        val line = ReferenceLine(
+            value = 1f,
+            axis = ReferenceLineAxis.Y,
+            label = "Target",
+            contentDescription = "Target of 100 thousand euros"
+        )
+        assertEquals("Target of 100 thousand euros", line.spokenLabel)
+    }
+
+    @Test
+    fun `renaming a line renames what is spoken`() {
+        // A constructor default cannot do this: copy never re-runs one, so a line
+        // built with a label and then renamed would go on announcing the old name,
+        // and one given a label by copy would never be announced at all.
+        val renamed = ReferenceLine(value = 1f, axis = ReferenceLineAxis.Y, label = "Target")
+            .copy(label = "Limit")
+        assertEquals("Limit", renamed.spokenLabel)
+
+        val labelledLater = ReferenceLine(value = 1f, axis = ReferenceLineAxis.Y)
+            .copy(label = "Target")
+        assertEquals("Target", labelledLater.spokenLabel)
+    }
+
+    @Test
+    fun `a line with neither a label nor a description is not spoken`() {
+        assertNull(ReferenceLine(value = 1f, axis = ReferenceLineAxis.Y).spokenLabel)
+        assertNull(
+            ReferenceLine(value = 1f, axis = ReferenceLineAxis.Y, label = "  ").spokenLabel
+        )
+    }
 
     @Test
     fun `no reference lines are announced as nothing`() {
