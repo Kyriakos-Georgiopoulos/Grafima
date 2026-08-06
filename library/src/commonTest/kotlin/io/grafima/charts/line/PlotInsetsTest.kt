@@ -52,7 +52,7 @@ class PlotInsetsTest {
     fun `a y title claims its height as width because it is drawn rotated`() {
         val plain = insets()
         val titled = insets(yTitleHeight = 14f)
-        assertEquals(plain.left + 14f + 8f, titled.left)
+        assertEquals(plain.left + 14f + 16f, titled.left)
         assertEquals(plain.right, titled.right)
         assertEquals(plain.bottom, titled.bottom)
     }
@@ -61,7 +61,7 @@ class PlotInsetsTest {
     fun `an x title takes room below the x labels`() {
         val plain = insets()
         val titled = insets(xTitleHeight = 14f)
-        assertEquals(plain.bottom - 14f - 8f, titled.bottom)
+        assertEquals(plain.bottom - 14f - 16f, titled.bottom)
         assertEquals(plain.left, titled.left)
     }
 
@@ -69,31 +69,31 @@ class PlotInsetsTest {
     fun `the y title moves to the right edge in RTL`() {
         val rtl = insets(yTitleHeight = 14f, isRtl = true)
         assertEquals(8f, rtl.left)
-        // 400 - gap - labels - title - gap
-        assertEquals(340f, rtl.right)
+        // 400 - gap - labels - title - 2 gaps
+        assertEquals(332f, rtl.right)
         assertEquals(280f, rtl.bottom)
     }
 
     @Test
     fun `an x title is unaffected by direction`() {
-        // 300 - gap - labels - title - gap
-        assertEquals(258f, insets(xTitleHeight = 14f).bottom)
-        assertEquals(258f, insets(xTitleHeight = 14f, isRtl = true).bottom)
+        // 300 - gap - labels - title - 2 gaps
+        assertEquals(250f, insets(xTitleHeight = 14f).bottom)
+        assertEquals(250f, insets(xTitleHeight = 14f, isRtl = true).bottom)
     }
 
     @Test
     fun `a zero-height title costs nothing but any height also costs a gap`() {
         assertEquals(38f, insets(yTitleHeight = 0f).left)
-        assertEquals(38f + 1f + 8f, insets(yTitleHeight = 1f).left)
+        assertEquals(38f + 1f + 16f, insets(yTitleHeight = 1f).left)
     }
 
     @Test
     fun `both titles together leave a plot rectangle that is still usable`() {
         val r = insets(yTitleHeight = 14f, xTitleHeight = 14f)
-        assertEquals(60f, r.left)
+        assertEquals(68f, r.left)
         assertEquals(8f, r.top)
         assertEquals(392f, r.right)
-        assertEquals(258f, r.bottom)
+        assertEquals(250f, r.bottom)
     }
 
     @Test
