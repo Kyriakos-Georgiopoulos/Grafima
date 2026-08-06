@@ -24,6 +24,23 @@ behaviour do not.
   a sighted reader no way to tell overlaid lines apart. Placed by the caller, so
   the plot keeps its full width. A series with `strokeGradientColors` gets a
   gradient swatch.
+- `LineAxisConfig.referenceLines` draws a threshold across the plot at a fixed axis
+  value — a target, a limit, or "now" on an axis of hours. Each `ReferenceLine`
+  names its own axis, so it cannot be given both an x and a y. Drawn over the
+  series, since a marker behind the data is not a marker, and skipped rather than
+  clamped when its value is off the axis. `contentDescription` announces it to a
+  screen reader through `LineA11yConfig.referenceLineDescriptionBuilder`. See
+  [docs/charts/line.md](docs/charts/line.md).
+- `LineSeries.dashPattern` dashes a stroke, which is what tells a reader a series
+  is derived rather than measured — a moving average against the readings it
+  averages. `LineLegend` dashes that series' swatch to match. The area fill is
+  never dashed.
+- `LineChartStyle.valueLabels` prints each point's value beside it, rather than
+  only in the tooltip once something is selected, which suits a chart of few
+  points and a screenshot of one. Labels are placed above their point, or below
+  where there is no room above, and one that would overlap a label already drawn
+  is dropped rather than stacked on it. See
+  [docs/charts/line.md](docs/charts/line.md).
 - `LineAxisConfig.xAxisTitle` and `yAxisTitle` name an axis, so the numbers on it
   carry their unit. The y title is drawn rotated beside its labels, on the right
   in RTL, and both are announced to screen readers. See

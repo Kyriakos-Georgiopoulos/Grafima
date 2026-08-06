@@ -60,6 +60,14 @@ data class LineDataPoint(
 internal val AxisLabelGrey = Color(0xFF64748B)
 
 /**
+ * The tone value labels are printed in. Guarded by `ColorContrastTest`.
+ *
+ * Darker than [AxisLabelGrey]: these sit inside the plot, over grid lines and area
+ * fills rather than on the background.
+ */
+internal val ValueLabelSlate = Color(0xFF334155)
+
+/**
  * Whether the stroke is drawn as a gradient rather than in [LineSeries.color].
  *
  * Read by the chart and by [LineLegend], which must agree or the key names a line
@@ -109,6 +117,9 @@ internal val LineDataPoint.spokenLabel: String
  *   a horizontal gradient spanning the x axis, so the same color sits at the same
  *   x on every series and on every chart sharing that axis. Falls back to solid
  *   [color] when empty.
+ * @param dashPattern Dashes the stroke. Dashing marks a series as derived rather
+ *   than measured, which is how a moving average is told apart from the readings
+ *   it averages. Null draws solid. The area fill is never dashed.
  */
 @Immutable
 data class LineSeries(
@@ -119,7 +130,79 @@ data class LineSeries(
     val fillAlpha: Float = 0f,
     val strokeWidth: Dp = 2.5.dp,
     val fillGradientColors: List<Color> = emptyList(),
-    val strokeGradientColors: List<Color> = emptyList()
+    val strokeGradientColors: List<Color> = emptyList(),
+    val dashPattern: DashPattern? = null
+)
+
+/**
+ * A dash and the gap after it, repeated along a line.
+ *
+ * ```
+ * dashPattern = DashPattern(dash = 10.dp, gap = 5.dp)
+ * ```
+ *
+ * Lengths are in dp so a dash is the same size on every screen, rather than a
+ * third of it on a 3x phone.
+ *
+ * A pattern that cannot be drawn — a length that is negative or not finite, or
+ * both of them zero — leaves the line solid, since the caller asked for a line
+ * either way.
+ *
+ * @param dash Length of each drawn segment. Zero with a round cap gives a dotted
+ *   line.
+ * @param gap Length of the blank after each dash.
+ */
+@Immutable
+data class DashPattern(
+    val dash: Dp,
+    val gap: Dp
+)
+
+/** Which axis a [ReferenceLine] is fixed to. */
+enum class ReferenceLineAxis {
+    /** A vertical line standing at an x value. */
+    X,
+
+    /** A horizontal line lying at a y value. */
+    Y
+}
+
+/**
+ * A line drawn across the plot at a fixed axis value.
+ *
+ * Marks a threshold the data is read against — a target, a limit, or the point
+ * "now" has reached on an axis of hours:
+ *
+ * ```
+ * axisConfig = LineAxisConfig(
+ *     referenceLines = listOf(
+ *         ReferenceLine(value = 14f, axis = ReferenceLineAxis.X, contentDescription = "Now"),
+ *         ReferenceLine(value = 10f, axis = ReferenceLineAxis.Y, color = Color.Red)
+ *     )
+ * )
+ * ```
+ *
+ * Drawn over the series, because a marker hidden behind the data it qualifies is
+ * not a marker. A value outside the axis range draws nothing rather than being
+ * pulled to the nearest edge, where it would name a threshold that is not there.
+ *
+ * @param value Where on [axis] the line sits, in data units.
+ * @param axis Whether [value] is an x or a y.
+ * @param color Line color.
+ * @param strokeWidth Line thickness.
+ * @param dashPattern Dashes the line. Null draws solid.
+ * @param contentDescription What a screen reader calls this line. The line itself
+ *   is not drawn with a name, so this is the only way a listener learns of it.
+ *   Null or blank leaves it unannounced.
+ */
+@Immutable
+data class ReferenceLine(
+    val value: Float,
+    val axis: ReferenceLineAxis,
+    val color: Color = AxisLabelGrey,
+    val strokeWidth: Dp = 1.dp,
+    val dashPattern: DashPattern? = null,
+    val contentDescription: String? = null
 )
 
 /**
@@ -201,6 +284,9 @@ enum class LineCurveType {
  *   are in. Null or blank draws nothing. Screen readers announce it too.
  * @param yAxisTitle Names the y-axis, drawn rotated beside its labels — on the
  *   left, or the right in RTL. Null or blank draws nothing.
+ * @param referenceLines Thresholds drawn across the plot at fixed axis values,
+ *   over the series. Announced to screen readers through
+ *   [LineA11yConfig.referenceLineDescriptionBuilder].
  */
 @Immutable
 data class LineAxisConfig(
@@ -225,7 +311,8 @@ data class LineAxisConfig(
     val xMin: Float? = null,
     val xMax: Float? = null,
     val xAxisTitle: String? = null,
-    val yAxisTitle: String? = null
+    val yAxisTitle: String? = null,
+    val referenceLines: List<ReferenceLine> = emptyList()
 )
 
 /**
@@ -278,6 +365,7 @@ data class LineCrosshairConfig(
  * @param dotRadius Radius of the always-visible data point dots.
  * @param minSize Minimum intrinsic chart size. Applied via [Modifier.defaultMinSize].
  * @param labelGap Gap in dp between axis labels and the chart drawing area.
+ * @param valueLabels Prints each point's value beside it. Off by default.
  */
 @Immutable
 data class LineChartStyle(
@@ -285,7 +373,44 @@ data class LineChartStyle(
     val showDots: Boolean = false,
     val dotRadius: Dp = 3.dp,
     val minSize: Dp = 200.dp,
-    val labelGap: Dp = 8.dp
+    val labelGap: Dp = 8.dp,
+    val valueLabels: LineValueLabelConfig = LineValueLabelConfig()
+)
+
+/**
+ * Values printed at the points themselves rather than only in the tooltip.
+ *
+ * A chart of a few points reads better with its numbers on it than with a tooltip
+ * that has to be found by touch — and a screenshot of one carries the numbers with
+ * it.
+ *
+ * ```
+ * style = LineChartStyle(
+ *     valueLabels = LineValueLabelConfig(enabled = true, formatter = { "${it.toInt()}g" })
+ * )
+ * ```
+ *
+ * Labels are placed above their point, or below it where there is no room above.
+ * Where two would overlap the later one is dropped, so a crowded series shows what
+ * fits rather than stacking text on text.
+ *
+ * Nothing is added to the screen reader description: the chart already announces
+ * every value through its own description and its per-point select actions, so
+ * these would only repeat it.
+ *
+ * @param enabled Master toggle.
+ * @param formatter Converts a point's y to its printed text. Given the value from
+ *   the data, not the animated one, so the text never counts up during entry.
+ * @param color Text color. Defaults to a tone that holds WCAG AA on a white
+ *   surface, checked by `ColorContrastTest`.
+ * @param fontSize Text size.
+ */
+@Immutable
+data class LineValueLabelConfig(
+    val enabled: Boolean = false,
+    val formatter: (Float) -> String = { it.toInt().toString() },
+    val color: Color = ValueLabelSlate,
+    val fontSize: TextUnit = 10.sp
 )
 
 /**
@@ -330,6 +455,10 @@ data class LineAnimationConfig(
  *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
  *   null when unset. Override to translate the wording; return an empty string to
  *   leave the titles unspoken.
+ * @param referenceLineDescriptionBuilder Announces the thresholds drawn across the
+ *   plot, which a sighted reader gets from the lines themselves. Only lines given a
+ *   [ReferenceLine.contentDescription] are named. Return an empty string to leave
+ *   them unspoken.
  */
 @Stable
 data class LineA11yConfig(
@@ -362,5 +491,13 @@ data class LineA11yConfig(
                     append("Y axis: $it.")
                 }
             }
+        },
+    val referenceLineDescriptionBuilder: (List<ReferenceLine>) -> String = { lines ->
+        val named = lines.mapNotNull { it.contentDescription?.takeIf(String::isNotBlank) }
+        when (named.size) {
+            0 -> ""
+            1 -> "Reference line: ${named.first()}."
+            else -> "Reference lines: ${named.joinToString(", ")}."
         }
+    }
 )

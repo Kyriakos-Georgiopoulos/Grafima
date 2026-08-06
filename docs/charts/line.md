@@ -61,14 +61,107 @@ LineLegend(
 )
 ```
 
-A series drawn with `strokeGradientColors` gets a gradient swatch, so the key
-matches the line it names rather than a flat colour the line never uses.
+A series drawn with `strokeGradientColors` gets a gradient swatch, and one with a
+`dashPattern` a dashed swatch, so the key matches the line it names rather than a
+flat colour the line never uses.
 
 `Horizontal` wraps onto further lines when the entries do not fit. `Vertical`
 takes an `entryAlignment` for the edge the entries line up on.
 
 A screen reader reaches the legend as one item naming every series, rather than a
 stop each. `spacing` also sets half that gap between wrapped lines.
+
+## Dashed series
+
+A dash says a line is derived rather than measured — a moving average against the
+readings it averages:
+
+```kotlin
+LineSeries(
+    id = "avg",
+    label = "7-day average",
+    points = average,
+    dashPattern = DashPattern(dash = 10.dp, gap = 5.dp)
+)
+```
+
+`LineLegend` dashes that series' swatch too, so the key matches the line. The area
+fill under a dashed stroke is not dashed — the dash describes the line, not the
+region beneath it.
+
+A `dash` of `0.dp` gives a dotted line, since strokes have round caps. A pattern
+that could not be drawn at all — a negative length, or both lengths zero — leaves
+the line solid.
+
+## Reference lines
+
+A threshold the data is read against: a target, a limit, or where "now" falls on
+an axis of hours.
+
+```kotlin
+axisConfig = LineAxisConfig(
+    referenceLines = listOf(
+        ReferenceLine(
+            value = 14f,
+            axis = ReferenceLineAxis.X,
+            contentDescription = "Now"
+        ),
+        ReferenceLine(
+            value = 100f,
+            axis = ReferenceLineAxis.Y,
+            color = Color.Red,
+            dashPattern = DashPattern(dash = 6.dp, gap = 6.dp),
+            contentDescription = "Target"
+        )
+    )
+)
+```
+
+Each line names the axis it is fixed to, so `value` is never ambiguous. `X` stands
+a vertical line at an x value; `Y` lays a horizontal one at a y value.
+
+They are drawn over the series. A marker hidden behind an area fill is not a
+marker, and the crosshair still draws over them.
+
+A value outside the axis range draws nothing. Pulling it to the nearest edge would
+show a threshold sitting somewhere it is not.
+
+Vertical lines mirror with the axis in RTL, since they are fixed to a data value
+rather than to a side of the screen.
+
+A line is only a mark on the screen, so give it a `contentDescription` and it is
+announced with the chart as "Reference line: Now." Override
+`LineA11yConfig.referenceLineDescriptionBuilder` to reword or translate that, or
+return an empty string to leave them unspoken. Lines without one are drawn but not
+announced.
+
+## Value labels
+
+A chart of a few points reads better with its numbers on it than with a tooltip
+that has to be found by touch — and a screenshot of one carries the numbers with
+it.
+
+```kotlin
+style = LineChartStyle(
+    valueLabels = LineValueLabelConfig(
+        enabled = true,
+        formatter = { "${it.toInt()}g" }
+    )
+)
+```
+
+Labels sit above their point, or below it where the plot has no room above. One
+that would overlap a label already drawn is dropped, so a crowded chart shows what
+fits rather than stacking text on text. That applies across series as well as
+within one, so two lines crossing do not print over each other.
+
+The text comes from the value in your data, not the animated one, so it never
+counts up during the entry animation.
+
+Nothing is added to the screen reader description — the chart already announces
+every value through its own description and its per-point select actions.
+
+A point outside a pinned range prints no value, matching its dot and crosshair.
 
 ## Curves
 
@@ -246,8 +339,8 @@ animationConfig = LineAnimationConfig(
 | Parameter | Purpose |
 |---|---|
 | `dataSet` | Series and the accessibility description |
-| `style` | Curve type, dots, stroke, minimum size |
-| `axisConfig` | Ticks, grid, labels, value formatting |
+| `style` | Curve type, dots, stroke, value labels, minimum size |
+| `axisConfig` | Ticks, grid, labels, titles, reference lines |
 | `crosshairConfig` | Crosshair and tooltip appearance; enable/disable |
 | `animationConfig` | Entry and morph timing, stagger |
 | `a11yConfig` | Screen-reader text builders |

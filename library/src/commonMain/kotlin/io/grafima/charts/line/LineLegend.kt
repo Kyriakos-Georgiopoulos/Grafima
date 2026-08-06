@@ -25,11 +25,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -64,8 +66,9 @@ enum class LineLegendOrientation {
  * }
  * ```
  *
- * A series drawn with [LineSeries.strokeGradientColors] gets a gradient swatch, so
- * the key matches the line it names.
+ * A series drawn with [LineSeries.strokeGradientColors] gets a gradient swatch, and
+ * one with a [LineSeries.dashPattern] a dashed swatch, so the key matches the line
+ * it names.
  *
  * A screen reader reaches it as one item naming every series, rather than one
  * stop each. The colour mapping itself is visual only — the chart's own
@@ -93,11 +96,16 @@ fun LineLegend(
     entryAlignment: Alignment.Horizontal = Alignment.Start
 ) {
     val grouped = modifier.semantics(mergeDescendants = true) { }
+    val density = LocalDensity.current
+    val dashEffects = remember(dataSet.series, density) {
+        dataSet.series.map { it.dashPattern.toPathEffect(density) }
+    }
 
     val entries: @Composable () -> Unit = {
-        dataSet.series.forEach { series ->
+        dataSet.series.forEachIndexed { index, series ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Canvas(modifier = Modifier.size(width = swatchWidth, height = 4.dp)) {
+                    val dash = dashEffects[index]
                     val y = size.height / 2f
                     // Inset by the cap radius, or the round ends paint outside
                     // the width the caller asked for.
@@ -117,7 +125,8 @@ fun LineLegend(
                             start = start,
                             end = end,
                             strokeWidth = size.height,
-                            cap = StrokeCap.Round
+                            cap = StrokeCap.Round,
+                            pathEffect = dash
                         )
                     } else {
                         drawLine(
@@ -125,7 +134,8 @@ fun LineLegend(
                             start = start,
                             end = end,
                             strokeWidth = size.height,
-                            cap = StrokeCap.Round
+                            cap = StrokeCap.Round,
+                            pathEffect = dash
                         )
                     }
                 }

@@ -27,6 +27,7 @@ import io.grafima.charts.bar.AxisConfig
 import io.grafima.charts.bar.ChartStyle
 import io.grafima.charts.line.LineAxisConfig
 import io.grafima.charts.line.LineCrosshairConfig
+import io.grafima.charts.line.ReferenceLine
 import io.grafima.charts.radar.RadarChartStyle
 import io.grafima.charts.radar.RadarGridStyle
 
@@ -81,10 +82,19 @@ fun themedLineAxis(
     dashedGrid: Boolean = false,
     xLabels: List<String> = emptyList(),
     xAxisTitle: String? = null,
-    yAxisTitle: String? = null
+    yAxisTitle: String? = null,
+    referenceLines: List<ReferenceLine> = emptyList()
 ): LineAxisConfig {
     val colors = LocalDemoColors.current
-    return remember(colors, yTickCount, dashedGrid, xLabels, xAxisTitle, yAxisTitle) {
+    return remember(
+        colors,
+        yTickCount,
+        dashedGrid,
+        xLabels,
+        xAxisTitle,
+        yAxisTitle,
+        referenceLines
+    ) {
         LineAxisConfig(
             gridColor = colors.grid,
             axisColor = colors.grid,
@@ -93,7 +103,8 @@ fun themedLineAxis(
             dashedGrid = dashedGrid,
             xLabelFormatter = { x -> xLabels.getOrElse(x.toInt()) { "" } },
             xAxisTitle = xAxisTitle,
-            yAxisTitle = yAxisTitle
+            yAxisTitle = yAxisTitle,
+            referenceLines = referenceLines
         )
     }
 }

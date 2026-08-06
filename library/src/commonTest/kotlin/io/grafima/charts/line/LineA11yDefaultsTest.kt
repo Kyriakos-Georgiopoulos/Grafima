@@ -80,4 +80,74 @@ class LineA11yDefaultsTest {
     fun `an out-of-range index produces nothing`() {
         assertEquals("", config.selectedPointDescriptionBuilder(99, listOf(series)))
     }
+
+    private fun reference(description: String?) =
+        ReferenceLine(value = 1f, axis = ReferenceLineAxis.X, contentDescription = description)
+
+    @Test
+    fun `no reference lines are announced as nothing`() {
+        assertEquals("", config.referenceLineDescriptionBuilder(emptyList()))
+    }
+
+    @Test
+    fun `one reference line is named in the singular`() {
+        assertEquals(
+            "Reference line: Now.",
+            config.referenceLineDescriptionBuilder(listOf(reference("Now")))
+        )
+    }
+
+    @Test
+    fun `several reference lines are listed together`() {
+        assertEquals(
+            "Reference lines: Now, Target.",
+            config.referenceLineDescriptionBuilder(
+                listOf(reference("Now"), reference("Target"))
+            )
+        )
+    }
+
+    @Test
+    fun `an unnamed reference line is left unspoken`() {
+        // Drawn but not described: announcing "reference line" alone would tell a
+        // listener something is there without saying what it marks.
+        assertEquals(
+            "Reference line: Now.",
+            config.referenceLineDescriptionBuilder(
+                listOf(reference(null), reference("Now"), reference("  "))
+            )
+        )
+    }
+
+    @Test
+    fun `a description that ends mid-word is closed before the next sentence`() {
+        val spoken = buildString {
+            append("Line Chart: Revenue")
+            appendSentence("X axis: Days.")
+        }
+        assertEquals("Line Chart: Revenue. X axis: Days.", spoken)
+    }
+
+    @Test
+    fun `a description that already ends in punctuation gains no second stop`() {
+        val spoken = buildString {
+            append("Line Chart: Revenue. ")
+            appendSentence("X axis: Days.")
+        }
+        assertEquals("Line Chart: Revenue. X axis: Days.", spoken)
+    }
+
+    @Test
+    fun `nothing to append leaves the description untouched`() {
+        val spoken = buildString {
+            append("Line Chart: Revenue. ")
+            appendSentence("   ")
+        }
+        assertEquals("Line Chart: Revenue. ", spoken)
+    }
+
+    @Test
+    fun `a first sentence is appended without a leading separator`() {
+        assertEquals("X axis: Days.", buildString { appendSentence("X axis: Days.") })
+    }
 }
