@@ -24,14 +24,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.customActionLabels
+import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -218,5 +221,37 @@ class BarChartUiTest {
             barPixels > pixels.size / 100,
             "bars appear unpainted: $barPixels of ${pixels.size} pixels are the bar color"
         )
+    }
+
+    @Test
+    fun the_selection_tooltip_is_remeasured_when_its_text_style_changes() = runComposeUiTest {
+        var textColor by mutableStateOf(Color.Red)
+        setContent {
+            BarChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectionRenderer = TooltipSelectionRenderer(
+                    textStyle = TextStyle(color = textColor)
+                ),
+                selectedEntry = dataSet.entries.last()
+            )
+        }
+        waitForIdle()
+        assertTrue(onChartNode().captureToImage().countColor(Color.Red) > 0, "no tooltip text")
+
+        textColor = Color.Green
+        waitForIdle()
+
+        val image = onChartNode().captureToImage()
+        assertTrue(image.countColor(Color.Green) > 0, "the tooltip kept its old colour")
+        assertEquals(0, image.countColor(Color.Red), "the old colour is still painted")
+    }
+
+    private fun ImageBitmap.countColor(color: Color): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val target = color.toArgb()
+        return pixels.count { it == target }
     }
 }

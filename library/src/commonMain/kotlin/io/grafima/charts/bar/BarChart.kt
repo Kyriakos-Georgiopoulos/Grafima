@@ -155,7 +155,9 @@ fun BarChart(
     }
 
     val valueTextCache = remember(style.valueTextStyle) { mutableMapOf<Int, TextLayoutResult>() }
-    val selectionCache = remember { mutableMapOf<Int, TextLayoutResult>() }
+    val selectionCache = remember(textMeasurer, selectionRenderer) {
+        mutableMapOf<Int, TextLayoutResult>()
+    }
     val barPath = remember { Path() }
 
     val bottomSpacePx = remember(style.bottomLabelSpace, density) {

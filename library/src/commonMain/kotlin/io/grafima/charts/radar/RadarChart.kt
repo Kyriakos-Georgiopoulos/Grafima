@@ -155,7 +155,9 @@ fun RadarChart(
     val currentAxes by rememberUpdatedState(axes)
     val currentSeries by rememberUpdatedState(series)
 
-    val selectionCache = remember { mutableMapOf<String, TextLayoutResult>() }
+    val selectionCache = remember(textMeasurer, selectionRenderer) {
+        mutableMapOf<String, TextLayoutResult>()
+    }
 
     // Allocated once and reused; recomputed only on axis count, angle or RTL change.
     val trigCache = remember(axes.size, style.startAngle, isRtl) {
