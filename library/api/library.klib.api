@@ -39,6 +39,17 @@ final enum class io.grafima.charts.line/LineCurveType : kotlin/Enum<io.grafima.c
     final fun values(): kotlin/Array<io.grafima.charts.line/LineCurveType> // io.grafima.charts.line/LineCurveType.values|values#static(){}[0]
 }
 
+final enum class io.grafima.charts.line/LineLegendOrientation : kotlin/Enum<io.grafima.charts.line/LineLegendOrientation> { // io.grafima.charts.line/LineLegendOrientation|null[0]
+    enum entry Horizontal // io.grafima.charts.line/LineLegendOrientation.Horizontal|null[0]
+    enum entry Vertical // io.grafima.charts.line/LineLegendOrientation.Vertical|null[0]
+
+    final val entries // io.grafima.charts.line/LineLegendOrientation.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<io.grafima.charts.line/LineLegendOrientation> // io.grafima.charts.line/LineLegendOrientation.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): io.grafima.charts.line/LineLegendOrientation // io.grafima.charts.line/LineLegendOrientation.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<io.grafima.charts.line/LineLegendOrientation> // io.grafima.charts.line/LineLegendOrientation.values|values#static(){}[0]
+}
+
 final enum class io.grafima.charts.radar/RadarGridStyle : kotlin/Enum<io.grafima.charts.radar/RadarGridStyle> { // io.grafima.charts.radar/RadarGridStyle|null[0]
     enum entry Circular // io.grafima.charts.radar/RadarGridStyle.Circular|null[0]
     enum entry Polygon // io.grafima.charts.radar/RadarGridStyle.Polygon|null[0]
@@ -1172,6 +1183,7 @@ final fun io.grafima.charts.gauge/io_grafima_charts_gauge_GaugeNeedleConfig$stab
 final fun io.grafima.charts.gauge/io_grafima_charts_gauge_GaugeTickConfig$stableprop_getter(): kotlin/Int // io.grafima.charts.gauge/io_grafima_charts_gauge_GaugeTickConfig$stableprop_getter|io_grafima_charts_gauge_GaugeTickConfig$stableprop_getter(){}[0]
 final fun io.grafima.charts.gauge/io_grafima_charts_gauge_GaugeZone$stableprop_getter(): kotlin/Int // io.grafima.charts.gauge/io_grafima_charts_gauge_GaugeZone$stableprop_getter|io_grafima_charts_gauge_GaugeZone$stableprop_getter(){}[0]
 final fun io.grafima.charts.line/LineChart(io.grafima.charts.line/LineDataSet, androidx.compose.ui/Modifier?, io.grafima.charts.line/LineChartStyle?, io.grafima.charts.line/LineAxisConfig?, io.grafima.charts.line/LineCrosshairConfig?, io.grafima.charts.line/LineAnimationConfig?, io.grafima.charts.line/LineA11yConfig?, kotlin/Int?, androidx.compose.ui.hapticfeedback/HapticFeedbackType?, kotlin/Function1<kotlin/Int?, kotlin/Unit>?, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int) // io.grafima.charts.line/LineChart|LineChart(io.grafima.charts.line.LineDataSet;androidx.compose.ui.Modifier?;io.grafima.charts.line.LineChartStyle?;io.grafima.charts.line.LineAxisConfig?;io.grafima.charts.line.LineCrosshairConfig?;io.grafima.charts.line.LineAnimationConfig?;io.grafima.charts.line.LineA11yConfig?;kotlin.Int?;androidx.compose.ui.hapticfeedback.HapticFeedbackType?;kotlin.Function1<kotlin.Int?,kotlin.Unit>?;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){}[0]
+final fun io.grafima.charts.line/LineLegend(io.grafima.charts.line/LineDataSet, androidx.compose.ui/Modifier?, io.grafima.charts.line/LineLegendOrientation?, androidx.compose.ui.text/TextStyle?, androidx.compose.ui.unit/Dp, androidx.compose.ui.unit/Dp, androidx.compose.ui/Alignment.Horizontal?, androidx.compose.runtime/Composer?, kotlin/Int, kotlin/Int) // io.grafima.charts.line/LineLegend|LineLegend(io.grafima.charts.line.LineDataSet;androidx.compose.ui.Modifier?;io.grafima.charts.line.LineLegendOrientation?;androidx.compose.ui.text.TextStyle?;androidx.compose.ui.unit.Dp;androidx.compose.ui.unit.Dp;androidx.compose.ui.Alignment.Horizontal?;androidx.compose.runtime.Composer?;kotlin.Int;kotlin.Int){}[0]
 final fun io.grafima.charts.line/io_grafima_charts_line_LineA11yConfig$stableprop_getter(): kotlin/Int // io.grafima.charts.line/io_grafima_charts_line_LineA11yConfig$stableprop_getter|io_grafima_charts_line_LineA11yConfig$stableprop_getter(){}[0]
 final fun io.grafima.charts.line/io_grafima_charts_line_LineAnimationConfig$stableprop_getter(): kotlin/Int // io.grafima.charts.line/io_grafima_charts_line_LineAnimationConfig$stableprop_getter|io_grafima_charts_line_LineAnimationConfig$stableprop_getter(){}[0]
 final fun io.grafima.charts.line/io_grafima_charts_line_LineAxisConfig$stableprop_getter(): kotlin/Int // io.grafima.charts.line/io_grafima_charts_line_LineAxisConfig$stableprop_getter|io_grafima_charts_line_LineAxisConfig$stableprop_getter(){}[0]

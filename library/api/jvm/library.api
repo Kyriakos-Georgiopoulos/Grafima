@@ -534,6 +534,18 @@ public final class io/grafima/charts/line/LineDataSet {
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class io/grafima/charts/line/LineLegendKt {
+	public static final fun LineLegend-3GLzNTs (Lio/grafima/charts/line/LineDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/line/LineLegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Landroidx/compose/runtime/Composer;II)V
+}
+
+public final class io/grafima/charts/line/LineLegendOrientation : java/lang/Enum {
+	public static final field Horizontal Lio/grafima/charts/line/LineLegendOrientation;
+	public static final field Vertical Lio/grafima/charts/line/LineLegendOrientation;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/line/LineLegendOrientation;
+	public static fun values ()[Lio/grafima/charts/line/LineLegendOrientation;
+}
+
 public final class io/grafima/charts/line/LineSeries {
 	public static final field $stable I
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V

@@ -38,6 +38,38 @@ series = listOf(
 )
 ```
 
+## Legend
+
+The chart names its series in the tooltip and to a screen reader, but only once
+something is selected. `LineLegend` is the key for a chart at rest:
+
+```kotlin
+Column {
+    LineLegend(dataSet = data)
+    LineChart(dataSet = data, modifier = Modifier.fillMaxWidth().height(300.dp))
+}
+```
+
+It is a separate composable rather than part of the drawing, so you place it
+above, beside or below and the plot keeps its full width.
+
+```kotlin
+LineLegend(
+    dataSet = data,
+    orientation = LineLegendOrientation.Vertical,
+    textStyle = MaterialTheme.typography.labelMedium
+)
+```
+
+A series drawn with `strokeGradientColors` gets a gradient swatch, so the key
+matches the line it names rather than a flat colour the line never uses.
+
+`Horizontal` wraps onto further lines when the entries do not fit. `Vertical`
+takes an `entryAlignment` for the edge the entries line up on.
+
+A screen reader reaches the legend as one item naming every series, rather than a
+stop each. `spacing` also sets half that gap between wrapped lines.
+
 ## Curves
 
 ```kotlin

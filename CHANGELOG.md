@@ -19,6 +19,11 @@ behaviour do not.
   thing desktop cannot read for itself: the JVM exposes no portable setting, so
   charts animate unless your host provides `LocalReduceMotion`.
   Thanks to [Lauren Darcey](https://github.com/ldarcey).
+- `LineLegend`, a key mapping each series' colour to its label. The chart names
+  its series only on selection, so a chart at rest — or a screenshot of one — gave
+  a sighted reader no way to tell overlaid lines apart. Placed by the caller, so
+  the plot keeps its full width. A series with `strokeGradientColors` gets a
+  gradient swatch.
 - `LineAxisConfig.xAxisTitle` and `yAxisTitle` name an axis, so the numbers on it
   carry their unit. The y title is drawn rotated beside its labels, on the right
   in RTL, and both are announced to screen readers. See
