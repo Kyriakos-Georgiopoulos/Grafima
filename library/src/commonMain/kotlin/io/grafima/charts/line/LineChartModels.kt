@@ -314,6 +314,10 @@ data class LineAnimationConfig(
  * @param selectedPointDescriptionBuilder Appended to the base description when
  *   the crosshair is active. Announces the value at the selected point for each
  *   series. TalkBack reads this on each crosshair move.
+ * @param axisTitleDescriptionBuilder Announces [LineAxisConfig.xAxisTitle] and
+ *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
+ *   null when unset. Override to translate the wording; return an empty string to
+ *   leave the titles unspoken.
  */
 @Stable
 data class LineA11yConfig(
@@ -336,5 +340,15 @@ data class LineA11yConfig(
                 }
             }
         }
-    }
+    },
+    val axisTitleDescriptionBuilder: (xAxisTitle: String?, yAxisTitle: String?) -> String =
+        { xAxisTitle, yAxisTitle ->
+            buildString {
+                xAxisTitle?.let { append("X axis: $it.") }
+                yAxisTitle?.let {
+                    if (isNotEmpty()) append(' ')
+                    append("Y axis: $it.")
+                }
+            }
+        }
 )

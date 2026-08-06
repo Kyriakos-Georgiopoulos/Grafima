@@ -36,7 +36,8 @@ identical actions and one of them becomes unreachable.
 
 A line chart's `xAxisTitle` and `yAxisTitle` are appended to its description, so
 the numbers reach a screen reader with the unit they are in. Set neither and the
-description is exactly what the builder produced.
+description is exactly what the builder produced. The wording around them is
+`axisTitleDescriptionBuilder`, so it translates with the rest.
 
 ## Changing the wording
 

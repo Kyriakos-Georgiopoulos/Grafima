@@ -39,9 +39,10 @@ behaviour do not.
 - The line chart no longer selects a point that lies outside a pinned x range,
   by touch or through a screen reader's actions menu. Such points are not drawn,
   so selecting one moved the crosshair somewhere nothing was visible.
-- `LineAxisConfig` gained six constructor parameters, which changes the generated
-  constructor and `copy` signatures. Source-compatible, but an app built against
-  1.0.0 must be recompiled against this release rather than swapped in place.
+- `LineAxisConfig` gained six constructor parameters and `LineA11yConfig` one,
+  which changes their generated constructor and `copy` signatures.
+  Source-compatible, but an app built against 1.0.0 must be recompiled against
+  this release rather than swapped in place.
 
 ## [1.0.0] - 2026-07-31
 

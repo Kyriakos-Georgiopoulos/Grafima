@@ -470,6 +470,30 @@ class LineChartUiTest {
     }
 
     @Test
+    fun an_overridden_axis_title_builder_replaces_the_default_wording() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                a11yConfig = LineA11yConfig(
+                    chartDescriptionBuilder = { "Revenue by month." },
+                    axisTitleDescriptionBuilder = { x, y ->
+                        listOfNotNull(x?.let { "Across: $it." }, y?.let { "Up: $it." })
+                            .joinToString(" ")
+                    }
+                ),
+                axisConfig = LineAxisConfig(xAxisTitle = "Month", yAxisTitle = "Euros")
+            )
+        }
+        waitForIdle()
+
+        val spoken = onChartNode().contentDescription()
+        assertEquals("Revenue by month. Across: Month. Up: Euros.", spoken)
+        assertFalse("X axis" in spoken, "the default wording survived the override")
+    }
+
+    @Test
     fun a_custom_description_does_not_run_into_the_axis_titles() = runComposeUiTest {
         setContent {
             LineChart(

@@ -488,8 +488,10 @@ final class io.grafima.charts.gauge/GaugeZone { // io.grafima.charts.gauge/Gauge
 }
 
 final class io.grafima.charts.line/LineA11yConfig { // io.grafima.charts.line/LineA11yConfig|null[0]
-    constructor <init>(kotlin/Function1<io.grafima.charts.line/LineDataSet, kotlin/String> = ..., kotlin/Function2<kotlin/Int, kotlin.collections/List<io.grafima.charts.line/LineSeries>, kotlin/String> = ...) // io.grafima.charts.line/LineA11yConfig.<init>|<init>(kotlin.Function1<io.grafima.charts.line.LineDataSet,kotlin.String>;kotlin.Function2<kotlin.Int,kotlin.collections.List<io.grafima.charts.line.LineSeries>,kotlin.String>){}[0]
+    constructor <init>(kotlin/Function1<io.grafima.charts.line/LineDataSet, kotlin/String> = ..., kotlin/Function2<kotlin/Int, kotlin.collections/List<io.grafima.charts.line/LineSeries>, kotlin/String> = ..., kotlin/Function2<kotlin/String?, kotlin/String?, kotlin/String> = ...) // io.grafima.charts.line/LineA11yConfig.<init>|<init>(kotlin.Function1<io.grafima.charts.line.LineDataSet,kotlin.String>;kotlin.Function2<kotlin.Int,kotlin.collections.List<io.grafima.charts.line.LineSeries>,kotlin.String>;kotlin.Function2<kotlin.String?,kotlin.String?,kotlin.String>){}[0]
 
+    final val axisTitleDescriptionBuilder // io.grafima.charts.line/LineA11yConfig.axisTitleDescriptionBuilder|{}axisTitleDescriptionBuilder[0]
+        final fun <get-axisTitleDescriptionBuilder>(): kotlin/Function2<kotlin/String?, kotlin/String?, kotlin/String> // io.grafima.charts.line/LineA11yConfig.axisTitleDescriptionBuilder.<get-axisTitleDescriptionBuilder>|<get-axisTitleDescriptionBuilder>(){}[0]
     final val chartDescriptionBuilder // io.grafima.charts.line/LineA11yConfig.chartDescriptionBuilder|{}chartDescriptionBuilder[0]
         final fun <get-chartDescriptionBuilder>(): kotlin/Function1<io.grafima.charts.line/LineDataSet, kotlin/String> // io.grafima.charts.line/LineA11yConfig.chartDescriptionBuilder.<get-chartDescriptionBuilder>|<get-chartDescriptionBuilder>(){}[0]
     final val selectedPointDescriptionBuilder // io.grafima.charts.line/LineA11yConfig.selectedPointDescriptionBuilder|{}selectedPointDescriptionBuilder[0]
@@ -497,7 +499,8 @@ final class io.grafima.charts.line/LineA11yConfig { // io.grafima.charts.line/Li
 
     final fun component1(): kotlin/Function1<io.grafima.charts.line/LineDataSet, kotlin/String> // io.grafima.charts.line/LineA11yConfig.component1|component1(){}[0]
     final fun component2(): kotlin/Function2<kotlin/Int, kotlin.collections/List<io.grafima.charts.line/LineSeries>, kotlin/String> // io.grafima.charts.line/LineA11yConfig.component2|component2(){}[0]
-    final fun copy(kotlin/Function1<io.grafima.charts.line/LineDataSet, kotlin/String> = ..., kotlin/Function2<kotlin/Int, kotlin.collections/List<io.grafima.charts.line/LineSeries>, kotlin/String> = ...): io.grafima.charts.line/LineA11yConfig // io.grafima.charts.line/LineA11yConfig.copy|copy(kotlin.Function1<io.grafima.charts.line.LineDataSet,kotlin.String>;kotlin.Function2<kotlin.Int,kotlin.collections.List<io.grafima.charts.line.LineSeries>,kotlin.String>){}[0]
+    final fun component3(): kotlin/Function2<kotlin/String?, kotlin/String?, kotlin/String> // io.grafima.charts.line/LineA11yConfig.component3|component3(){}[0]
+    final fun copy(kotlin/Function1<io.grafima.charts.line/LineDataSet, kotlin/String> = ..., kotlin/Function2<kotlin/Int, kotlin.collections/List<io.grafima.charts.line/LineSeries>, kotlin/String> = ..., kotlin/Function2<kotlin/String?, kotlin/String?, kotlin/String> = ...): io.grafima.charts.line/LineA11yConfig // io.grafima.charts.line/LineA11yConfig.copy|copy(kotlin.Function1<io.grafima.charts.line.LineDataSet,kotlin.String>;kotlin.Function2<kotlin.Int,kotlin.collections.List<io.grafima.charts.line.LineSeries>,kotlin.String>;kotlin.Function2<kotlin.String?,kotlin.String?,kotlin.String>){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.grafima.charts.line/LineA11yConfig.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.grafima.charts.line/LineA11yConfig.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.grafima.charts.line/LineA11yConfig.toString|toString(){}[0]
