@@ -162,8 +162,8 @@ enum class LineCurveType {
  * @param gridStrokeWidth Grid line width. 1.dp is standard.
  * @param axisColor Color for the x-axis and y-axis baseline.
  * @param axisStrokeWidth Width of axis lines.
- * @param labelColor Text color for both x and y labels.
- * @param labelFontSize Font size for axis labels.
+ * @param labelColor Text color for the x and y labels and the axis titles.
+ * @param labelFontSize Font size for the axis labels and the axis titles.
  * @param yTickCount Desired number of y-axis intervals. The actual count may differ
  *   slightly due to nice-number rounding (e.g. 5 requested, 6 produced if the range
  *   rounds better that way).

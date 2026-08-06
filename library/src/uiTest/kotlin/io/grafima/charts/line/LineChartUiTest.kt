@@ -171,15 +171,21 @@ class LineChartUiTest {
         onChartNode().assertExists()
     }
 
-    /** The x of the column holding most of [color], or null when it is absent. */
+    /**
+     * The centre of the band of columns holding [color], or null when absent.
+     * The midpoint, not the first maximum: a stroke several pixels wide would
+     * otherwise report its left edge.
+     */
     private fun ImageBitmap.columnOf(color: Color): Float? {
         val pixels = IntArray(width * height)
         readPixels(pixels)
         val target = color.toArgb()
         val perColumn = IntArray(width)
         pixels.forEachIndexed { i, p -> if (p == target) perColumn[i % width]++ }
-        val best = perColumn.indices.maxByOrNull { perColumn[it] } ?: return null
-        return if (perColumn[best] == 0) null else best.toFloat()
+        val peak = perColumn.maxOrNull() ?: return null
+        if (peak == 0) return null
+        val hit = perColumn.indices.filter { perColumn[it] == peak }
+        return (hit.first() + hit.last()) / 2f
     }
 
     private fun ImageBitmap.countColor(color: Color): Int {
@@ -213,12 +219,7 @@ class LineChartUiTest {
         readPixels(pixels)
         val thirds = IntArray(3)
         pixels.forEachIndexed { i, p ->
-            val r = (p shr 16) and 0xFF
-            val g = (p shr 8) and 0xFF
-            val b = p and 0xFF
-            if (r > 120 && g < 90 && b < 90) {
-                thirds[minOf(2, (i % width) * 3 / width)]++
-            }
+            if (p.isReddish()) thirds[minOf(2, (i % width) * 3 / width)]++
         }
         return thirds.toList()
     }
