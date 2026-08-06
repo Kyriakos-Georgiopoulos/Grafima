@@ -16,7 +16,6 @@
 
 package io.grafima.sample
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,12 +35,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +50,8 @@ import io.grafima.charts.line.LineChartStyle
 import io.grafima.charts.line.LineCurveType
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
+import io.grafima.charts.line.LineLegend
+import io.grafima.charts.line.LineLegendOrientation
 import io.grafima.charts.line.LineSeries
 import io.grafima.sample.theme.LocalDemoColors
 import io.grafima.sample.theme.ProvideDemoLayout
@@ -292,43 +290,12 @@ internal fun LineChartDemoScreen(
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        dataSet.series.forEach { s ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            ) {
-                                Text(
-                                    s.label,
-                                    fontSize = 11.sp,
-                                    color = colors.onSurfaceMuted,
-                                    modifier = Modifier.padding(end = 6.dp)
-                                )
-                                Canvas(Modifier.size(width = 18.dp, height = 4.dp)) {
-                                    val cy = size.height / 2f
-                                    val start = Offset(x = 0f, y = cy)
-                                    val end = Offset(x = size.width, y = cy)
-                                    if (s.strokeGradientColors.size >= 2) {
-                                        drawLine(
-                                            brush = Brush.horizontalGradient(s.strokeGradientColors),
-                                            start = start,
-                                            end = end,
-                                            strokeWidth = size.height,
-                                            cap = StrokeCap.Round
-                                        )
-                                    } else {
-                                        drawLine(
-                                            color = s.color,
-                                            start = start,
-                                            end = end,
-                                            strokeWidth = size.height,
-                                            cap = StrokeCap.Round
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    LineLegend(
+                        dataSet = dataSet,
+                        orientation = LineLegendOrientation.Vertical,
+                        textStyle = TextStyle(fontSize = 11.sp, color = colors.onSurfaceMuted),
+                        spacing = 4.dp
+                    )
                 }
                 Box(
                     Modifier
