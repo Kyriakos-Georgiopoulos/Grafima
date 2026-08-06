@@ -34,7 +34,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -340,8 +339,13 @@ fun LineChart(
     val bottomCuts = yIsPinned && yMin > yPointMin
 
     // ── Cached PathEffects: building one per frame allocates in the draw pass ──
-    val dashEffect = remember(axisConfig.dashedGrid) {
-        if (axisConfig.dashedGrid) PathEffect.dashPathEffect(floatArrayOf(8f, 6f)) else null
+    @Suppress("DEPRECATION")
+    val gridDash = remember(axisConfig.dashedGrid, axisConfig.gridDashPattern, density) {
+        // dashedGrid is deprecated but still honoured, and reading it is the only
+        // way to keep a caller who set it from silently losing their dashes.
+        val pattern =
+            if (axisConfig.dashedGrid) LegacyDashedGrid else axisConfig.gridDashPattern
+        pattern.toDashStroke(density)
     }
     // Keyed on what the draw pass walks, not on the dataset: a series on its way
     // out is still drawn, and looking it up in a map built from the dataset misses,
@@ -351,6 +355,17 @@ fun LineChart(
     }
     val referenceLineStrokes = remember(axisConfig.referenceLines, density) {
         axisConfig.referenceLines.map { it.dashPattern.toDashStroke(density) }
+    }
+    val referenceLabelLayouts = remember(axisConfig.referenceLines, labelStyle, textMeasurer) {
+        axisConfig.referenceLines.map { line ->
+            line.label?.takeIf { it.isNotBlank() }?.let {
+                textMeasurer.measure(
+                    text = it,
+                    style = labelStyle.copy(color = line.color),
+                    maxLines = 1
+                )
+            }
+        }
     }
 
     // ── Pre-measured value labels (zero text measurement in draw) ──
@@ -407,8 +422,9 @@ fun LineChart(
     val tooltipCache = remember(textMeasurer, tooltipStyle) {
         mutableMapOf<String, TextLayoutResult>()
     }
-    val labelBoxes = remember(seriesStructure, valueLabels.enabled) {
-        LabelBoxes(capacity = if (valueLabels.enabled) renderSeries.sumOf { it.points.size } else 0)
+    val labelBoxes = remember(seriesStructure, valueLabels.enabled, axisConfig.referenceLines) {
+        val points = if (valueLabels.enabled) renderSeries.sumOf { it.points.size } else 0
+        LabelBoxes(capacity = points + axisConfig.referenceLines.size)
     }
     val linePath = remember { Path() }
     val areaPath = remember { Path() }
@@ -560,7 +576,8 @@ fun LineChart(
                     start = Offset(x = chartLeft, y = y),
                     end = Offset(x = chartRight, y = y),
                     strokeWidth = gridPx,
-                    pathEffect = dashEffect
+                    cap = gridDash.cap,
+                    pathEffect = gridDash.effect
                 )
             }
         }
@@ -574,7 +591,8 @@ fun LineChart(
                     start = Offset(x = x, y = chartTop),
                     end = Offset(x = x, y = chartBottom),
                     strokeWidth = gridPx,
-                    pathEffect = dashEffect
+                    cap = gridDash.cap,
+                    pathEffect = gridDash.effect
                 )
             }
         }
@@ -724,6 +742,9 @@ fun LineChart(
         // Drawn over the series: a threshold hidden behind the data cannot be read
         // against it. A value off the axis is skipped rather than clamped, which
         // would put the line at an edge it does not mark.
+        // Reset here rather than in the value-label pass: reference labels claim
+        // their boxes first, and the values then go round them.
+        labelBoxes.reset()
         val references = axisConfig.referenceLines
         for (i in 0 until references.size) {
             val line = references[i]
@@ -741,6 +762,17 @@ fun LineChart(
                         cap = dash.cap,
                         pathEffect = dash.effect
                     )
+                    referenceLabelLayouts.getOrNull(i)?.let { layout ->
+                        // Beside the top of the line, on the side with the room.
+                        val gap = labelGapPx / 2f
+                        val right = x + gap
+                        val lx = if (right + layout.size.width <= chartRight) {
+                            right
+                        } else {
+                            x - gap - layout.size.width
+                        }
+                        drawReferenceLabel(layout, lx, chartTop + gap, labelBoxes, gap)
+                    }
                 }
 
                 ReferenceLineAxis.Y -> {
@@ -753,6 +785,14 @@ fun LineChart(
                         cap = dash.cap,
                         pathEffect = dash.effect
                     )
+                    referenceLabelLayouts.getOrNull(i)?.let { layout ->
+                        // At the trailing end, above the line, or below it at the top.
+                        val gap = labelGapPx / 2f
+                        val lx = if (isRtl) chartLeft + gap else chartRight - gap - layout.size.width
+                        val above = y - gap - layout.size.height
+                        val ly = if (above >= chartTop) above else y + gap
+                        drawReferenceLabel(layout, lx, ly, labelBoxes, gap)
+                    }
                 }
             }
         }
@@ -760,7 +800,6 @@ fun LineChart(
         // ── 4c. Value labels ──
         if (valueLabelLayouts.isNotEmpty()) {
             val valueGap = labelGapPx / 2f
-            labelBoxes.reset()
             for (seriesIndex in 0 until renderSeries.size) {
                 val s = renderSeries[seriesIndex]
                 val layouts = valueLabelLayouts[s.id] ?: continue

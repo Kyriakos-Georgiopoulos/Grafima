@@ -68,6 +68,9 @@ internal val AxisLabelGrey = Color(0xFF64748B)
  * Darker than [AxisLabelGrey]: these sit inside the plot, over grid lines and area
  * fills rather than on the background.
  */
+/** What [LineAxisConfig.dashedGrid] meant, in dp rather than the raw pixels it used. */
+internal val LegacyDashedGrid = DashPattern(dash = 2.5.dp, gap = 2.dp)
+
 internal val ValueLabelTextStyle = TextStyle(
     color = Color(0xFF334155),
     fontSize = 10.sp,
@@ -171,27 +174,35 @@ enum class ReferenceLineAxis {
  *
  * @param value Where on [axis] the line sits, in data units.
  * @param axis Whether [value] is an x or a y.
+ * @param label Drawn beside the line, in the line's own colour, so a sighted reader
+ *   knows what the threshold is. Null draws nothing. It takes a box like a value
+ *   label and claims it first, so the two never print over each other.
  * @param color Line color.
  * @param strokeWidth Line thickness.
  * @param dashPattern Dashes the line. Null draws solid.
- * @param contentDescription What a screen reader calls this line. The line itself
- *   is not drawn with a name, so this is the only way a listener learns of it.
- *   Null or blank leaves it unannounced.
+ * @param contentDescription What a screen reader calls this line. Defaults to
+ *   [label], so naming a line once names it for everyone; set it to say something
+ *   fuller than the plot has room for. Null or blank leaves it unannounced.
  * @param includeInRange Widens the axis to reach this line when the data does not.
  *   A target is usually above what has been achieved so far, and an axis fitted to
  *   the data alone would leave the line off the chart entirely. Set false to leave
  *   the axis to the data, and accept that the line may not be drawn. A pinned
  *   [LineAxisConfig.yMin], `yMax`, `xMin` or `xMax` wins over this, so a line
  *   outside a pinned range is still not drawn.
+ *
+ *   Worth setting false for an x line well outside the data: an axis stretched to
+ *   reach x = 20 for points spanning 0..2 squeezes them into a tenth of the plot.
+ *   A y target above the data is the case this exists for.
  */
 @Immutable
 data class ReferenceLine(
     val value: Float,
     val axis: ReferenceLineAxis,
+    val label: String? = null,
     val color: Color = AxisLabelGrey,
     val strokeWidth: Dp = 1.dp,
     val dashPattern: DashPattern? = null,
-    val contentDescription: String? = null,
+    val contentDescription: String? = label,
     val includeInRange: Boolean = true
 )
 
@@ -269,7 +280,10 @@ enum class LineCurveType {
  * @param showYLabels Show labels beside the y-axis.
  * @param maxXLabels Upper bound on visible x-labels. When more data points exist,
  *   labels are thinned by showing every Nth label. Prevents crowding.
- * @param dashedGrid Render grid lines as dashed instead of solid.
+ * @param dashedGrid Superseded by [gridDashPattern], which says how long a dash is
+ *   rather than only whether there is one, and says it in dp so it is the same size
+ *   on every screen. Set, it still wins.
+ * @param gridDashPattern Dashes the grid lines. Null draws them solid.
  * @param yMin Pins the bottom of the y-axis. Null auto-computes it from the data.
  * @param yMax Pins the top of the y-axis. Null auto-computes it from the data.
  * @param xMin Pins the left of the x-axis (the right in RTL). Null uses the
@@ -301,7 +315,11 @@ data class LineAxisConfig(
     val showXLabels: Boolean = true,
     val showYLabels: Boolean = true,
     val maxXLabels: Int = 12,
+    @Deprecated(
+        "Superseded by gridDashPattern, which is measured in dp. Removed in 2.0."
+    )
     val dashedGrid: Boolean = false,
+    val gridDashPattern: DashPattern? = null,
     val yMin: Float? = null,
     val yMax: Float? = null,
     val xMin: Float? = null,

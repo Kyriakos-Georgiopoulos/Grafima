@@ -19,8 +19,11 @@ package io.grafima.charts.line
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.drawText
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
@@ -269,6 +272,26 @@ internal fun valueLabelLeft(
     chartLeft: Float,
     chartRight: Float
 ): Float = (pointX - labelWidth / 2f).coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
+
+/**
+ * Draws a reference line's label where nothing else has been drawn, and records the
+ * room it took so a value label does not land on it.
+ */
+internal fun DrawScope.drawReferenceLabel(
+    layout: TextLayoutResult,
+    left: Float,
+    top: Float,
+    boxes: LabelBoxes,
+    gap: Float
+) {
+    val free = boxes.takeIfFree(
+        left = left - gap,
+        top = top,
+        right = left + layout.size.width + gap,
+        bottom = top + layout.size.height
+    )
+    if (free) drawText(textLayoutResult = layout, topLeft = Offset(x = left, y = top))
+}
 
 /**
  * The point to visit at [step], walking left to right across the screen.

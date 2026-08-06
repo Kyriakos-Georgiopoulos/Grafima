@@ -103,17 +103,13 @@ an axis of hours.
 ```kotlin
 axisConfig = LineAxisConfig(
     referenceLines = listOf(
-        ReferenceLine(
-            value = 14f,
-            axis = ReferenceLineAxis.X,
-            contentDescription = "Now"
-        ),
+        ReferenceLine(value = 14f, axis = ReferenceLineAxis.X, label = "Now"),
         ReferenceLine(
             value = 100f,
             axis = ReferenceLineAxis.Y,
+            label = "Target",
             color = Color.Red,
-            dashPattern = DashPattern(dash = 6.dp, gap = 6.dp),
-            contentDescription = "Target"
+            dashPattern = DashPattern(dash = 6.dp, gap = 6.dp)
         )
     )
 )
@@ -137,11 +133,20 @@ show a threshold sitting somewhere it is not.
 Vertical lines mirror with the axis in RTL, since they are fixed to a data value
 rather than to a side of the screen.
 
-A line is only a mark on the screen, so give it a `contentDescription` and it is
-announced with the chart as "Reference line: Now." Override
-`LineA11yConfig.referenceLineDescriptionBuilder` to reword or translate that, or
-return an empty string to leave them unspoken. Lines without one are drawn but not
-announced.
+`label` is drawn beside the line in the line's own colour, and is announced too —
+naming a line once names it for everyone. It claims its space before value labels
+do, so the two never print over each other, and a label with nowhere to go is
+dropped rather than drawn over something.
+
+Set `contentDescription` as well when the spoken form should say more than the plot
+has room for; it defaults to `label`. Either way the chart announces "Reference
+line: Now." Override `LineA11yConfig.referenceLineDescriptionBuilder` to reword or
+translate that, or return an empty string to leave them unspoken. A line with
+neither is drawn but not announced.
+
+An x line well outside the data is worth setting `includeInRange = false` on: an
+axis stretched to reach x = 20 for points spanning 0..2 squeezes them into a tenth
+of the plot. A y target above the data is the case the widening exists for.
 
 ## Value labels
 
@@ -349,9 +354,12 @@ axisConfig = LineAxisConfig(
     axisColor = Color(0xFF94A3B8),
     labelColor = Color(0xFF475569),
     gridColor = Color(0xFFF1F5F9),
-    dashedGrid = true
+    gridDashPattern = DashPattern(dash = 5.dp, gap = 5.dp)
 )
 ```
+
+`gridDashPattern` replaces `dashedGrid`, which only said whether there was a dash
+and measured it in raw pixels. It is the same type the bar chart's grid takes.
 
 ## Animation
 

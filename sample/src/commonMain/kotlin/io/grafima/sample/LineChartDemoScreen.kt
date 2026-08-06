@@ -245,6 +245,7 @@ internal fun LineChartDemoScreen(
             ReferenceLine(
                 value = 100f,
                 axis = ReferenceLineAxis.Y,
+                label = "Target",
                 color = colors.accentWarm,
                 dashPattern = DashPattern(dash = 6.dp, gap = 6.dp),
                 contentDescription = "Target of 100 thousand euros"

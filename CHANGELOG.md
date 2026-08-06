@@ -68,6 +68,9 @@ behaviour do not.
   `LineChartStyle` and `LineSeries` one each, which changes their generated
   constructor and `copy` signatures. Source-compatible, but an app built against
   1.0.0 must be recompiled against this release rather than swapped in place.
+- `LineAxisConfig.dashedGrid` is deprecated in favour of `gridDashPattern`, which
+  says how long a dash is rather than only whether there is one, and says it in dp.
+  A grid is solid by default as before, and `dashedGrid = true` still works.
 - `bar.AxisConfig.dashEffect` is deprecated in favour of `gridDashPattern`, and now
   defaults to null. A `PathEffect` compares by identity, so every default
   `AxisConfig()` was unequal to every other and defeated the recomposition skipping

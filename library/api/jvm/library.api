@@ -391,8 +391,8 @@ public final class io/grafima/charts/line/LineAnimationConfig {
 
 public final class io/grafima/charts/line/LineAxisConfig {
 	public static final field $stable I
-	public synthetic fun <init> (ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLio/grafima/charts/DashPattern;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLio/grafima/charts/DashPattern;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Z
 	public final fun component10 ()Lkotlin/jvm/functions/Function1;
 	public final fun component11 ()Lkotlin/jvm/functions/Function1;
@@ -401,14 +401,15 @@ public final class io/grafima/charts/line/LineAxisConfig {
 	public final fun component14 ()Z
 	public final fun component15 ()I
 	public final fun component16 ()Z
-	public final fun component17 ()Ljava/lang/Float;
+	public final fun component17 ()Lio/grafima/charts/DashPattern;
 	public final fun component18 ()Ljava/lang/Float;
 	public final fun component19 ()Ljava/lang/Float;
 	public final fun component2 ()Z
 	public final fun component20 ()Ljava/lang/Float;
-	public final fun component21 ()Ljava/lang/String;
+	public final fun component21 ()Ljava/lang/Float;
 	public final fun component22 ()Ljava/lang/String;
-	public final fun component23 ()Ljava/util/List;
+	public final fun component23 ()Ljava/lang/String;
+	public final fun component24 ()Ljava/util/List;
 	public final fun component3-0d7_KjU ()J
 	public final fun component4-D9Ej5fM ()F
 	public final fun component5-0d7_KjU ()J
@@ -416,13 +417,14 @@ public final class io/grafima/charts/line/LineAxisConfig {
 	public final fun component7-0d7_KjU ()J
 	public final fun component8-XSAIIZE ()J
 	public final fun component9 ()I
-	public final fun copy-muP7bjc (ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)Lio/grafima/charts/line/LineAxisConfig;
-	public static synthetic fun copy-muP7bjc$default (Lio/grafima/charts/line/LineAxisConfig;ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLjava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lio/grafima/charts/line/LineAxisConfig;
+	public final fun copy-1ty6BQ8 (ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLio/grafima/charts/DashPattern;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)Lio/grafima/charts/line/LineAxisConfig;
+	public static synthetic fun copy-1ty6BQ8$default (Lio/grafima/charts/line/LineAxisConfig;ZZJFJFJJILkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ZZZIZLio/grafima/charts/DashPattern;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/Float;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lio/grafima/charts/line/LineAxisConfig;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAxisColor-0d7_KjU ()J
 	public final fun getAxisStrokeWidth-D9Ej5fM ()F
 	public final fun getDashedGrid ()Z
 	public final fun getGridColor-0d7_KjU ()J
+	public final fun getGridDashPattern ()Lio/grafima/charts/DashPattern;
 	public final fun getGridStrokeWidth-D9Ej5fM ()F
 	public final fun getIncludeZeroInYRange ()Z
 	public final fun getLabelColor-0d7_KjU ()J
@@ -615,23 +617,25 @@ public final class io/grafima/charts/line/LineValueLabelConfig {
 
 public final class io/grafima/charts/line/ReferenceLine {
 	public static final field $stable I
-	public synthetic fun <init> (FLio/grafima/charts/line/ReferenceLineAxis;JFLio/grafima/charts/DashPattern;Ljava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (FLio/grafima/charts/line/ReferenceLineAxis;JFLio/grafima/charts/DashPattern;Ljava/lang/String;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FLio/grafima/charts/line/ReferenceLineAxis;Ljava/lang/String;JFLio/grafima/charts/DashPattern;Ljava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FLio/grafima/charts/line/ReferenceLineAxis;Ljava/lang/String;JFLio/grafima/charts/DashPattern;Ljava/lang/String;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()F
 	public final fun component2 ()Lio/grafima/charts/line/ReferenceLineAxis;
-	public final fun component3-0d7_KjU ()J
-	public final fun component4-D9Ej5fM ()F
-	public final fun component5 ()Lio/grafima/charts/DashPattern;
-	public final fun component6 ()Ljava/lang/String;
-	public final fun component7 ()Z
-	public final fun copy-MBs18nI (FLio/grafima/charts/line/ReferenceLineAxis;JFLio/grafima/charts/DashPattern;Ljava/lang/String;Z)Lio/grafima/charts/line/ReferenceLine;
-	public static synthetic fun copy-MBs18nI$default (Lio/grafima/charts/line/ReferenceLine;FLio/grafima/charts/line/ReferenceLineAxis;JFLio/grafima/charts/DashPattern;Ljava/lang/String;ZILjava/lang/Object;)Lio/grafima/charts/line/ReferenceLine;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4-0d7_KjU ()J
+	public final fun component5-D9Ej5fM ()F
+	public final fun component6 ()Lio/grafima/charts/DashPattern;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Z
+	public final fun copy-q9LK7_k (FLio/grafima/charts/line/ReferenceLineAxis;Ljava/lang/String;JFLio/grafima/charts/DashPattern;Ljava/lang/String;Z)Lio/grafima/charts/line/ReferenceLine;
+	public static synthetic fun copy-q9LK7_k$default (Lio/grafima/charts/line/ReferenceLine;FLio/grafima/charts/line/ReferenceLineAxis;Ljava/lang/String;JFLio/grafima/charts/DashPattern;Ljava/lang/String;ZILjava/lang/Object;)Lio/grafima/charts/line/ReferenceLine;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAxis ()Lio/grafima/charts/line/ReferenceLineAxis;
 	public final fun getColor-0d7_KjU ()J
 	public final fun getContentDescription ()Ljava/lang/String;
 	public final fun getDashPattern ()Lio/grafima/charts/DashPattern;
 	public final fun getIncludeInRange ()Z
+	public final fun getLabel ()Ljava/lang/String;
 	public final fun getStrokeWidth-D9Ej5fM ()F
 	public final fun getValue ()F
 	public fun hashCode ()I

@@ -385,6 +385,86 @@ class LineAnnotationsUiTest {
         assertFalse("Target" in spoken, "an empty chart announced a threshold: $spoken")
     }
 
+    @Test
+    fun a_named_reference_line_is_drawn_with_its_name() = runComposeUiTest {
+        // contentDescription only reaches a listener. A sighted reader was left
+        // with an unexplained line across the plot.
+        var label by mutableStateOf<String?>(null)
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    showGrid = false,
+                    showXLabels = false,
+                    showYLabels = false,
+                    yMin = 0f,
+                    yMax = 40f,
+                    referenceLines = listOf(
+                        ReferenceLine(
+                            value = 30f,
+                            axis = ReferenceLineAxis.Y,
+                            label = label,
+                            color = Color.Red
+                        )
+                    )
+                )
+            )
+        }
+        waitForIdle()
+        val lineOnly = onRoot().captureToImage().countReddish()
+
+        label = "Target"
+        waitForIdle()
+        val withLabel = onRoot().captureToImage().countReddish()
+
+        assertTrue(lineOnly > 0, "the reference line was not drawn")
+        assertTrue(
+            withLabel > lineOnly,
+            "the label painted no ink of its own: $withLabel against $lineOnly"
+        )
+    }
+
+    @Test
+    fun a_reference_line_label_names_it_to_a_screen_reader_too() = runComposeUiTest {
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    referenceLines = listOf(
+                        ReferenceLine(value = 1f, axis = ReferenceLineAxis.X, label = "Now")
+                    )
+                )
+            )
+        }
+        waitForIdle()
+
+        val spoken = onRoot().onChildren().onFirst().fetchSemanticsNode()
+            .config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString(" ")
+        assertTrue("Reference line: Now." in spoken, "naming a line did not announce it: $spoken")
+    }
+
+    @Test
+    fun the_grid_dash_is_asked_for_in_dp_like_every_other_chart() = runComposeUiTest {
+        var pattern by mutableStateOf<DashPattern?>(null)
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    gridColor = Color.Red,
+                    showXLabels = false,
+                    showYLabels = false,
+                    gridDashPattern = pattern
+                )
+            )
+        }
+        waitForIdle()
+        val solid = onRoot().captureToImage().countReddish()
+
+        pattern = DashPattern(dash = 4.dp, gap = 4.dp)
+        waitForIdle()
+        val dashed = onRoot().captureToImage().countReddish()
+
+        assertTrue(solid > 0, "no grid was drawn")
+        assertTrue(dashed < solid, "the grid dash painted $dashed against a solid $solid")
+    }
+
     // ── Dashed series ──
 
     @Test
