@@ -50,6 +50,13 @@ behaviour do not.
   so a theme change while the crosshair was up left the old colour on the new
   panel. It is also redrawn now when the display density changes.
 
+### Fixed
+
+- The bar, pie and radar charts kept the selection tooltip they first measured,
+  so changing its text style or the display density left the old one on screen.
+  The bar and radar tooltips also kept the old text colour; the pie tooltip kept
+  the old size.
+
 ## [1.0.0] - 2026-07-31
 
 First release.

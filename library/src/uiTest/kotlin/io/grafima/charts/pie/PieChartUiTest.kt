@@ -23,14 +23,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class PieChartUiTest {
@@ -128,5 +135,54 @@ class PieChartUiTest {
         )
         waitForIdle()
         assertNull(selected, "selection must clear when its slice leaves the dataset")
+    }
+
+    @Test
+    fun the_selection_tooltip_is_remeasured_when_its_font_size_changes() = runComposeUiTest {
+        // The colour is passed to drawText, so only the cached metrics can go
+        // stale here — a bigger font must paint more of it.
+        var fontSize by mutableStateOf(14.sp)
+        setContent {
+            PieChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectionRenderer = TooltipPieSelectionRenderer(
+                    textStyle = TextStyle(color = Color.Red, fontSize = fontSize)
+                ),
+                selectedEntry = dataSet.entries.last()
+            )
+        }
+        waitForIdle()
+        val small = onChartNode().captureToImage().countReddish()
+        assertTrue(small > 0, "no tooltip text")
+
+        fontSize = 30.sp
+        waitForIdle()
+
+        val large = onChartNode().captureToImage().countReddish()
+        assertTrue(large > small * 2, "the tooltip kept its old metrics: $small then $large")
+    }
+
+    /**
+     * Text this small is mostly antialiased edges, and an exact colour match can
+     * find none of it at all on a denser screen.
+     */
+    private fun ImageBitmap.countReddish(): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        return pixels.count { p ->
+            val r = (p shr 16) and 0xFF
+            val g = (p shr 8) and 0xFF
+            val b = p and 0xFF
+            r > 100 && r > g + 40 && r > b + 40
+        }
+    }
+
+    private fun ImageBitmap.countColor(color: Color): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val target = color.toArgb()
+        return pixels.count { it == target }
     }
 }
