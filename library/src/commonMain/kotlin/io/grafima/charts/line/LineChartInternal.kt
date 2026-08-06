@@ -194,8 +194,9 @@ internal data class PlotInsets(
  * title is drawn rotated, so the width it claims is [yTitleHeight] — its measured
  * height — not its length.
  *
- * Each element costs [gap] on top of its own size, and contributes nothing when
- * its size is zero, which keeps the rectangle identical to the untitled case.
+ * A title costs a [gap] on each side — one clearing its labels, one clearing the
+ * canvas edge — and contributes nothing when its size is zero, which keeps the
+ * rectangle identical to the untitled case.
  */
 internal fun computePlotInsets(
     into: PlotInsets,
@@ -208,8 +209,9 @@ internal fun computePlotInsets(
     xTitleHeight: Float,
     isRtl: Boolean
 ): PlotInsets {
-    val yBand = yLabelWidth + if (yTitleHeight > 0f) yTitleHeight + gap else 0f
-    val xBand = xLabelHeight + if (xTitleHeight > 0f) xTitleHeight + gap else 0f
+    // Twice, because a title needs clearing from its labels as well as from the edge.
+    val yBand = yLabelWidth + if (yTitleHeight > 0f) yTitleHeight + gap * 2f else 0f
+    val xBand = xLabelHeight + if (xTitleHeight > 0f) xTitleHeight + gap * 2f else 0f
     into.left = gap + if (isRtl) 0f else yBand
     into.top = gap
     into.right = width - gap - if (isRtl) yBand else 0f
