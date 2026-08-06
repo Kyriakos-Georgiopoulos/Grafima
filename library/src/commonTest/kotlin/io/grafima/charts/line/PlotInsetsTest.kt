@@ -18,7 +18,6 @@ package io.grafima.charts.line
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class PlotInsetsTest {
 
@@ -68,19 +67,18 @@ class PlotInsetsTest {
 
     @Test
     fun `the y title moves to the right edge in RTL`() {
-        val ltr = insets(yTitleHeight = 14f)
         val rtl = insets(yTitleHeight = 14f, isRtl = true)
         assertEquals(8f, rtl.left)
-        assertEquals(400f - ltr.left, rtl.right)
-        assertEquals(ltr.bottom, rtl.bottom)
+        // 400 - gap - labels - title - gap
+        assertEquals(340f, rtl.right)
+        assertEquals(280f, rtl.bottom)
     }
 
     @Test
     fun `an x title is unaffected by direction`() {
-        assertEquals(
-            insets(xTitleHeight = 14f).bottom,
-            insets(xTitleHeight = 14f, isRtl = true).bottom
-        )
+        // 300 - gap - labels - title - gap
+        assertEquals(258f, insets(xTitleHeight = 14f).bottom)
+        assertEquals(258f, insets(xTitleHeight = 14f, isRtl = true).bottom)
     }
 
     @Test
@@ -92,8 +90,10 @@ class PlotInsetsTest {
     @Test
     fun `both titles together leave a plot rectangle that is still usable`() {
         val r = insets(yTitleHeight = 14f, xTitleHeight = 14f)
-        assertTrue(r.right > r.left)
-        assertTrue(r.bottom > r.top)
+        assertEquals(60f, r.left)
+        assertEquals(8f, r.top)
+        assertEquals(392f, r.right)
+        assertEquals(258f, r.bottom)
     }
 
     @Test
