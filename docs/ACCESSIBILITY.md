@@ -9,6 +9,11 @@ A chart is a single merged node — a screen reader announces it once rather tha
 walking its internals. Each one declares `Role.Image`, matching the convention
 for data visualizations on the web.
 
+`LineLegend` is also a single merged node, so it costs one stop rather than one
+per series. It carries no role or description of its own: what it adds is the
+colour beside each name, which a screen reader cannot use, and the chart's
+description already names every series.
+
 The description is built from your data:
 
 > "Bar Chart representing Monthly revenue. Jan value is 45. Feb value is 80."
@@ -26,11 +31,6 @@ semantics instead of a live region.
 Every interactive chart publishes one custom action per item — bar, slice, series
 or point — plus a clear action when something is selected. Screen reader users
 reach these through the actions menu; they don't need to hit a target.
-
-`LineLegend` is merged the same way, so it costs one stop rather than one per
-series. What it adds visually — which colour belongs to which name — is not
-something a screen reader can use, and the chart's own description already names
-every series.
 
 The one exception is a line chart with a pinned x range: points outside it are not
 drawn and get no action, because selecting one would move the crosshair somewhere

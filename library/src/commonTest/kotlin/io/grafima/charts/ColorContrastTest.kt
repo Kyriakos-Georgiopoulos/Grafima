@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import io.grafima.charts.bar.AxisConfig
 import io.grafima.charts.bar.ChartStyle
 import io.grafima.charts.bar.TooltipSelectionRenderer
+import io.grafima.charts.line.LegendLabelTextStyle
 import io.grafima.charts.line.LineAxisConfig
 import io.grafima.charts.line.LineCrosshairConfig
 import io.grafima.charts.pie.TooltipPieSelectionRenderer
@@ -105,6 +106,7 @@ class ColorContrastTest {
         assertMeetsAA("Bar value label", style.valueTextStyle.color, Color.White)
         assertMeetsAA("Y-axis label", AxisConfig().axisLabelTextStyle.color, Color.White)
         assertMeetsAA("Line axis label", LineAxisConfig().labelColor, Color.White)
+        assertMeetsAA("Line legend label", LegendLabelTextStyle.color, Color.White)
     }
 
     private companion object {

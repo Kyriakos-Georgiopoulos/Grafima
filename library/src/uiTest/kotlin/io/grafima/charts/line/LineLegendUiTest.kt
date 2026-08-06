@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -167,6 +168,26 @@ class LineLegendUiTest {
         assertTrue("Expenses" in spoken, "the second series was not named: $spoken")
     }
 
+    /** How many pixels wide the reddish ink actually is, caps included. */
+    private fun ImageBitmap.reddishSpan(): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        var minX = width
+        var maxX = -1
+        pixels.forEachIndexed { i, p ->
+            val r = (p shr 16) and 0xFF
+            val g = (p shr 8) and 0xFF
+            val b = p and 0xFF
+            if (r > 120 && r > g + 40 && r > b + 40) {
+                val x = i % width
+                if (x < minX) minX = x
+                if (x > maxX) maxX = x
+            }
+        }
+        check(maxX >= minX) { "no swatch was painted" }
+        return maxX - minX + 1
+    }
+
     /** The legend's own node — root is its parent and carries no text itself. */
     private fun ComposeUiTest.legendNode(): SemanticsNodeInteraction =
         onRoot().onChildren().onFirst()
@@ -176,6 +197,35 @@ class LineLegendUiTest {
         fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)
             ?.joinToString(" ") { it.text }
             .orEmpty()
+
+    @Test
+    fun a_swatch_paints_no_wider_than_the_width_it_was_given() = runComposeUiTest {
+        // Round caps reach half the stroke beyond each endpoint, and a Canvas is
+        // not clipped, so an uninset line paints outside the node it lives in.
+        val swatch = 40.dp
+        var painted = 0
+        setContent {
+            painted = with(LocalDensity.current) { swatch.roundToPx() }
+            LineLegend(
+                dataSet = LineDataSet(
+                    series = listOf(
+                        LineSeries(
+                            id = "s",
+                            label = "",
+                            points = listOf(LineDataPoint(x = 0f, y = 1f)),
+                            color = Color.Red
+                        )
+                    ),
+                    contentDescription = "One series"
+                ),
+                swatchWidth = swatch
+            )
+        }
+        waitForIdle()
+
+        val span = onRoot().captureToImage().reddishSpan()
+        assertEquals(painted, span, "the swatch painted $span px for a ${painted}px width")
+    }
 
     @Test
     fun entries_that_overflow_the_width_wrap_onto_further_lines() = runComposeUiTest {

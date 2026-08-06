@@ -36,6 +36,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.min
+
+/** [LineLegend]'s default label style. Guarded by `ColorContrastTest`. */
+internal val LegendLabelTextStyle = TextStyle(fontSize = 12.sp, color = AxisLabelGrey)
 
 /** Whether [LineLegend] lays its entries out in a row or a column. */
 enum class LineLegendOrientation {
@@ -83,7 +87,7 @@ fun LineLegend(
     dataSet: LineDataSet,
     modifier: Modifier = Modifier,
     orientation: LineLegendOrientation = LineLegendOrientation.Horizontal,
-    textStyle: TextStyle = TextStyle(fontSize = 12.sp, color = AxisLabelGrey),
+    textStyle: TextStyle = LegendLabelTextStyle,
     swatchWidth: Dp = 18.dp,
     spacing: Dp = 12.dp,
     entryAlignment: Alignment.Horizontal = Alignment.Start
@@ -97,7 +101,7 @@ fun LineLegend(
                     val y = size.height / 2f
                     // Inset by the cap radius, or the round ends paint outside
                     // the width the caller asked for.
-                    val cap = size.height / 2f
+                    val cap = min(size.height, size.width) / 2f
                     val start = Offset(x = cap, y = y)
                     val end = Offset(x = size.width - cap, y = y)
                     if (series.hasStrokeGradient) {
@@ -135,8 +139,6 @@ fun LineLegend(
     }
 
     when (orientation) {
-        // Wraps: a Row measures the entries it cannot fit at zero width, which
-        // collapses their swatches and breaks the labels one glyph per line.
         LineLegendOrientation.Horizontal -> FlowRow(
             modifier = grouped,
             horizontalArrangement = Arrangement.spacedBy(spacing),
