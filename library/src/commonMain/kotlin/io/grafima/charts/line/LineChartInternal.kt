@@ -20,10 +20,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.unit.dp
-import io.grafima.charts.DashPattern
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
@@ -272,20 +269,6 @@ internal fun valueLabelLeft(
     chartLeft: Float,
     chartRight: Float
 ): Float = (pointX - labelWidth / 2f).coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
-
-/**
- * The cap a dashed stroke needs.
- *
- * A round cap reaches half the stroke width past each end of a dash, so a gap
- * narrower than the stroke closes up and the line draws solid. Butt ends keep the
- * gap the caller asked for — except for a zero-length dash, which has no geometry
- * at all without a round cap to give it one, and is how a dotted line is drawn.
- */
-internal fun dashCapFor(pattern: DashPattern?): StrokeCap = when {
-    pattern == null -> StrokeCap.Round
-    pattern.dash > 0.dp -> StrokeCap.Butt
-    else -> StrokeCap.Round
-}
 
 /**
  * The point to visit at [step], walking left to right across the screen.

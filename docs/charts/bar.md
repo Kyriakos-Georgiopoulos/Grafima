@@ -87,7 +87,7 @@ BarChart(
     axisConfig = AxisConfig(
         yAxisSteps = 5,
         showGridLines = true,
-        dashEffect = null  // solid grid lines
+        gridDashPattern = null  // solid grid lines
     )
 )
 ```

@@ -180,7 +180,9 @@ enum class ReferenceLineAxis {
  * @param includeInRange Widens the axis to reach this line when the data does not.
  *   A target is usually above what has been achieved so far, and an axis fitted to
  *   the data alone would leave the line off the chart entirely. Set false to leave
- *   the axis to the data, and accept that the line may not be drawn.
+ *   the axis to the data, and accept that the line may not be drawn. A pinned
+ *   [LineAxisConfig.yMin], `yMax`, `xMin` or `xMax` wins over this, so a line
+ *   outside a pinned range is still not drawn.
  */
 @Immutable
 data class ReferenceLine(
@@ -380,7 +382,10 @@ data class LineChartStyle(
  *
  * ```
  * style = LineChartStyle(
- *     valueLabels = LineValueLabelConfig(enabled = true, formatter = { "${it.toInt()}g" })
+ *     valueLabels = LineValueLabelConfig(
+ *         enabled = true,
+ *         formatter = { _, point -> "${point.y.toInt()}g" }
+ *     )
  * )
  * ```
  *
@@ -399,15 +404,19 @@ data class LineChartStyle(
  *   the animated one, so the text never counts up during entry. Return an empty
  *   string to leave a point unlabelled, which is how you print only the last one.
  * @param textStyle Label text. The default tone holds WCAG AA on a white surface
- *   and is checked by `ColorContrastTest`. A [Color.Unspecified] color takes each
- *   series' own colour instead, which says which line a number belongs to at the
- *   cost of that guarantee.
+ *   and is checked by `ColorContrastTest`. A style that names no color of its own —
+ *   which is every `MaterialTheme.typography` style — keeps that default tone and
+ *   takes the rest.
+ * @param useSeriesColor Prints each label in its own series' colour, which says
+ *   which line a number belongs to on a crowded chart. The contrast of the result
+ *   is then whatever the series colours are, so it is off by default.
  */
 @Immutable
 data class LineValueLabelConfig(
     val enabled: Boolean = false,
     val formatter: (LineSeries, LineDataPoint) -> String = { _, p -> p.y.toInt().toString() },
-    val textStyle: TextStyle = ValueLabelTextStyle
+    val textStyle: TextStyle = ValueLabelTextStyle,
+    val useSeriesColor: Boolean = false
 )
 
 /**

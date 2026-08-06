@@ -791,7 +791,7 @@ final class io.grafima.charts.line/LineSeries { // io.grafima.charts.line/LineSe
 }
 
 final class io.grafima.charts.line/LineValueLabelConfig { // io.grafima.charts.line/LineValueLabelConfig|null[0]
-    constructor <init>(kotlin/Boolean = ..., kotlin/Function2<io.grafima.charts.line/LineSeries, io.grafima.charts.line/LineDataPoint, kotlin/String> = ..., androidx.compose.ui.text/TextStyle = ...) // io.grafima.charts.line/LineValueLabelConfig.<init>|<init>(kotlin.Boolean;kotlin.Function2<io.grafima.charts.line.LineSeries,io.grafima.charts.line.LineDataPoint,kotlin.String>;androidx.compose.ui.text.TextStyle){}[0]
+    constructor <init>(kotlin/Boolean = ..., kotlin/Function2<io.grafima.charts.line/LineSeries, io.grafima.charts.line/LineDataPoint, kotlin/String> = ..., androidx.compose.ui.text/TextStyle = ..., kotlin/Boolean = ...) // io.grafima.charts.line/LineValueLabelConfig.<init>|<init>(kotlin.Boolean;kotlin.Function2<io.grafima.charts.line.LineSeries,io.grafima.charts.line.LineDataPoint,kotlin.String>;androidx.compose.ui.text.TextStyle;kotlin.Boolean){}[0]
 
     final val enabled // io.grafima.charts.line/LineValueLabelConfig.enabled|{}enabled[0]
         final fun <get-enabled>(): kotlin/Boolean // io.grafima.charts.line/LineValueLabelConfig.enabled.<get-enabled>|<get-enabled>(){}[0]
@@ -799,11 +799,14 @@ final class io.grafima.charts.line/LineValueLabelConfig { // io.grafima.charts.l
         final fun <get-formatter>(): kotlin/Function2<io.grafima.charts.line/LineSeries, io.grafima.charts.line/LineDataPoint, kotlin/String> // io.grafima.charts.line/LineValueLabelConfig.formatter.<get-formatter>|<get-formatter>(){}[0]
     final val textStyle // io.grafima.charts.line/LineValueLabelConfig.textStyle|{}textStyle[0]
         final fun <get-textStyle>(): androidx.compose.ui.text/TextStyle // io.grafima.charts.line/LineValueLabelConfig.textStyle.<get-textStyle>|<get-textStyle>(){}[0]
+    final val useSeriesColor // io.grafima.charts.line/LineValueLabelConfig.useSeriesColor|{}useSeriesColor[0]
+        final fun <get-useSeriesColor>(): kotlin/Boolean // io.grafima.charts.line/LineValueLabelConfig.useSeriesColor.<get-useSeriesColor>|<get-useSeriesColor>(){}[0]
 
     final fun component1(): kotlin/Boolean // io.grafima.charts.line/LineValueLabelConfig.component1|component1(){}[0]
     final fun component2(): kotlin/Function2<io.grafima.charts.line/LineSeries, io.grafima.charts.line/LineDataPoint, kotlin/String> // io.grafima.charts.line/LineValueLabelConfig.component2|component2(){}[0]
     final fun component3(): androidx.compose.ui.text/TextStyle // io.grafima.charts.line/LineValueLabelConfig.component3|component3(){}[0]
-    final fun copy(kotlin/Boolean = ..., kotlin/Function2<io.grafima.charts.line/LineSeries, io.grafima.charts.line/LineDataPoint, kotlin/String> = ..., androidx.compose.ui.text/TextStyle = ...): io.grafima.charts.line/LineValueLabelConfig // io.grafima.charts.line/LineValueLabelConfig.copy|copy(kotlin.Boolean;kotlin.Function2<io.grafima.charts.line.LineSeries,io.grafima.charts.line.LineDataPoint,kotlin.String>;androidx.compose.ui.text.TextStyle){}[0]
+    final fun component4(): kotlin/Boolean // io.grafima.charts.line/LineValueLabelConfig.component4|component4(){}[0]
+    final fun copy(kotlin/Boolean = ..., kotlin/Function2<io.grafima.charts.line/LineSeries, io.grafima.charts.line/LineDataPoint, kotlin/String> = ..., androidx.compose.ui.text/TextStyle = ..., kotlin/Boolean = ...): io.grafima.charts.line/LineValueLabelConfig // io.grafima.charts.line/LineValueLabelConfig.copy|copy(kotlin.Boolean;kotlin.Function2<io.grafima.charts.line.LineSeries,io.grafima.charts.line.LineDataPoint,kotlin.String>;androidx.compose.ui.text.TextStyle;kotlin.Boolean){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.grafima.charts.line/LineValueLabelConfig.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.grafima.charts.line/LineValueLabelConfig.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.grafima.charts.line/LineValueLabelConfig.toString|toString(){}[0]

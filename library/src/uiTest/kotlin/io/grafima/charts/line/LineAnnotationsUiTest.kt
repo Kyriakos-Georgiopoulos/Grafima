@@ -360,6 +360,31 @@ class LineAnnotationsUiTest {
         assertFalse("Ceiling" in spoken, "a line that is not drawn was announced: $spoken")
     }
 
+    @Test
+    fun an_empty_chart_announces_no_reference_line() = runComposeUiTest {
+        // It draws nothing at all, its reference lines included, so speaking of a
+        // threshold would describe something nobody can see.
+        setContent {
+            Chart(
+                data = LineDataSet(series = emptyList(), contentDescription = "Empty"),
+                axisConfig = LineAxisConfig(
+                    referenceLines = listOf(
+                        ReferenceLine(
+                            value = 1f,
+                            axis = ReferenceLineAxis.Y,
+                            contentDescription = "Target"
+                        )
+                    )
+                )
+            )
+        }
+        waitForIdle()
+
+        val spoken = onRoot().onChildren().onFirst().fetchSemanticsNode()
+            .config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString(" ")
+        assertFalse("Target" in spoken, "an empty chart announced a threshold: $spoken")
+    }
+
     // ── Dashed series ──
 
     @Test
@@ -435,6 +460,66 @@ class LineAnnotationsUiTest {
         show = true
         waitForIdle()
         assertTrue(onRoot().captureToImage().countReddish() > 0, "no value label was drawn")
+    }
+
+    @Test
+    fun a_style_naming_no_colour_keeps_the_default_tone() = runComposeUiTest {
+        // TextStyle() leaves its colour unspecified, and so does every
+        // MaterialTheme.typography style, so this is the commonest way to ask for a
+        // font. It must not be read as asking for the series' colour.
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    showGrid = false,
+                    showXLabels = false,
+                    showYLabels = false
+                ),
+                style = LineChartStyle(
+                    valueLabels = LineValueLabelConfig(
+                        enabled = true,
+                        textStyle = TextStyle(fontSize = 14.sp)
+                    )
+                )
+            )
+        }
+        waitForIdle()
+
+        assertTrue(
+            onRoot().captureToImage().countSlateish() > 0,
+            "a style with no colour of its own did not keep the default tone"
+        )
+    }
+
+    @Test
+    fun labels_can_take_the_colour_of_the_series_they_name() = runComposeUiTest {
+        var useSeriesColor by mutableStateOf(false)
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    showGrid = false,
+                    showXLabels = false,
+                    showYLabels = false
+                ),
+                style = LineChartStyle(
+                    valueLabels = LineValueLabelConfig(
+                        enabled = true,
+                        textStyle = TextStyle(fontSize = 14.sp),
+                        useSeriesColor = useSeriesColor
+                    )
+                )
+            )
+        }
+        waitForIdle()
+        val defaultTone = onRoot().captureToImage().countSlateish()
+
+        useSeriesColor = true
+        waitForIdle()
+        assertTrue(defaultTone > 0, "the default tone drew nothing")
+        assertEquals(
+            0,
+            onRoot().captureToImage().countSlateish(),
+            "the labels kept the default tone instead of taking the series' colour"
+        )
     }
 
     @Test
@@ -630,6 +715,14 @@ class LineAnnotationsUiTest {
     }
 
     private fun ImageBitmap.countBluish(): Int = pixels().count { it.isBluish() }
+
+    /** The default value-label tone: a dark slate, neither blue nor red. */
+    private fun ImageBitmap.countSlateish(): Int = pixels().count { p ->
+        val r = (p shr 16) and 0xFF
+        val g = (p shr 8) and 0xFF
+        val b = p and 0xFF
+        r in 30..90 && g in 45..105 && b in 65..125 && b > r
+    }
 
     private fun ImageBitmap.reddishColumns(): IntRange? = extent(byRow = false) { it.isReddish() }
 

@@ -72,8 +72,14 @@ behaviour do not.
   defaults to null. A `PathEffect` compares by identity, so every default
   `AxisConfig()` was unequal to every other and defeated the recomposition skipping
   the charts rely on — and it could not be constructed at all without the graphics
-  runtime loaded, which put it out of reach of a plain unit test. The default grid
-  looks the same; an explicit `dashEffect` still wins over `gridDashPattern`.
+  runtime loaded, which put it out of reach of a plain unit test. An explicit
+  `dashEffect` still wins over `gridDashPattern`.
+  **If you passed `dashEffect = null` to get a solid grid, pass
+  `gridDashPattern = null` instead.** Null now means "unset" and falls through to
+  the default dash, and the compiler cannot warn you: a deprecated constructor
+  property warns where it is read, not where it is set.
+  The default dash is now measured in dp rather than pixels, so it is the same size
+  on every screen — unchanged at 3x, shorter below it, desktop included.
 
 ### Fixed
 

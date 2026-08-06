@@ -16,6 +16,7 @@
 
 package io.grafima.charts
 
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 
 /**
  * A pattern reaching Skia has to hold lengths that are finite, non-negative and not
@@ -60,6 +62,23 @@ class DashPatternTest {
     fun `a negative length draws solid`() {
         assertNull(intervals(dash = 10.dp, gap = (-5).dp))
         assertNull(intervals(dash = (-10).dp, gap = 5.dp))
+    }
+
+    @Test
+    fun `no pattern resolves to a solid stroke with the ends a solid line has`() {
+        assertSame(DashStroke.Solid, null.toDashStroke(density))
+        assertEquals(StrokeCap.Round, DashStroke.Solid.cap)
+        assertNull(DashStroke.Solid.effect)
+    }
+
+    @Test
+    fun `an undrawable pattern resolves to a solid stroke rather than square ends`() {
+        // The cap used to be decided from the raw pattern while the effect came
+        // from its resolved lengths, so a pattern that fell back to solid still
+        // squared off the ends of a line that was not dashed at all.
+        assertSame(DashStroke.Solid, DashPattern(10.dp, (-5).dp).toDashStroke(density))
+        assertSame(DashStroke.Solid, DashPattern(Dp(Float.NaN), 5.dp).toDashStroke(density))
+        assertSame(DashStroke.Solid, DashPattern(0.dp, 0.dp).toDashStroke(density))
     }
 
     @Test

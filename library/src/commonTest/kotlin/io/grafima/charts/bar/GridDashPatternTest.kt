@@ -45,7 +45,18 @@ class GridDashPatternTest {
     }
 
     @Test
-    fun `a solid grid is asked for with null`() {
+    fun `a solid grid is asked for with a null gridDashPattern`() {
         assertNull(AxisConfig(gridDashPattern = null).gridDashPattern)
+    }
+
+    @Suppress("DEPRECATION")
+    @Test
+    fun `a null dashEffect no longer asks for a solid grid`() {
+        // It used to be the documented way, and now means "unset": the grid falls
+        // through to gridDashPattern. Nothing in the compiler says so, which is why
+        // the CHANGELOG carries the migration note this test exists to pin.
+        val config = AxisConfig(dashEffect = null)
+        assertNull(config.dashEffect)
+        assertEquals(DashPattern(dash = 5.dp, gap = 5.dp), config.gridDashPattern)
     }
 }

@@ -18,6 +18,7 @@ package io.grafima.charts
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 
@@ -71,10 +72,31 @@ internal fun dashIntervalsOf(pattern: DashPattern?, density: Density): FloatArra
 }
 
 /**
- * This pattern as a [PathEffect], or null for a solid line.
+ * A dash resolved for drawing: the effect, and the cap that keeps its gaps open.
  *
- * Built once and held, never per frame: every chart that dashes something needs
- * it, and they have to agree or a legend key is drawn solid beside a dashed line.
+ * The two travel together because they are one decision. Deciding the cap from the
+ * pattern and the effect from its resolved lengths lets them disagree — a pattern
+ * that falls back to solid would keep a butt cap and square off the ends of a line
+ * that is not dashed at all.
+ *
+ * Built once and held, never per frame.
  */
-internal fun DashPattern?.toPathEffect(density: Density): PathEffect? =
-    dashIntervalsOf(this, density)?.let(PathEffect::dashPathEffect)
+internal class DashStroke(val effect: PathEffect?, val cap: StrokeCap) {
+    companion object {
+        /** An undashed line: no effect, and the round ends every solid line has. */
+        val Solid = DashStroke(effect = null, cap = StrokeCap.Round)
+    }
+}
+
+/** This pattern resolved for drawing, or [DashStroke.Solid] when it draws solid. */
+internal fun DashPattern?.toDashStroke(density: Density): DashStroke {
+    val intervals = dashIntervalsOf(this, density) ?: return DashStroke.Solid
+    // A round cap reaches half the stroke past each end of a dash, so a gap
+    // narrower than the stroke closes up and the line draws solid. Butt ends keep
+    // the gap asked for — except a zero-length dash, which has no geometry at all
+    // without a round cap to give it one, and is how a dotted line is drawn.
+    return DashStroke(
+        effect = PathEffect.dashPathEffect(intervals),
+        cap = if (intervals[0] > 0f) StrokeCap.Butt else StrokeCap.Round
+    )
+}

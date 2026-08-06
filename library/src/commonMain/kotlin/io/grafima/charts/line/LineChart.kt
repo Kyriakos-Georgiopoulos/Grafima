@@ -64,8 +64,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.DashStroke
 import io.grafima.charts.rememberEffectiveReduceMotion
-import io.grafima.charts.toPathEffect
+import io.grafima.charts.toDashStroke
 import kotlin.math.max
 import kotlin.math.min
 
@@ -177,11 +178,13 @@ fun LineChart(
     val yReferences = remember(axisConfig.referenceLines) {
         axisConfig.referenceLines.boundsOn(ReferenceLineAxis.Y)
     }
-    val xDataMin = remember(allPoints, xReferences) {
-        minOf(allPoints.minOfOrNull { it.x } ?: 0f, xReferences.minOrNull() ?: Float.MAX_VALUE)
+    val xPointMin = remember(allPoints) { allPoints.minOfOrNull { it.x } ?: 0f }
+    val xPointMax = remember(allPoints) { allPoints.maxOfOrNull { it.x } ?: 1f }
+    val xDataMin = remember(xPointMin, xReferences) {
+        minOf(xPointMin, xReferences.minOrNull() ?: Float.MAX_VALUE)
     }
-    val xDataMax = remember(allPoints, xReferences) {
-        maxOf(allPoints.maxOfOrNull { it.x } ?: 1f, xReferences.maxOrNull() ?: -Float.MAX_VALUE)
+    val xDataMax = remember(xPointMax, xReferences) {
+        maxOf(xPointMax, xReferences.maxOrNull() ?: -Float.MAX_VALUE)
     }
     val xBounds = remember(xDataMin, xDataMax, axisConfig.xMin, axisConfig.xMax) {
         resolveAxisBounds(
@@ -196,11 +199,13 @@ fun LineChart(
     val currentXMin by rememberUpdatedState(xMin)
     val currentXMax by rememberUpdatedState(xMax)
 
-    val yDataMax = remember(allPoints, yReferences) {
-        maxOf(allPoints.maxOfOrNull { it.y } ?: 1f, yReferences.maxOrNull() ?: -Float.MAX_VALUE)
+    val yPointMax = remember(allPoints) { allPoints.maxOfOrNull { it.y } ?: 1f }
+    val yPointMin = remember(allPoints) { allPoints.minOfOrNull { it.y } ?: 0f }
+    val yDataMax = remember(yPointMax, yReferences) {
+        maxOf(yPointMax, yReferences.maxOrNull() ?: -Float.MAX_VALUE)
     }
-    val yRawMin = remember(allPoints, yReferences) {
-        minOf(allPoints.minOfOrNull { it.y } ?: 0f, yReferences.minOrNull() ?: Float.MAX_VALUE)
+    val yRawMin = remember(yPointMin, yReferences) {
+        minOf(yPointMin, yReferences.minOrNull() ?: Float.MAX_VALUE)
     }
     val yDataMin = remember(yRawMin, axisConfig.includeZeroInYRange) {
         if (axisConfig.includeZeroInYRange) min(0f, yRawMin) else yRawMin
@@ -327,10 +332,12 @@ fun LineChart(
 
     // Per edge, not per axis: an axis that cuts at one end must not clip the other,
     // where a mark sitting on the bound would lose its outer half.
-    val lowXCuts = xIsPinned && xMin > xDataMin
-    val highXCuts = xIsPinned && xMax < xDataMax
-    val topCuts = yIsPinned && yMax < yDataMax
-    val bottomCuts = yIsPinned && yMin > yRawMin
+    // Against the points alone. Reference lines are drawn unclipped and skipped when
+    // off-axis, so one outside a pinned range must not shave the series at the edge.
+    val lowXCuts = xIsPinned && xMin > xPointMin
+    val highXCuts = xIsPinned && xMax < xPointMax
+    val topCuts = yIsPinned && yMax < yPointMax
+    val bottomCuts = yIsPinned && yMin > yPointMin
 
     // ── Cached PathEffects: building one per frame allocates in the draw pass ──
     val dashEffect = remember(axisConfig.dashedGrid) {
@@ -339,11 +346,11 @@ fun LineChart(
     // Keyed on what the draw pass walks, not on the dataset: a series on its way
     // out is still drawn, and looking it up in a map built from the dataset misses,
     // turning a derived line solid exactly as it leaves.
-    val seriesDashEffects = remember(renderSeries, density) {
-        renderSeries.associate { s -> s.id to s.dashPattern.toPathEffect(density) }
+    val seriesDashStrokes = remember(renderSeries, density) {
+        renderSeries.associate { s -> s.id to s.dashPattern.toDashStroke(density) }
     }
-    val referenceLineEffects = remember(axisConfig.referenceLines, density) {
-        axisConfig.referenceLines.map { it.dashPattern.toPathEffect(density) }
+    val referenceLineStrokes = remember(axisConfig.referenceLines, density) {
+        axisConfig.referenceLines.map { it.dashPattern.toDashStroke(density) }
     }
 
     // ── Pre-measured value labels (zero text measurement in draw) ──
@@ -376,8 +383,14 @@ fun LineChart(
     // Only the lines that are drawn: announcing one that falls off the axis tells a
     // listener about a threshold no one else can see.
     val announcedReferenceLines =
-        remember(axisConfig.referenceLines, xMin, xMax, yMin, yMax) {
-            axisConfig.referenceLines.filter { it.isOnAxis(xMin, xMax, yMin, yMax) }
+        remember(axisConfig.referenceLines, series, xMin, xMax, yMin, yMax) {
+            // A chart with no series draws nothing at all, its reference lines
+            // included, so it must not speak of a threshold either.
+            if (series.isEmpty()) {
+                emptyList()
+            } else {
+                axisConfig.referenceLines.filter { it.isOnAxis(xMin, xMax, yMin, yMax) }
+            }
         }
     val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle, announcedReferenceLines) {
         buildString {
@@ -671,10 +684,11 @@ fun LineChart(
                     n = n,
                     curveType = style.curveType
                 )
+                val dash = seriesDashStrokes[s.id] ?: DashStroke.Solid
                 val strokeStyle = Stroke(
                     width = s.strokeWidth.toPx(),
-                    cap = dashCapFor(s.dashPattern),
-                    pathEffect = seriesDashEffects[s.id]
+                    cap = dash.cap,
+                    pathEffect = dash.effect
                 )
                 if (s.hasStrokeGradient) {
                     drawPath(
@@ -714,7 +728,7 @@ fun LineChart(
         for (i in 0 until references.size) {
             val line = references[i]
             if (!line.isOnAxis(xMin, xMax, yMin, yMax)) continue
-            val effect = referenceLineEffects.getOrNull(i)
+            val dash = referenceLineStrokes.getOrNull(i) ?: DashStroke.Solid
             val lineWidth = line.strokeWidth.toPx()
             when (line.axis) {
                 ReferenceLineAxis.X -> {
@@ -724,8 +738,8 @@ fun LineChart(
                         start = Offset(x = x, y = chartTop),
                         end = Offset(x = x, y = chartBottom),
                         strokeWidth = lineWidth,
-                        cap = dashCapFor(line.dashPattern),
-                        pathEffect = effect
+                        cap = dash.cap,
+                        pathEffect = dash.effect
                     )
                 }
 
@@ -736,8 +750,8 @@ fun LineChart(
                         start = Offset(x = chartLeft, y = y),
                         end = Offset(x = chartRight, y = y),
                         strokeWidth = lineWidth,
-                        cap = dashCapFor(line.dashPattern),
-                        pathEffect = effect
+                        cap = dash.cap,
+                        pathEffect = dash.effect
                     )
                 }
             }
@@ -752,8 +766,14 @@ fun LineChart(
                 val layouts = valueLabelLayouts[s.id] ?: continue
                 val xs = xBuffers[s.id] ?: continue
                 val ys = yBuffers[s.id] ?: continue
-                val labelColor =
-                    if (valueLabelStyle.color.isSpecified) valueLabelStyle.color else s.color
+                // A style that names no colour keeps the guarded default rather than
+                // silently opting into series colours — TextStyle() leaves it
+                // unspecified, so the sentinel would fire on the commonest call.
+                val labelColor = when {
+                    valueLabels.useSeriesColor -> s.color
+                    valueLabelStyle.color.isSpecified -> valueLabelStyle.color
+                    else -> ValueLabelTextStyle.color
+                }
                 val n = min(s.points.size, layouts.size)
                 // Walked left to right on screen rather than through the data, so
                 // the label kept out of a colliding pair is the leftmost one

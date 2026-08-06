@@ -235,7 +235,8 @@ internal fun LineChartDemoScreen(
             curveType = curveType,
             valueLabels = LineValueLabelConfig(
                 enabled = showValues,
-                textStyle = TextStyle(color = colors.onSurface, fontSize = 10.sp)
+                // Copied from the default rather than rebuilt, which keeps its weight.
+                textStyle = LineValueLabelConfig().textStyle.copy(color = colors.onSurface)
             )
         )
     }

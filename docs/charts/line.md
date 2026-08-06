@@ -171,16 +171,18 @@ dropped, so a crowded chart shows what fits rather than stacking text on text. T
 applies across series as well as within one.
 
 They are not kept off *lines*, only off each other, so on a busy multi-series chart
-a number can still land on a neighbouring stroke. Giving `textStyle` a
-`Color.Unspecified` makes each label take its own series' colour, which says which
-line it belongs to:
+a number can still land on a neighbouring stroke. `useSeriesColor` prints each label
+in its own series' colour, which says which line it belongs to:
 
 ```kotlin
-LineValueLabelConfig(enabled = true, textStyle = TextStyle(color = Color.Unspecified))
+LineValueLabelConfig(enabled = true, useSeriesColor = true)
 ```
 
-The default tone is a dark slate that holds WCAG AA on a white surface. On a dark
-surface, set a `textStyle` colour of your own — the sample does.
+The default tone is a dark slate that holds WCAG AA on a white surface, and a
+`textStyle` naming no colour of its own keeps it — so `MaterialTheme.typography`
+styles give you their font at the guarded tone. On a dark surface set a colour
+yourself, as the sample does; `LineValueLabelConfig().textStyle.copy(color = …)`
+keeps the default weight along with it.
 
 The text comes from the value in your data, not the animated one, so it never
 counts up during the entry animation.

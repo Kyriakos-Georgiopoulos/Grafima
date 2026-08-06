@@ -61,13 +61,6 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
 
-        // Skiko's native library, which a desktop app loads at startup and a plain
-        // unit test does not. Without it, merely constructing an AxisConfig throws:
-        // its dashEffect default calls through to Skia.
-        jvmTest.dependencies {
-            implementation(compose.desktop.currentOs)
-        }
-
         // Compose UI tests live in src/uiTest and are compiled into BOTH test
         // targets: iOS runs them on a simulator, Android as instrumented tests.
         // Sharing the directory (rather than a dependsOn edge) keeps KMP's

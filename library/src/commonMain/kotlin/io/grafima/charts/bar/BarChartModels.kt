@@ -132,7 +132,10 @@ data class AxisConfig(
         fontWeight = FontWeight.SemiBold
     ),
     val yAxisLabelPadding: Dp = 12.dp,
-    @Deprecated("Use gridDashPattern, which compares by value and needs no renderer")
+    @Deprecated(
+        "Superseded by gridDashPattern, which compares by value and needs no renderer. " +
+            "Removed in 2.0."
+    )
     val dashEffect: PathEffect? = null,
     val gridDashPattern: DashPattern? = DashPattern(dash = 5.dp, gap = 5.dp)
 )
