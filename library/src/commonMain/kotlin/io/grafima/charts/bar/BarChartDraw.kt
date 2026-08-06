@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 /** Horizontal grid lines with y-axis labels, plus the baseline. */
 internal fun DrawScope.drawVerticalGrid(
     axisConfig: AxisConfig,
+    gridPathEffect: PathEffect?,
     yAxisTextLayouts: Map<Int, TextLayoutResult>,
     yAxisWidthPx: Float,
     topSpacePx: Float,
@@ -54,7 +56,7 @@ internal fun DrawScope.drawVerticalGrid(
                         y = yPos
                     ),
                     strokeWidth = 1.dp.toPx(),
-                    pathEffect = axisConfig.dashEffect
+                    pathEffect = gridPathEffect
                 )
             }
 
@@ -91,6 +93,7 @@ internal fun DrawScope.drawVerticalGrid(
 /** Vertical grid lines with value labels below, plus the zero line. */
 internal fun DrawScope.drawHorizontalGrid(
     axisConfig: AxisConfig,
+    gridPathEffect: PathEffect?,
     yAxisTextLayouts: Map<Int, TextLayoutResult>,
     chartLeft: Float,
     chartRight: Float,
@@ -114,7 +117,7 @@ internal fun DrawScope.drawHorizontalGrid(
                     start = Offset(x = gridX, y = topPadPx),
                     end = Offset(x = gridX, y = chartBottom),
                     strokeWidth = 1.dp.toPx(),
-                    pathEffect = axisConfig.dashEffect
+                    pathEffect = gridPathEffect
                 )
             }
 

@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.grafima.charts.line.DashPattern
+import io.grafima.charts.DashPattern
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineChartStyle
 import io.grafima.charts.line.LineCurveType
@@ -233,7 +233,10 @@ internal fun LineChartDemoScreen(
     val chartStyle = remember(curveType, showValues, colors) {
         LineChartStyle(
             curveType = curveType,
-            valueLabels = LineValueLabelConfig(enabled = showValues, color = colors.onSurface)
+            valueLabels = LineValueLabelConfig(
+                enabled = showValues,
+                textStyle = TextStyle(color = colors.onSurface, fontSize = 10.sp)
+            )
         )
     }
     val targetLine = remember(colors) {

@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package io.grafima.charts.line
+package io.grafima.charts
 
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 /**
@@ -58,6 +60,21 @@ class DashPatternTest {
     fun `a negative length draws solid`() {
         assertNull(intervals(dash = 10.dp, gap = (-5).dp))
         assertNull(intervals(dash = (-10).dp, gap = 5.dp))
+    }
+
+    @Test
+    fun `two patterns of the same lengths are equal`() {
+        // Not a data class, so this is hand-written and can be broken by hand. A
+        // config holding an unequal pattern would defeat recomposition skipping.
+        assertEquals(DashPattern(10.dp, 5.dp), DashPattern(10.dp, 5.dp))
+        assertEquals(DashPattern(10.dp, 5.dp).hashCode(), DashPattern(10.dp, 5.dp).hashCode())
+        assertNotEquals(DashPattern(10.dp, 5.dp), DashPattern(10.dp, 6.dp))
+        assertNotEquals(DashPattern(10.dp, 5.dp), DashPattern(9.dp, 5.dp))
+    }
+
+    @Test
+    fun `a pattern reads as its lengths`() {
+        assertEquals("DashPattern(dash=10.0.dp, gap=5.0.dp)", DashPattern(10.dp, 5.dp).toString())
     }
 
     @Test

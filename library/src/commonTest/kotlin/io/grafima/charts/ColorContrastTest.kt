@@ -108,7 +108,7 @@ class ColorContrastTest {
         assertMeetsAA("Y-axis label", AxisConfig().axisLabelTextStyle.color, Color.White)
         assertMeetsAA("Line axis label", LineAxisConfig().labelColor, Color.White)
         assertMeetsAA("Line legend label", LegendLabelTextStyle.color, Color.White)
-        assertMeetsAA("Line value label", LineValueLabelConfig().color, Color.White)
+        assertMeetsAA("Line value label", LineValueLabelConfig().textStyle.color, Color.White)
     }
 
     private companion object {

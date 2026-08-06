@@ -20,9 +20,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import io.grafima.charts.DashPattern
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
@@ -223,30 +224,6 @@ internal fun computePlotInsets(
 }
 
 /**
- * [pattern] in pixels, or null when it describes a solid line.
- *
- * A length that is negative or not finite, or a pattern with nothing drawn and
- * nothing skipped, would leave Skia with no line at all — solid is the truthful
- * fallback, since the caller asked for a line either way.
- */
-internal fun dashIntervalsOf(pattern: DashPattern?, density: Density): FloatArray? {
-    if (pattern == null) return null
-    val dash = with(density) { pattern.dash.toPx() }
-    val gap = with(density) { pattern.gap.toPx() }
-    if (!dash.isFinite() || !gap.isFinite() || dash < 0f || gap < 0f) return null
-    return if (dash + gap > 0f) floatArrayOf(dash, gap) else null
-}
-
-/**
- * [pattern] as a [PathEffect], or null for a solid line.
- *
- * Built once and held, never per frame: the chart and [LineLegend] both need it,
- * and they have to agree or the key is drawn solid beside a dashed line.
- */
-internal fun DashPattern?.toPathEffect(density: Density): PathEffect? =
-    dashIntervalsOf(this, density)?.let(PathEffect::dashPathEffect)
-
-/**
  * The boxes value labels have already taken, so the next one can find a free spot.
  *
  * One set for the whole chart rather than one per series: two series crossing puts
@@ -295,6 +272,20 @@ internal fun valueLabelLeft(
     chartLeft: Float,
     chartRight: Float
 ): Float = (pointX - labelWidth / 2f).coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
+
+/**
+ * The cap a dashed stroke needs.
+ *
+ * A round cap reaches half the stroke width past each end of a dash, so a gap
+ * narrower than the stroke closes up and the line draws solid. Butt ends keep the
+ * gap the caller asked for — except for a zero-length dash, which has no geometry
+ * at all without a round cap to give it one, and is how a dotted line is drawn.
+ */
+internal fun dashCapFor(pattern: DashPattern?): StrokeCap = when {
+    pattern == null -> StrokeCap.Round
+    pattern.dash > 0.dp -> StrokeCap.Butt
+    else -> StrokeCap.Round
+}
 
 /**
  * The point to visit at [step], walking left to right across the screen.

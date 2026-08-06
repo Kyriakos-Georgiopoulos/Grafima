@@ -24,10 +24,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.DashPattern
 
 /**
  * A single data point on a line chart.
@@ -60,12 +63,16 @@ data class LineDataPoint(
 internal val AxisLabelGrey = Color(0xFF64748B)
 
 /**
- * The tone value labels are printed in. Guarded by `ColorContrastTest`.
+ * How value labels are printed by default. Guarded by `ColorContrastTest`.
  *
  * Darker than [AxisLabelGrey]: these sit inside the plot, over grid lines and area
  * fills rather than on the background.
  */
-internal val ValueLabelSlate = Color(0xFF334155)
+internal val ValueLabelTextStyle = TextStyle(
+    color = Color(0xFF334155),
+    fontSize = 10.sp,
+    fontWeight = FontWeight.Medium
+)
 
 /**
  * Whether the stroke is drawn as a gradient rather than in [LineSeries.color].
@@ -134,30 +141,6 @@ data class LineSeries(
     val dashPattern: DashPattern? = null
 )
 
-/**
- * A dash and the gap after it, repeated along a line.
- *
- * ```
- * dashPattern = DashPattern(dash = 10.dp, gap = 5.dp)
- * ```
- *
- * Lengths are in dp so a dash is the same size on every screen, rather than a
- * third of it on a 3x phone.
- *
- * A pattern that cannot be drawn — a length that is negative or not finite, or
- * both of them zero — leaves the line solid, since the caller asked for a line
- * either way.
- *
- * @param dash Length of each drawn segment. Zero with a round cap gives a dotted
- *   line.
- * @param gap Length of the blank after each dash.
- */
-@Immutable
-data class DashPattern(
-    val dash: Dp,
-    val gap: Dp
-)
-
 /** Which axis a [ReferenceLine] is fixed to. */
 enum class ReferenceLineAxis {
     /** A vertical line standing at an x value. */
@@ -194,6 +177,10 @@ enum class ReferenceLineAxis {
  * @param contentDescription What a screen reader calls this line. The line itself
  *   is not drawn with a name, so this is the only way a listener learns of it.
  *   Null or blank leaves it unannounced.
+ * @param includeInRange Widens the axis to reach this line when the data does not.
+ *   A target is usually above what has been achieved so far, and an axis fitted to
+ *   the data alone would leave the line off the chart entirely. Set false to leave
+ *   the axis to the data, and accept that the line may not be drawn.
  */
 @Immutable
 data class ReferenceLine(
@@ -202,8 +189,15 @@ data class ReferenceLine(
     val color: Color = AxisLabelGrey,
     val strokeWidth: Dp = 1.dp,
     val dashPattern: DashPattern? = null,
-    val contentDescription: String? = null
+    val contentDescription: String? = null,
+    val includeInRange: Boolean = true
 )
+
+/** The [ReferenceLine] values that [axis] must be wide enough to show. */
+internal fun List<ReferenceLine>.boundsOn(axis: ReferenceLineAxis): List<Float> =
+    mapNotNull { line ->
+        line.value.takeIf { line.includeInRange && line.axis == axis && it.isFinite() }
+    }
 
 /**
  * Groups one or more [LineSeries] into a renderable dataset.
@@ -399,18 +393,21 @@ data class LineChartStyle(
  * bury the summary the description opens with.
  *
  * @param enabled Master toggle.
- * @param formatter Converts a point's y to its printed text. Given the value from
- *   the data, not the animated one, so the text never counts up during entry.
- * @param color Text color. Defaults to a tone that holds WCAG AA on a white
- *   surface, checked by `ColorContrastTest`.
- * @param fontSize Text size.
+ * @param formatter Builds a point's printed text, as
+ *   [LineCrosshairConfig.tooltipFormatter] does for the tooltip — so two series in
+ *   different units can each carry their own. Given the point from the data, not
+ *   the animated one, so the text never counts up during entry. Return an empty
+ *   string to leave a point unlabelled, which is how you print only the last one.
+ * @param textStyle Label text. The default tone holds WCAG AA on a white surface
+ *   and is checked by `ColorContrastTest`. A [Color.Unspecified] color takes each
+ *   series' own colour instead, which says which line a number belongs to at the
+ *   cost of that guarantee.
  */
 @Immutable
 data class LineValueLabelConfig(
     val enabled: Boolean = false,
-    val formatter: (Float) -> String = { it.toInt().toString() },
-    val color: Color = ValueLabelSlate,
-    val fontSize: TextUnit = 10.sp
+    val formatter: (LineSeries, LineDataPoint) -> String = { _, p -> p.y.toInt().toString() },
+    val textStyle: TextStyle = ValueLabelTextStyle
 )
 
 /**

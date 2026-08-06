@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.rememberEffectiveReduceMotion
+import io.grafima.charts.toPathEffect
 
 /**
  * An animated bar chart with touch selection, RTL support, and accessibility.
@@ -86,6 +87,14 @@ fun BarChart(
     val entries = dataSet.entries
     val animationEngine = remember { ChartAnimationEngine() }
     val density = LocalDensity.current
+
+    // dashEffect is deprecated but still honoured, and reading it is the only way to
+    // keep a caller who set one from silently losing their dashes. The suppression
+    // is that read, and comes out when the property does.
+    @Suppress("DEPRECATION")
+    val gridPathEffect = remember(axisConfig.dashEffect, axisConfig.gridDashPattern, density) {
+        axisConfig.dashEffect ?: axisConfig.gridDashPattern.toPathEffect(density)
+    }
 
     SideEffect { animationEngine.syncAnimatables(entries) }
     val renderEntries = animationEngine.renderEntries(entries)
@@ -371,6 +380,7 @@ fun BarChart(
 
             drawHorizontalGrid(
                 axisConfig = axisConfig,
+                gridPathEffect = gridPathEffect,
                 yAxisTextLayouts = yAxisTextLayouts,
                 chartLeft = chartLeft,
                 chartRight = chartRight,
@@ -431,6 +441,7 @@ fun BarChart(
 
         drawVerticalGrid(
             axisConfig = axisConfig,
+            gridPathEffect = gridPathEffect,
             yAxisTextLayouts = yAxisTextLayouts,
             yAxisWidthPx = yAxisWidthPx,
             topSpacePx = topSpacePx,

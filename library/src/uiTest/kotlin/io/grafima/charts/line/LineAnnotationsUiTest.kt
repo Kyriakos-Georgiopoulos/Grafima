@@ -35,9 +35,11 @@ import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.DashPattern
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -106,15 +108,15 @@ class LineAnnotationsUiTest {
         strokeWidth = 3.dp
     )
 
-    private fun labelStyle(formatter: (Float) -> String = { it.toInt().toString() }) =
-        LineChartStyle(
-            valueLabels = LineValueLabelConfig(
-                enabled = true,
-                formatter = formatter,
-                color = Color.Red,
-                fontSize = 14.sp
-            )
+    private fun labelStyle(
+        formatter: (LineSeries, LineDataPoint) -> String = { _, p -> p.y.toInt().toString() }
+    ) = LineChartStyle(
+        valueLabels = LineValueLabelConfig(
+            enabled = true,
+            formatter = formatter,
+            textStyle = TextStyle(color = Color.Red, fontSize = 14.sp)
         )
+    )
 
     // ── Reference lines ──
 
@@ -165,6 +167,66 @@ class LineAnnotationsUiTest {
     }
 
     @Test
+    fun a_target_above_the_data_is_drawn_because_the_axis_reaches_it() = runComposeUiTest {
+        // The data peaks at 25. An axis fitted to it alone leaves a target of 60
+        // off the chart, which is the one case a reference line is drawn for.
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    showGrid = false,
+                    referenceLines = listOf(redLine(60f, ReferenceLineAxis.Y))
+                )
+            )
+        }
+        waitForIdle()
+
+        assertTrue(
+            onRoot().captureToImage().countReddish() > 0,
+            "a target above the data was left off the chart"
+        )
+    }
+
+    @Test
+    fun a_line_that_opts_out_of_the_range_leaves_the_axis_alone() = runComposeUiTest {
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    showGrid = false,
+                    referenceLines = listOf(
+                        redLine(60f, ReferenceLineAxis.Y).copy(includeInRange = false)
+                    )
+                )
+            )
+        }
+        waitForIdle()
+
+        assertEquals(
+            0,
+            onRoot().captureToImage().countReddish(),
+            "the axis widened for a line that opted out"
+        )
+    }
+
+    @Test
+    fun a_dash_with_a_gap_narrower_than_its_stroke_still_shows_gaps() = runComposeUiTest {
+        // Round caps reach half the stroke past each dash and close a short gap,
+        // drawing a line that is solid on the chart and dashed in the legend.
+        var pattern by mutableStateOf<DashPattern?>(null)
+        setContent { Chart(data = dataSet(dashPattern = pattern)) }
+        waitForIdle()
+        val solid = onRoot().captureToImage().countBluish()
+
+        pattern = DashPattern(dash = 6.dp, gap = 2.dp)
+        waitForIdle()
+        val dashed = onRoot().captureToImage().countBluish()
+
+        assertTrue(
+            dashed < solid * 9 / 10,
+            "a 2dp gap on a 4dp stroke painted $dashed against a solid $solid"
+        )
+    }
+
+    @Test
     fun a_reference_line_off_the_axis_is_not_drawn_at_the_edge_instead() = runComposeUiTest {
         // Clamping would put the line on a boundary, marking a threshold that is
         // nowhere near the value the caller gave.
@@ -172,6 +234,11 @@ class LineAnnotationsUiTest {
             Chart(
                 axisConfig = LineAxisConfig(
                     showGrid = false,
+                    // Pinned, so the axis cannot widen to reach them.
+                    xMin = 0f,
+                    xMax = 2f,
+                    yMin = 0f,
+                    yMax = 40f,
                     referenceLines = listOf(
                         redLine(99f, ReferenceLineAxis.X),
                         redLine(-99f, ReferenceLineAxis.Y)
@@ -435,7 +502,7 @@ class LineAnnotationsUiTest {
                     showXLabels = false,
                     showYLabels = false
                 ),
-                style = labelStyle { "88888" }
+                style = labelStyle { _, _ -> "88888" }
             )
         }
         waitForIdle()
@@ -465,7 +532,7 @@ class LineAnnotationsUiTest {
                     showXLabels = false,
                     showYLabels = false
                 ),
-                style = labelStyle { "88888" }
+                style = labelStyle { _, _ -> "88888" }
             )
         }
         waitForIdle()
@@ -499,7 +566,7 @@ class LineAnnotationsUiTest {
                     showYLabels = false,
                     yMax = pinned
                 ),
-                style = labelStyle { "88888" }
+                style = labelStyle { _, _ -> "88888" }
             )
         }
         waitForIdle()

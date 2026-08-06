@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.dashIntervalsOf
 import kotlin.math.min
 
 /** [LineLegend]'s default label style. Guarded by `ColorContrastTest`. */

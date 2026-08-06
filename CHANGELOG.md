@@ -27,14 +27,17 @@ behaviour do not.
 - `LineAxisConfig.referenceLines` draws a threshold across the plot at a fixed axis
   value — a target, a limit, or "now" on an axis of hours. Each `ReferenceLine`
   names its own axis, so it cannot be given both an x and a y. Drawn over the
-  series, since a marker behind the data is not a marker, and skipped rather than
-  clamped when its value is off the axis. `contentDescription` announces it to a
+  series, since a marker behind the data is not a marker. The axis widens to reach
+  the line, because a target is normally above what has been achieved so far and an
+  axis fitted to the data would leave it off the chart; `includeInRange = false`
+  opts out, and a line still outside the range is skipped rather than clamped. `contentDescription` announces it to a
   screen reader through `LineA11yConfig.referenceLineDescriptionBuilder`. See
   [docs/charts/line.md](docs/charts/line.md).
 - `LineSeries.dashPattern` dashes a stroke, which is what tells a reader a series
   is derived rather than measured — a moving average against the readings it
   averages. `LineLegend` dashes that series' swatch to match. The area fill is
-  never dashed.
+  never dashed. `DashPattern` lives in `io.grafima.charts`, since the bar chart's
+  grid takes one too.
 - `LineChartStyle.valueLabels` prints each point's value beside it, rather than
   only in the tooltip once something is selected, which suits a chart of few
   points and a screenshot of one. Labels are placed above their point, or below
@@ -61,10 +64,16 @@ behaviour do not.
 - The line chart no longer selects a point that lies outside a pinned x range,
   by touch or through a screen reader's actions menu. Such points are not drawn,
   so selecting one moved the crosshair somewhere nothing was visible.
-- `LineAxisConfig` gained six constructor parameters and `LineA11yConfig` one,
-  which changes their generated constructor and `copy` signatures.
-  Source-compatible, but an app built against 1.0.0 must be recompiled against
-  this release rather than swapped in place.
+- `LineAxisConfig` gained seven constructor parameters, `LineA11yConfig` two, and
+  `LineChartStyle` and `LineSeries` one each, which changes their generated
+  constructor and `copy` signatures. Source-compatible, but an app built against
+  1.0.0 must be recompiled against this release rather than swapped in place.
+- `bar.AxisConfig.dashEffect` is deprecated in favour of `gridDashPattern`, and now
+  defaults to null. A `PathEffect` compares by identity, so every default
+  `AxisConfig()` was unequal to every other and defeated the recomposition skipping
+  the charts rely on — and it could not be constructed at all without the graphics
+  runtime loaded, which put it out of reach of a plain unit test. The default grid
+  looks the same; an explicit `dashEffect` still wins over `gridDashPattern`.
 
 ### Fixed
 

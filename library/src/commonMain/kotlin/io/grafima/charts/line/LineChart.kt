@@ -35,10 +35,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.rememberEffectiveReduceMotion
+import io.grafima.charts.toPathEffect
 import kotlin.math.max
 import kotlin.math.min
 
@@ -168,8 +169,20 @@ fun LineChart(
 
     // ── Data ranges (recomputed only on data change) ──
     val allPoints = remember(renderSeries) { renderSeries.flatMap { it.points } }
-    val xDataMin = remember(allPoints) { allPoints.minOfOrNull { it.x } ?: 0f }
-    val xDataMax = remember(allPoints) { allPoints.maxOfOrNull { it.x } ?: 1f }
+    // A target is normally above what has been reached so far, so an axis fitted to
+    // the data alone would leave the line it marks off the chart.
+    val xReferences = remember(axisConfig.referenceLines) {
+        axisConfig.referenceLines.boundsOn(ReferenceLineAxis.X)
+    }
+    val yReferences = remember(axisConfig.referenceLines) {
+        axisConfig.referenceLines.boundsOn(ReferenceLineAxis.Y)
+    }
+    val xDataMin = remember(allPoints, xReferences) {
+        minOf(allPoints.minOfOrNull { it.x } ?: 0f, xReferences.minOrNull() ?: Float.MAX_VALUE)
+    }
+    val xDataMax = remember(allPoints, xReferences) {
+        maxOf(allPoints.maxOfOrNull { it.x } ?: 1f, xReferences.maxOrNull() ?: -Float.MAX_VALUE)
+    }
     val xBounds = remember(xDataMin, xDataMax, axisConfig.xMin, axisConfig.xMax) {
         resolveAxisBounds(
             dataMin = xDataMin,
@@ -183,8 +196,12 @@ fun LineChart(
     val currentXMin by rememberUpdatedState(xMin)
     val currentXMax by rememberUpdatedState(xMax)
 
-    val yDataMax = remember(allPoints) { allPoints.maxOfOrNull { it.y } ?: 1f }
-    val yRawMin = remember(allPoints) { allPoints.minOfOrNull { it.y } ?: 0f }
+    val yDataMax = remember(allPoints, yReferences) {
+        maxOf(allPoints.maxOfOrNull { it.y } ?: 1f, yReferences.maxOrNull() ?: -Float.MAX_VALUE)
+    }
+    val yRawMin = remember(allPoints, yReferences) {
+        minOf(allPoints.minOfOrNull { it.y } ?: 0f, yReferences.minOrNull() ?: Float.MAX_VALUE)
+    }
     val yDataMin = remember(yRawMin, axisConfig.includeZeroInYRange) {
         if (axisConfig.includeZeroInYRange) min(0f, yRawMin) else yRawMin
     }
@@ -331,26 +348,22 @@ fun LineChart(
 
     // ── Pre-measured value labels (zero text measurement in draw) ──
     val valueLabels = style.valueLabels
-    val valueLabelStyle = remember(valueLabels.color, valueLabels.fontSize) {
-        TextStyle(
-            color = valueLabels.color,
-            fontSize = valueLabels.fontSize,
-            fontWeight = FontWeight.Medium
-        )
-    }
+    val valueLabelStyle = valueLabels.textStyle
     // Measured off the data rather than the animated value, so the entry wave does
     // not re-measure every point on every frame — and the printed number is the
     // one the point actually holds.
-    val valueLabelLayouts = remember(series, valueLabelStyle, textMeasurer, valueLabels) {
+    // Keyed on renderSeries for the same reason as the dash effects above: a series
+    // on its way out is still drawn, and its numbers should ride down with it.
+    val valueLabelLayouts = remember(renderSeries, valueLabelStyle, textMeasurer, valueLabels) {
         if (!valueLabels.enabled) {
             emptyMap()
         } else {
             // Measured once per distinct string: real data repeats its values, and
             // a point that loses its place to a collision is measured all the same.
             val measured = mutableMapOf<String, TextLayoutResult>()
-            series.associate { s ->
+            renderSeries.associate { s ->
                 s.id to s.points.map { p ->
-                    val text = valueLabels.formatter(p.y)
+                    val text = valueLabels.formatter(s, p)
                     measured.getOrPut(text) {
                         textMeasurer.measure(text = text, style = valueLabelStyle, maxLines = 1)
                     }
@@ -594,6 +607,8 @@ fun LineChart(
         val topSlack = if (topCuts) 0f else noClip
         val bottomSlack = if (bottomCuts) 0f else noClip
         val dotRadiusPx = style.dotRadius.toPx()
+        // Only a drawn dot needs clearing; an unused radius must not push labels off.
+        val markRadiusPx = if (style.showDots) dotRadiusPx else 0f
         renderSeries.forEach { s ->
             val n = s.points.size
             if (n == 0) return@forEach
@@ -658,7 +673,7 @@ fun LineChart(
                 )
                 val strokeStyle = Stroke(
                     width = s.strokeWidth.toPx(),
-                    cap = StrokeCap.Round,
+                    cap = dashCapFor(s.dashPattern),
                     pathEffect = seriesDashEffects[s.id]
                 )
                 if (s.hasStrokeGradient) {
@@ -709,6 +724,7 @@ fun LineChart(
                         start = Offset(x = x, y = chartTop),
                         end = Offset(x = x, y = chartBottom),
                         strokeWidth = lineWidth,
+                        cap = dashCapFor(line.dashPattern),
                         pathEffect = effect
                     )
                 }
@@ -720,6 +736,7 @@ fun LineChart(
                         start = Offset(x = chartLeft, y = y),
                         end = Offset(x = chartRight, y = y),
                         strokeWidth = lineWidth,
+                        cap = dashCapFor(line.dashPattern),
                         pathEffect = effect
                     )
                 }
@@ -735,6 +752,8 @@ fun LineChart(
                 val layouts = valueLabelLayouts[s.id] ?: continue
                 val xs = xBuffers[s.id] ?: continue
                 val ys = yBuffers[s.id] ?: continue
+                val labelColor =
+                    if (valueLabelStyle.color.isSpecified) valueLabelStyle.color else s.color
                 val n = min(s.points.size, layouts.size)
                 // Walked left to right on screen rather than through the data, so
                 // the label kept out of a colliding pair is the leftmost one
@@ -755,7 +774,7 @@ fun LineChart(
                     val ly = valueLabelTop(
                         pointY = ys[i],
                         labelHeight = layout.size.height.toFloat(),
-                        offset = dotRadiusPx + valueGap + s.strokeWidth.toPx() / 2f,
+                        offset = markRadiusPx + valueGap + s.strokeWidth.toPx() / 2f,
                         chartTop = chartTop,
                         chartBottom = chartBottom,
                         preferBelow = valueLabelPrefersBelow(
@@ -771,7 +790,11 @@ fun LineChart(
                         bottom = ly + layout.size.height
                     )
                     if (!free) continue
-                    drawText(textLayoutResult = layout, topLeft = Offset(x = lx, y = ly))
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(x = lx, y = ly),
+                        color = labelColor
+                    )
                 }
             }
         }

@@ -17,6 +17,7 @@
 package io.grafima.charts.line
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -65,6 +66,35 @@ class ReferenceLinePlacementTest {
         assertTrue(line(50f, ReferenceLineAxis.Y).onAxis())
         assertTrue(line(5f, ReferenceLineAxis.X).onAxis())
         assertTrue(line(5f, ReferenceLineAxis.Y).onAxis())
+    }
+
+    @Test
+    fun `a line the axis has to reach is counted into its range`() {
+        // A target sits above what has been achieved so far, so an axis fitted to
+        // the data alone leaves it off the chart — the one case the feature exists
+        // for is the one that would draw nothing.
+        val lines = listOf(
+            ReferenceLine(100f, ReferenceLineAxis.Y),
+            ReferenceLine(5f, ReferenceLineAxis.X)
+        )
+        assertEquals(listOf(100f), lines.boundsOn(ReferenceLineAxis.Y))
+        assertEquals(listOf(5f), lines.boundsOn(ReferenceLineAxis.X))
+    }
+
+    @Test
+    fun `a line that opts out leaves the axis to the data`() {
+        val lines = listOf(ReferenceLine(100f, ReferenceLineAxis.Y, includeInRange = false))
+        assertEquals(emptyList(), lines.boundsOn(ReferenceLineAxis.Y))
+    }
+
+    @Test
+    fun `a value that is not a number cannot widen the axis`() {
+        // It would carry NaN into every bound computed from it.
+        val lines = listOf(
+            ReferenceLine(Float.NaN, ReferenceLineAxis.Y),
+            ReferenceLine(Float.POSITIVE_INFINITY, ReferenceLineAxis.Y)
+        )
+        assertEquals(emptyList(), lines.boundsOn(ReferenceLineAxis.Y))
     }
 
     @Test

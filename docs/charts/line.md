@@ -89,9 +89,11 @@ LineSeries(
 fill under a dashed stroke is not dashed — the dash describes the line, not the
 region beneath it.
 
-A `dash` of `0.dp` gives a dotted line, since strokes have round caps. A pattern
-that could not be drawn at all — a negative length, or both lengths zero — leaves
-the line solid.
+A `dash` of `0.dp` gives a dotted line. A pattern that could not be drawn at all —
+a negative length, or both lengths zero — leaves the line solid.
+
+`DashPattern` lives in `io.grafima.charts`, not the line package, because the bar
+chart's grid takes one too.
 
 ## Reference lines
 
@@ -120,6 +122,12 @@ axisConfig = LineAxisConfig(
 Each line names the axis it is fixed to, so `value` is never ambiguous. `X` stands
 a vertical line at an x value; `Y` lays a horizontal one at a y value.
 
+The axis widens to reach the line. A target is normally above what has been
+achieved so far, and an axis fitted to the data alone would leave it off the chart
+— so `ReferenceLine(100f, Y)` on data peaking at 62 pulls the axis up to 100. Set
+`includeInRange = false` to leave the axis to the data, and accept that the line
+may then fall outside it and not be drawn.
+
 They are drawn over the series. A marker hidden behind an area fill is not a
 marker, and the crosshair still draws over them.
 
@@ -145,15 +153,34 @@ it.
 style = LineChartStyle(
     valueLabels = LineValueLabelConfig(
         enabled = true,
-        formatter = { "${it.toInt()}g" }
+        formatter = { series, point ->
+            if (series.id == "margin") "${point.y.toInt()}%" else "€${point.y.toInt()}"
+        }
     )
 )
 ```
 
-Labels sit above their point, or below it where the plot has no room above. One
-that would overlap a label already drawn is dropped, so a crowded chart shows what
-fits rather than stacking text on text. That applies across series as well as
-within one, so two lines crossing do not print over each other.
+`formatter` takes the series as well as the point, as `tooltipFormatter` does, so
+two series in different units each carry their own. Return an empty string to leave
+a point unlabelled — that is how you print only the last one.
+
+Labels take the side of their point the curve leaves open: below in a valley, above
+on a peak, so they do not land on the line itself. Where the plot has no room on
+that side they go to the other. One that would overlap a label already drawn is
+dropped, so a crowded chart shows what fits rather than stacking text on text. That
+applies across series as well as within one.
+
+They are not kept off *lines*, only off each other, so on a busy multi-series chart
+a number can still land on a neighbouring stroke. Giving `textStyle` a
+`Color.Unspecified` makes each label take its own series' colour, which says which
+line it belongs to:
+
+```kotlin
+LineValueLabelConfig(enabled = true, textStyle = TextStyle(color = Color.Unspecified))
+```
+
+The default tone is a dark slate that holds WCAG AA on a white surface. On a dark
+surface, set a `textStyle` colour of your own — the sample does.
 
 The text comes from the value in your data, not the animated one, so it never
 counts up during the entry animation.
@@ -162,7 +189,8 @@ Nothing is added to the screen reader description. A listener already reaches an
 value by selecting its point, and reading all of them out up front would bury the
 summary the description opens with.
 
-A point outside a pinned range prints no value, matching its dot and crosshair.
+A point outside a pinned range prints no value, matching its dot. The crosshair
+still appears for a point off the y range, as it does without labels.
 
 ## Curves
 

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.DashPattern
 
 /**
  * A single gradient color stop: a [color] anchored at a fractional [position]
@@ -112,7 +113,12 @@ data class ChartStyle(
  * @property showYAxis Whether to draw Y-axis value labels.
  * @property showGridLines Whether to draw horizontal grid lines.
  * @property yAxisSteps Number of evenly-spaced grid lines and Y-axis labels.
- * @property dashEffect [PathEffect] applied to grid lines. Pass null for solid lines.
+ * @property gridDashPattern Dashes the grid lines. Null draws them solid.
+ * @property dashEffect Superseded by [gridDashPattern]. A [PathEffect] compares by
+ *   identity, so a config holding one is never equal to another and defeats the
+ *   recomposition skipping every chart relies on — and it cannot be constructed at
+ *   all without the graphics runtime loaded, which puts it out of reach of a plain
+ *   unit test. Set, it still wins, so existing code keeps working.
  */
 @Immutable
 data class AxisConfig(
@@ -126,7 +132,9 @@ data class AxisConfig(
         fontWeight = FontWeight.SemiBold
     ),
     val yAxisLabelPadding: Dp = 12.dp,
-    val dashEffect: PathEffect? = PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
+    @Deprecated("Use gridDashPattern, which compares by value and needs no renderer")
+    val dashEffect: PathEffect? = null,
+    val gridDashPattern: DashPattern? = DashPattern(dash = 5.dp, gap = 5.dp)
 )
 
 /**

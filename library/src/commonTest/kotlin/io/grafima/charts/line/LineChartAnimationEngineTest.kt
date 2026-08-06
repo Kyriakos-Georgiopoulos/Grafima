@@ -18,6 +18,7 @@ package io.grafima.charts.line
 
 import androidx.compose.animation.core.snap
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.DashPattern
 import io.grafima.charts.runEngineTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
