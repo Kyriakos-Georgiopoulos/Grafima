@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -63,6 +64,9 @@ enum class LineLegendOrientation {
  * A series drawn with [LineSeries.strokeGradientColors] gets a gradient swatch, so
  * the key matches the line it names.
  *
+ * A screen reader reaches it as one item rather than one per series, since the
+ * chart's own description already names them.
+ *
  * [Horizontal][LineLegendOrientation.Horizontal] wraps onto further lines when the
  * entries do not fit.
  *
@@ -84,6 +88,10 @@ fun LineLegend(
     spacing: Dp = 12.dp,
     entryAlignment: Alignment.Horizontal = Alignment.Start
 ) {
+    // One stop for a screen reader, not one per series: the chart's own
+    // description already names them, and the colour is the part it cannot convey.
+    val grouped = modifier.semantics(mergeDescendants = true) { }
+
     val entries: @Composable () -> Unit = {
         dataSet.series.forEach { series ->
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -129,7 +137,7 @@ fun LineLegend(
         // Wraps: a Row measures the entries it cannot fit at zero width, which
         // collapses their swatches and breaks the labels one glyph per line.
         LineLegendOrientation.Horizontal -> FlowRow(
-            modifier = modifier,
+            modifier = grouped,
             horizontalArrangement = Arrangement.spacedBy(spacing),
             verticalArrangement = Arrangement.spacedBy(spacing / 2),
             itemVerticalAlignment = Alignment.CenterVertically,
@@ -137,7 +145,7 @@ fun LineLegend(
         )
 
         LineLegendOrientation.Vertical -> Column(
-            modifier = modifier,
+            modifier = grouped,
             verticalArrangement = Arrangement.spacedBy(spacing),
             horizontalAlignment = entryAlignment,
             content = { entries() }

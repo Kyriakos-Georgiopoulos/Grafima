@@ -26,11 +26,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onChildren
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -134,7 +139,7 @@ class LineLegendUiTest {
         }
 
     @Test
-    fun an_empty_dataset_draws_no_entries() = runComposeUiTest {
+    fun an_empty_dataset_announces_nothing() = runComposeUiTest {
         setContent {
             LineLegend(
                 dataSet = LineDataSet(series = emptyList(), contentDescription = "Nothing"),
@@ -143,8 +148,31 @@ class LineLegendUiTest {
         }
         waitForIdle()
 
-        onRoot().onChildren().assertCountEquals(0)
+        assertTrue(legendNode().spokenText().isEmpty(), "an empty legend still said something")
     }
+
+    @Test
+    fun a_screen_reader_reaches_the_legend_as_one_item_naming_every_series() = runComposeUiTest {
+        // The chart's own description already names the series; N separate stops
+        // would repeat them with no role and without the colour they map to.
+        setContent { LineLegend(dataSet = dataSet()) }
+        waitForIdle()
+
+        onRoot().onChildren().assertCountEquals(1)
+        val spoken = legendNode().spokenText()
+        assertTrue("Revenue" in spoken, "the first series was not named: $spoken")
+        assertTrue("Expenses" in spoken, "the second series was not named: $spoken")
+    }
+
+    /** The legend's own node — root is its parent and carries no text itself. */
+    private fun ComposeUiTest.legendNode(): SemanticsNodeInteraction =
+        onRoot().onChildren().onFirst()
+
+    /** Everything a screen reader would read out under this node. */
+    private fun SemanticsNodeInteraction.spokenText(): String =
+        fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)
+            ?.joinToString(" ") { it.text }
+            .orEmpty()
 
     @Test
     fun a_vertical_legend_is_taller_and_narrower_than_a_horizontal_one() = runComposeUiTest {

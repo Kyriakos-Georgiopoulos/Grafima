@@ -34,6 +34,10 @@ nothing is visible. See [the line chart guide](charts/line.md).
 Give your entries distinct labels. Two bars both labelled "Q1" produce two
 identical actions and one of them becomes unreachable.
 
+`LineLegend` is a single merged node too, for the same reason: the chart already
+names every series, so a stop per entry would repeat them without conveying the
+colour they map to.
+
 A line chart's `xAxisTitle` and `yAxisTitle` are appended to its description, so
 the numbers reach a screen reader with the unit they are in. Set neither and the
 description is exactly what the builder produced. The wording around them is

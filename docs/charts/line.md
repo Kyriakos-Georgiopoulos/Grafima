@@ -67,6 +67,10 @@ matches the line it names rather than a flat colour the line never uses.
 `Horizontal` wraps onto further lines when the entries do not fit. `Vertical`
 takes an `entryAlignment` for the edge the entries line up on.
 
+A screen reader reaches the legend as one item rather than one stop per series —
+the chart's own description already names them, and the colour is the part it
+cannot convey.
+
 ## Curves
 
 ```kotlin
