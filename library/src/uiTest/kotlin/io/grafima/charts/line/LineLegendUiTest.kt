@@ -17,6 +17,7 @@
 package io.grafima.charts.line
 
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,8 +76,10 @@ class LineLegendUiTest {
     fun every_series_is_named() = runComposeUiTest {
         setContent { LineLegend(dataSet = dataSet()) }
 
-        onNodeWithText("Revenue").assertIsDisplayed()
-        onNodeWithText("Expenses").assertIsDisplayed()
+        // Unmerged, or both resolve to the merged legend node and this asserts
+        // the same thing twice — an entry collapsed to zero width would pass.
+        onNodeWithText("Revenue", useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithText("Expenses", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -175,6 +178,30 @@ class LineLegendUiTest {
             .orEmpty()
 
     @Test
+    fun entries_that_overflow_the_width_wrap_onto_further_lines() = runComposeUiTest {
+        // A Row measures what it cannot fit at zero width, collapsing the swatch
+        // and breaking the label one glyph per line.
+        val many = LineDataSet(
+            series = (0..5).map {
+                LineSeries(
+                    id = "s$it",
+                    label = "Series number $it",
+                    points = listOf(LineDataPoint(x = 0f, y = 1f))
+                )
+            },
+            contentDescription = "Six series"
+        )
+        setContent { LineLegend(dataSet = many, modifier = Modifier.width(140.dp)) }
+        waitForIdle()
+
+        val first = onNodeWithText("Series number 0", useUnmergedTree = true)
+            .fetchSemanticsNode().size
+        val last = onNodeWithText("Series number 5", useUnmergedTree = true)
+            .fetchSemanticsNode().size
+        assertEquals(first, last, "the last entry was not laid out like the first")
+    }
+
+    @Test
     fun a_vertical_legend_is_taller_and_narrower_than_a_horizontal_one() = runComposeUiTest {
         var orientation by mutableStateOf(LineLegendOrientation.Horizontal)
         setContent { LineLegend(dataSet = dataSet(), orientation = orientation) }
@@ -235,7 +262,7 @@ class LineLegendUiTest {
             val r = (p shr 16) and 0xFF
             val g = (p shr 8) and 0xFF
             val b = p and 0xFF
-            val painted = (g > 100 || b > 100) && r < 120
+            val painted = r < 120 && (g > b + 40 || b > g + 40)
             if (!painted) return@forEachIndexed
             val x = i % width
             if (x < minX) minX = x

@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -64,8 +63,9 @@ enum class LineLegendOrientation {
  * A series drawn with [LineSeries.strokeGradientColors] gets a gradient swatch, so
  * the key matches the line it names.
  *
- * A screen reader reaches it as one item rather than one per series, since the
- * chart's own description already names them.
+ * A screen reader reaches it as one item naming every series, rather than one
+ * stop each. The colour mapping itself is visual only — the chart's own
+ * description is what carries the series to a listener.
  *
  * [Horizontal][LineLegendOrientation.Horizontal] wraps onto further lines when the
  * entries do not fit.
@@ -74,7 +74,7 @@ enum class LineLegendOrientation {
  * @param orientation Row or column layout.
  * @param textStyle Label text. Defaults to the axis label tone.
  * @param swatchWidth Length of the colour sample beside each label.
- * @param spacing Gap between entries.
+ * @param spacing Gap between entries, and half that between wrapped lines.
  * @param entryAlignment Which edge the entries line up on when
  *   [Vertical][LineLegendOrientation.Vertical]. Ignored when horizontal.
  */
@@ -83,13 +83,11 @@ fun LineLegend(
     dataSet: LineDataSet,
     modifier: Modifier = Modifier,
     orientation: LineLegendOrientation = LineLegendOrientation.Horizontal,
-    textStyle: TextStyle = TextStyle(fontSize = 12.sp, color = Color(0xFF64748B)),
+    textStyle: TextStyle = TextStyle(fontSize = 12.sp, color = AxisLabelGrey),
     swatchWidth: Dp = 18.dp,
     spacing: Dp = 12.dp,
     entryAlignment: Alignment.Horizontal = Alignment.Start
 ) {
-    // One stop for a screen reader, not one per series: the chart's own
-    // description already names them, and the colour is the part it cannot convey.
     val grouped = modifier.semantics(mergeDescendants = true) { }
 
     val entries: @Composable () -> Unit = {
@@ -97,8 +95,11 @@ fun LineLegend(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Canvas(modifier = Modifier.size(width = swatchWidth, height = 4.dp)) {
                     val y = size.height / 2f
-                    val start = Offset(x = 0f, y = y)
-                    val end = Offset(x = size.width, y = y)
+                    // Inset by the cap radius, or the round ends paint outside
+                    // the width the caller asked for.
+                    val cap = size.height / 2f
+                    val start = Offset(x = cap, y = y)
+                    val end = Offset(x = size.width - cap, y = y)
                     if (series.hasStrokeGradient) {
                         // The chart mirrors its own gradient, so the swatch has to
                         // as well or the key runs opposite to the line in RTL.

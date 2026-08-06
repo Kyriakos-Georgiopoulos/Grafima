@@ -56,6 +56,9 @@ data class LineDataPoint(
     val contentDescription: String = ""
 )
 
+/** The tone axis labels and the legend share. Guarded by `ColorContrastTest`. */
+internal val AxisLabelGrey = Color(0xFF64748B)
+
 /**
  * Whether the stroke is drawn as a gradient rather than in [LineSeries.color].
  *
@@ -207,7 +210,7 @@ data class LineAxisConfig(
     val gridStrokeWidth: Dp = 1.dp,
     val axisColor: Color = Color(0xFFE2E8F0),
     val axisStrokeWidth: Dp = 1.dp,
-    val labelColor: Color = Color(0xFF64748B),
+    val labelColor: Color = AxisLabelGrey,
     val labelFontSize: TextUnit = 10.sp,
     val yTickCount: Int = 5,
     val xLabelFormatter: (Float) -> String = { it.toInt().toString() },

@@ -67,9 +67,8 @@ matches the line it names rather than a flat colour the line never uses.
 `Horizontal` wraps onto further lines when the entries do not fit. `Vertical`
 takes an `entryAlignment` for the edge the entries line up on.
 
-A screen reader reaches the legend as one item rather than one stop per series —
-the chart's own description already names them, and the colour is the part it
-cannot convey.
+A screen reader reaches the legend as one item naming every series, rather than a
+stop each. `spacing` also sets half that gap between wrapped lines.
 
 ## Curves
 
