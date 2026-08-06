@@ -495,6 +495,32 @@ class LineChartUiTest {
     }
 
     @Test
+    fun a_tooltip_is_remeasured_when_its_text_style_changes() = runComposeUiTest {
+        // A theme flip while the crosshair is up: the panel behind the text is
+        // drawn straight from the config, so a cached layout leaves the old
+        // colour on the new background.
+        var textColor by mutableStateOf(Color.Red)
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                crosshairConfig = LineCrosshairConfig(tooltipTextColor = textColor),
+                selectedPointIndex = 1
+            )
+        }
+        waitForIdle()
+        assertTrue(onChartNode().captureToImage().countColor(Color.Red) > 0, "no tooltip text")
+
+        textColor = Color.Green
+        waitForIdle()
+
+        val image = onChartNode().captureToImage()
+        assertTrue(image.countColor(Color.Green) > 0, "the tooltip kept its old colour")
+        assertEquals(0, image.countColor(Color.Red), "the old colour is still painted")
+    }
+
+    @Test
     fun a_description_ending_in_other_punctuation_keeps_it() = runComposeUiTest {
         setContent {
             LineChart(

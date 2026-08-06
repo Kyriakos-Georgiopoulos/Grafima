@@ -44,6 +44,12 @@ behaviour do not.
   Source-compatible, but an app built against 1.0.0 must be recompiled against
   this release rather than swapped in place.
 
+### Fixed
+
+- A line chart's crosshair tooltip kept the text colour it was first drawn with,
+  so a theme change while the crosshair was up left the old colour on the new
+  panel. It is also redrawn now when the display density changes.
+
 ## [1.0.0] - 2026-07-31
 
 First release.

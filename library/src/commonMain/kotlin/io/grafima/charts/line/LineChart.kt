@@ -343,7 +343,9 @@ fun LineChart(
             ?: ""
     }
 
-    val tooltipCache = remember { mutableMapOf<String, TextLayoutResult>() }
+    val tooltipCache = remember(textMeasurer, tooltipStyle) {
+        mutableMapOf<String, TextLayoutResult>()
+    }
     val linePath = remember { Path() }
     val areaPath = remember { Path() }
     val plotInsets = remember { PlotInsets() }
