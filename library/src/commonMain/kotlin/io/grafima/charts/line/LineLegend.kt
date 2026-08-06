@@ -19,6 +19,7 @@ package io.grafima.charts.line
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -61,14 +63,16 @@ enum class LineLegendOrientation {
  * A series drawn with [LineSeries.strokeGradientColors] gets a gradient swatch, so
  * the key matches the line it names.
  *
- * [Horizontal][LineLegendOrientation.Horizontal] does not wrap. Use
- * [Vertical][LineLegendOrientation.Vertical] when the labels are long or numerous.
+ * [Horizontal][LineLegendOrientation.Horizontal] wraps onto further lines when the
+ * entries do not fit.
  *
  * @param dataSet The same dataset the chart is drawing.
  * @param orientation Row or column layout.
  * @param textStyle Label text. Defaults to the axis label tone.
  * @param swatchWidth Length of the colour sample beside each label.
  * @param spacing Gap between entries.
+ * @param entryAlignment Which edge the entries line up on when
+ *   [Vertical][LineLegendOrientation.Vertical]. Ignored when horizontal.
  */
 @Composable
 fun LineLegend(
@@ -77,7 +81,8 @@ fun LineLegend(
     orientation: LineLegendOrientation = LineLegendOrientation.Horizontal,
     textStyle: TextStyle = TextStyle(fontSize = 12.sp, color = Color(0xFF64748B)),
     swatchWidth: Dp = 18.dp,
-    spacing: Dp = 12.dp
+    spacing: Dp = 12.dp,
+    entryAlignment: Alignment.Horizontal = Alignment.Start
 ) {
     val entries: @Composable () -> Unit = {
         dataSet.series.forEach { series ->
@@ -86,9 +91,16 @@ fun LineLegend(
                     val y = size.height / 2f
                     val start = Offset(x = 0f, y = y)
                     val end = Offset(x = size.width, y = y)
-                    if (series.strokeGradientColors.size >= 2) {
+                    if (series.hasStrokeGradient) {
+                        // The chart mirrors its own gradient, so the swatch has to
+                        // as well or the key runs opposite to the line in RTL.
+                        val rtl = layoutDirection == LayoutDirection.Rtl
                         drawLine(
-                            brush = Brush.horizontalGradient(series.strokeGradientColors),
+                            brush = Brush.horizontalGradient(
+                                colors = series.strokeGradientColors,
+                                startX = if (rtl) size.width else 0f,
+                                endX = if (rtl) 0f else size.width
+                            ),
                             start = start,
                             end = end,
                             strokeWidth = size.height,
@@ -114,16 +126,20 @@ fun LineLegend(
     }
 
     when (orientation) {
-        LineLegendOrientation.Horizontal -> Row(
+        // Wraps: a Row measures the entries it cannot fit at zero width, which
+        // collapses their swatches and breaks the labels one glyph per line.
+        LineLegendOrientation.Horizontal -> FlowRow(
             modifier = modifier,
             horizontalArrangement = Arrangement.spacedBy(spacing),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(spacing / 2),
+            itemVerticalAlignment = Alignment.CenterVertically,
             content = { entries() }
         )
 
         LineLegendOrientation.Vertical -> Column(
             modifier = modifier,
             verticalArrangement = Arrangement.spacedBy(spacing),
+            horizontalAlignment = entryAlignment,
             content = { entries() }
         )
     }

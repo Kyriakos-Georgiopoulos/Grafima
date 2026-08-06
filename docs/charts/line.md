@@ -64,8 +64,8 @@ LineLegend(
 A series drawn with `strokeGradientColors` gets a gradient swatch, so the key
 matches the line it names rather than a flat colour the line never uses.
 
-`Horizontal` does not wrap — use `Vertical` when the labels are long or there are
-many of them.
+`Horizontal` wraps onto further lines when the entries do not fit. `Vertical`
+takes an `entryAlignment` for the edge the entries line up on.
 
 ## Curves
 

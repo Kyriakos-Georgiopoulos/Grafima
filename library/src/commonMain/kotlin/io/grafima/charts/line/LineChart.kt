@@ -619,7 +619,7 @@ fun LineChart(
                     curveType = style.curveType
                 )
                 val strokeStyle = Stroke(width = s.strokeWidth.toPx(), cap = StrokeCap.Round)
-                if (s.strokeGradientColors.size >= 2) {
+                if (s.hasStrokeGradient) {
                     drawPath(
                         path = linePath,
                         brush = Brush.horizontalGradient(

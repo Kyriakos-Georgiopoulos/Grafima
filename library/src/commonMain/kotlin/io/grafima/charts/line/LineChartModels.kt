@@ -56,6 +56,15 @@ data class LineDataPoint(
     val contentDescription: String = ""
 )
 
+/**
+ * Whether the stroke is drawn as a gradient rather than in [LineSeries.color].
+ *
+ * Read by the chart and by [LineLegend], which must agree or the key names a line
+ * it does not match.
+ */
+internal val LineSeries.hasStrokeGradient: Boolean
+    get() = strokeGradientColors.size >= 2
+
 /** What a screen reader should say for this point. */
 internal val LineDataPoint.spokenLabel: String
     get() = contentDescription
