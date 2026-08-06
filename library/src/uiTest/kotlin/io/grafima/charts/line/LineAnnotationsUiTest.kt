@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -258,6 +259,38 @@ class LineAnnotationsUiTest {
             .config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString(" ")
         assertTrue("Reference line: Now." in spoken, "the line was not announced: $spoken")
         assertTrue("Quarterly revenue" in spoken, "the chart's own description was lost: $spoken")
+    }
+
+    @Test
+    fun a_reference_line_off_the_axis_is_not_announced_either() = runComposeUiTest {
+        // It is not on the chart, so telling a listener about it hands them a
+        // threshold nobody else can see.
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    yMin = 0f,
+                    yMax = 40f,
+                    referenceLines = listOf(
+                        ReferenceLine(
+                            value = 20f,
+                            axis = ReferenceLineAxis.Y,
+                            contentDescription = "Target"
+                        ),
+                        ReferenceLine(
+                            value = 500f,
+                            axis = ReferenceLineAxis.Y,
+                            contentDescription = "Ceiling"
+                        )
+                    )
+                )
+            )
+        }
+        waitForIdle()
+
+        val spoken = onRoot().onChildren().onFirst().fetchSemanticsNode()
+            .config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().joinToString(" ")
+        assertTrue("Target" in spoken, "the drawn line was not announced: $spoken")
+        assertFalse("Ceiling" in spoken, "a line that is not drawn was announced: $spoken")
     }
 
     // ── Dashed series ──

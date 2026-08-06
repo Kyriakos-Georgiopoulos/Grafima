@@ -319,8 +319,11 @@ fun LineChart(
     val dashEffect = remember(axisConfig.dashedGrid) {
         if (axisConfig.dashedGrid) PathEffect.dashPathEffect(floatArrayOf(8f, 6f)) else null
     }
-    val seriesDashEffects = remember(series, density) {
-        series.associate { s -> s.id to s.dashPattern.toPathEffect(density) }
+    // Keyed on what the draw pass walks, not on the dataset: a series on its way
+    // out is still drawn, and looking it up in a map built from the dataset misses,
+    // turning a derived line solid exactly as it leaves.
+    val seriesDashEffects = remember(renderSeries, density) {
+        renderSeries.associate { s -> s.id to s.dashPattern.toPathEffect(density) }
     }
     val referenceLineEffects = remember(axisConfig.referenceLines, density) {
         axisConfig.referenceLines.map { it.dashPattern.toPathEffect(density) }
@@ -342,24 +345,32 @@ fun LineChart(
         if (!valueLabels.enabled) {
             emptyMap()
         } else {
+            // Measured once per distinct string: real data repeats its values, and
+            // a point that loses its place to a collision is measured all the same.
+            val measured = mutableMapOf<String, TextLayoutResult>()
             series.associate { s ->
                 s.id to s.points.map { p ->
-                    textMeasurer.measure(
-                        text = valueLabels.formatter(p.y),
-                        style = valueLabelStyle,
-                        maxLines = 1
-                    )
+                    val text = valueLabels.formatter(p.y)
+                    measured.getOrPut(text) {
+                        textMeasurer.measure(text = text, style = valueLabelStyle, maxLines = 1)
+                    }
                 }
             }
         }
     }
 
     // ── Accessibility ──
-    val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle, axisConfig.referenceLines) {
+    // Only the lines that are drawn: announcing one that falls off the axis tells a
+    // listener about a threshold no one else can see.
+    val announcedReferenceLines =
+        remember(axisConfig.referenceLines, xMin, xMax, yMin, yMax) {
+            axisConfig.referenceLines.filter { it.isOnAxis(xMin, xMax, yMin, yMax) }
+        }
+    val baseDescription = remember(dataSet, a11yConfig, xTitle, yTitle, announcedReferenceLines) {
         buildString {
             append(a11yConfig.chartDescriptionBuilder(dataSet))
             appendSentence(a11yConfig.axisTitleDescriptionBuilder(xTitle, yTitle))
-            appendSentence(a11yConfig.referenceLineDescriptionBuilder(axisConfig.referenceLines))
+            appendSentence(a11yConfig.referenceLineDescriptionBuilder(announcedReferenceLines))
         }
     }
     val selectedDescription = remember(selectedPointIndex, series, a11yConfig) {
@@ -370,8 +381,8 @@ fun LineChart(
     val tooltipCache = remember(textMeasurer, tooltipStyle) {
         mutableMapOf<String, TextLayoutResult>()
     }
-    val labelBoxes = remember(seriesStructure) {
-        LabelBoxes(capacity = renderSeries.sumOf { it.points.size })
+    val labelBoxes = remember(seriesStructure, valueLabels.enabled) {
+        LabelBoxes(capacity = if (valueLabels.enabled) renderSeries.sumOf { it.points.size } else 0)
     }
     val linePath = remember { Path() }
     val areaPath = remember { Path() }
@@ -719,16 +730,17 @@ fun LineChart(
         if (valueLabelLayouts.isNotEmpty()) {
             val valueGap = labelGapPx / 2f
             labelBoxes.reset()
-            renderSeries.forEach { s ->
-                val layouts = valueLabelLayouts[s.id] ?: return@forEach
-                val xs = xBuffers[s.id] ?: return@forEach
-                val ys = yBuffers[s.id] ?: return@forEach
+            for (seriesIndex in 0 until renderSeries.size) {
+                val s = renderSeries[seriesIndex]
+                val layouts = valueLabelLayouts[s.id] ?: continue
+                val xs = xBuffers[s.id] ?: continue
+                val ys = yBuffers[s.id] ?: continue
                 val n = min(s.points.size, layouts.size)
                 // Walked left to right on screen rather than through the data, so
                 // the label kept out of a colliding pair is the leftmost one
                 // whichever way the axis runs.
                 for (k in 0 until n) {
-                    val i = if (isRtl) n - 1 - k else k
+                    val i = screenOrderIndex(step = k, count = n, isRtl = isRtl)
                     val p = s.points[i]
                     if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
                     if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue

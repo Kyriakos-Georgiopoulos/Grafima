@@ -394,9 +394,9 @@ data class LineChartStyle(
  * Where two would overlap the later one is dropped, so a crowded series shows what
  * fits rather than stacking text on text.
  *
- * Nothing is added to the screen reader description: the chart already announces
- * every value through its own description and its per-point select actions, so
- * these would only repeat it.
+ * Nothing is added to the screen reader description. A listener already reaches
+ * any value by selecting its point, and reading all of them out up front would
+ * bury the summary the description opens with.
  *
  * @param enabled Master toggle.
  * @param formatter Converts a point's y to its printed text. Given the value from

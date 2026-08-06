@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
@@ -97,8 +98,15 @@ fun LineLegend(
 ) {
     val grouped = modifier.semantics(mergeDescendants = true) { }
     val density = LocalDensity.current
-    val dashEffects = remember(dataSet.series, density) {
-        dataSet.series.map { it.dashPattern.toPathEffect(density) }
+    // The swatch is a symbol, not a scale model. A 10dp dash laid on an 18dp key
+    // draws one dash and runs its gap off the end, which reads as a short solid
+    // bar — so a dashed series gets a dash sized to the swatch instead.
+    val dashEffects = remember(dataSet.series, density, swatchWidth) {
+        val step = with(density) { swatchWidth.toPx() } / 5f
+        val symbol = PathEffect.dashPathEffect(floatArrayOf(step, step))
+        dataSet.series.map { series ->
+            if (dashIntervalsOf(series.dashPattern, density) != null) symbol else null
+        }
     }
 
     val entries: @Composable () -> Unit = {
@@ -108,8 +116,11 @@ fun LineLegend(
                     val dash = dashEffects[index]
                     val y = size.height / 2f
                     // Inset by the cap radius, or the round ends paint outside
-                    // the width the caller asked for.
-                    val cap = min(size.height, size.width) / 2f
+                    // the width the caller asked for. A dashed swatch takes butt
+                    // ends instead: round ones bleed across a gap this short and
+                    // close it up again.
+                    val cap = if (dash == null) min(size.height, size.width) / 2f else 0f
+                    val strokeCap = if (dash == null) StrokeCap.Round else StrokeCap.Butt
                     val start = Offset(x = cap, y = y)
                     val end = Offset(x = size.width - cap, y = y)
                     if (series.hasStrokeGradient) {
@@ -125,7 +136,7 @@ fun LineLegend(
                             start = start,
                             end = end,
                             strokeWidth = size.height,
-                            cap = StrokeCap.Round,
+                            cap = strokeCap,
                             pathEffect = dash
                         )
                     } else {
@@ -134,7 +145,7 @@ fun LineLegend(
                             start = start,
                             end = end,
                             strokeWidth = size.height,
-                            cap = StrokeCap.Round,
+                            cap = strokeCap,
                             pathEffect = dash
                         )
                     }

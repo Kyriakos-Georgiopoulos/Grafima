@@ -252,6 +252,45 @@ class LineLegendUiTest {
     }
 
     @Test
+    fun a_dashed_series_gets_a_dashed_swatch() = runComposeUiTest {
+        // A key drawn solid beside a dashed line says the series is measured when
+        // it is derived. The chart's own lengths are far too long for a swatch, so
+        // the dash is sized to the swatch instead of copied from the line.
+        var pattern by mutableStateOf<DashPattern?>(null)
+        val swatch = 40.dp
+        setContent {
+            LineLegend(
+                dataSet = LineDataSet(
+                    series = listOf(
+                        LineSeries(
+                            id = "avg",
+                            label = "",
+                            points = listOf(LineDataPoint(x = 0f, y = 1f)),
+                            color = Color.Red,
+                            dashPattern = pattern
+                        )
+                    ),
+                    contentDescription = "One series"
+                ),
+                swatchWidth = swatch
+            )
+        }
+        waitForIdle()
+        val solid = onRoot().captureToImage().countColor(Color.Red)
+
+        pattern = DashPattern(dash = 10.dp, gap = 6.dp)
+        waitForIdle()
+        val dashed = onRoot().captureToImage().countColor(Color.Red)
+
+        assertTrue(solid > 0, "the solid swatch painted nothing")
+        assertTrue(dashed > 0, "the dashed swatch painted nothing at all")
+        assertTrue(
+            dashed < solid * 3 / 4,
+            "the dashed swatch painted $dashed against a solid $solid — it reads as solid"
+        )
+    }
+
+    @Test
     fun a_vertical_legend_is_taller_and_narrower_than_a_horizontal_one() = runComposeUiTest {
         var orientation by mutableStateOf(LineLegendOrientation.Horizontal)
         setContent { LineLegend(dataSet = dataSet(), orientation = orientation) }

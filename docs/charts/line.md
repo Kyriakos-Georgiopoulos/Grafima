@@ -158,8 +158,9 @@ within one, so two lines crossing do not print over each other.
 The text comes from the value in your data, not the animated one, so it never
 counts up during the entry animation.
 
-Nothing is added to the screen reader description — the chart already announces
-every value through its own description and its per-point select actions.
+Nothing is added to the screen reader description. A listener already reaches any
+value by selecting its point, and reading all of them out up front would bury the
+summary the description opens with.
 
 A point outside a pinned range prints no value, matching its dot and crosshair.
 

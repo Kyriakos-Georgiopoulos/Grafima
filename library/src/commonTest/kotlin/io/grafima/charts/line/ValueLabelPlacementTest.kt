@@ -115,6 +115,24 @@ class ValueLabelPlacementTest {
     }
 
     @Test
+    fun `points are walked in data order when the axis runs left to right`() {
+        assertEquals(listOf(0, 1, 2), (0..2).map { screenOrderIndex(it, count = 3, isRtl = false) })
+    }
+
+    @Test
+    fun `points are walked in reverse when the axis runs right to left`() {
+        // The last point is the leftmost on screen in RTL, so it is reached first
+        // and keeps its place when two labels want the same one.
+        assertEquals(listOf(2, 1, 0), (0..2).map { screenOrderIndex(it, count = 3, isRtl = true) })
+    }
+
+    @Test
+    fun `a single point is reached whichever way the axis runs`() {
+        assertEquals(0, screenOrderIndex(step = 0, count = 1, isRtl = false))
+        assertEquals(0, screenOrderIndex(step = 0, count = 1, isRtl = true))
+    }
+
+    @Test
     fun `the first label to ask for a box gets it`() {
         val boxes = LabelBoxes(capacity = 4)
         assertTrue(boxes.takeIfFree(left = 0f, top = 0f, right = 10f, bottom = 10f))

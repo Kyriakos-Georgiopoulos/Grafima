@@ -297,6 +297,16 @@ internal fun valueLabelLeft(
 ): Float = (pointX - labelWidth / 2f).coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
 
 /**
+ * The point to visit at [step], walking left to right across the screen.
+ *
+ * Data order runs the other way in RTL, and the label kept out of a colliding pair
+ * is whichever is reached first — so without this the survivor would swap sides
+ * with the layout direction.
+ */
+internal fun screenOrderIndex(step: Int, count: Int, isRtl: Boolean): Int =
+    if (isRtl) count - 1 - step else step
+
+/**
  * Which side of its point a value label reads better on.
  *
  * The label avoids other labels, but the line itself runs on through — printed

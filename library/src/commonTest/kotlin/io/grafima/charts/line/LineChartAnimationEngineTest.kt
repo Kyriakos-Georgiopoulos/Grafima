@@ -17,6 +17,7 @@
 package io.grafima.charts.line
 
 import androidx.compose.animation.core.snap
+import androidx.compose.ui.unit.dp
 import io.grafima.charts.runEngineTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,6 +39,21 @@ class LineChartAnimationEngineTest {
         label = id.uppercase(),
         points = ys.mapIndexed { i, y -> LineDataPoint(x = i.toFloat(), y = y) }
     )
+
+    @Test
+    fun `a departing series is still rendered with its dash pattern`() {
+        // The chart draws what renderSeries returns, so anything keyed off the
+        // dataset instead misses a series on its way out — and a derived line
+        // would go solid exactly as it leaves.
+        val engine = LineChartAnimationEngine()
+        val dashed = series("avg", 1f).copy(dashPattern = DashPattern(dash = 10.dp, gap = 6.dp))
+        engine.syncAnimatables(listOf(series("s1", 1f), dashed))
+
+        val rendered = engine.renderSeries(listOf(series("s1", 1f)))
+
+        assertEquals(listOf("s1", "avg"), rendered.map { it.id })
+        assertEquals(DashPattern(dash = 10.dp, gap = 6.dp), rendered.last().dashPattern)
+    }
 
     @Test
     fun `sync keys animatables by series id and point index`() {
