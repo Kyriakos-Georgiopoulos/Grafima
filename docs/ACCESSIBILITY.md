@@ -64,6 +64,18 @@ BarChart(
 
 Worth reading yours out loud. `"45.0"` is fine on screen and awkward spoken.
 
+A line chart's reference lines are announced through
+`LineA11yConfig.referenceLineDescriptionBuilder`. It is handed only the lines that
+are actually drawn — one outside the axis range, or any line on a chart with no
+series, is left out, so a listener is never told about a threshold nobody can see.
+Each is named by `ReferenceLine.spokenLabel`: its `contentDescription`, or its
+drawn `label` when it has none. Give a line neither and it is drawn but not
+announced.
+
+Value labels add nothing to the description. A listener already reaches any value
+by selecting its point, and reading all of them out up front would bury the
+summary the description opens with.
+
 The chart's own description stays a summary — a count, not a reading of every
 item. It sits on a live region, so anything in it is repeated on every selection.
 Per-item values belong in `selectedStateDescription`, which is spoken only when
