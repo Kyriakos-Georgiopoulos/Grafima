@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onFirst
@@ -465,6 +466,53 @@ class LineAnnotationsUiTest {
         assertTrue(dashed < solid, "the grid dash painted $dashed against a solid $solid")
     }
 
+    @Test
+    fun a_reference_line_off_a_pinned_axis_does_not_clip_the_series() = runComposeUiTest {
+        // The axis bounds count reference lines; the clip flags must not. One that
+        // is never drawn was shaving the stroke off at the pinned edge.
+        var lines by mutableStateOf(emptyList<ReferenceLine>())
+        val onTheBound = LineDataSet(
+            series = listOf(
+                LineSeries(
+                    id = "s",
+                    label = "S",
+                    points = List(3) { LineDataPoint(x = it.toFloat(), y = 40f) },
+                    color = Color.Blue,
+                    strokeWidth = 16.dp
+                )
+            ),
+            contentDescription = "On the bound"
+        )
+        setContent {
+            Chart(
+                data = onTheBound,
+                axisConfig = LineAxisConfig(
+                    showGrid = false,
+                    showXLabels = false,
+                    showYLabels = false,
+                    yMin = 0f,
+                    yMax = 40f,
+                    referenceLines = lines
+                )
+            )
+        }
+        waitForIdle()
+        val alone = assertNotNull(onRoot().captureImageBluishRows(), "the series did not draw")
+
+        lines = listOf(ReferenceLine(value = 150f, axis = ReferenceLineAxis.Y))
+        waitForIdle()
+        val withLine = assertNotNull(
+            onRoot().captureImageBluishRows(),
+            "the series stopped drawing"
+        )
+
+        assertEquals(
+            alone.first,
+            withLine.first,
+            "an undrawn reference line clipped the top of the stroke"
+        )
+    }
+
     // ── Dashed series ──
 
     @Test
@@ -847,6 +895,9 @@ class LineAnnotationsUiTest {
     private fun ImageBitmap.reddishRows(): IntRange? = extent(byRow = true) { it.isReddish() }
 
     private fun ImageBitmap.bluishRows(): IntRange? = extent(byRow = true) { it.isBluish() }
+
+    private fun SemanticsNodeInteraction.captureImageBluishRows(): IntRange? =
+        captureToImage().bluishRows()
 
     /** The rows, or columns, that matching ink spans. Null when none was painted. */
     private fun ImageBitmap.extent(byRow: Boolean, matches: (Int) -> Boolean): IntRange? {

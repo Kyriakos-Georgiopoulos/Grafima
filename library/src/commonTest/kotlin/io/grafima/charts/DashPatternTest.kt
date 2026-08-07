@@ -81,6 +81,15 @@ class DashPatternTest {
         assertSame(DashStroke.Solid, DashPattern(0.dp, 0.dp).toDashStroke(density))
     }
 
+    // Only the solid cases are resolved here: a drawable pattern builds a
+    // PathEffect, and that needs the renderer a plain JVM unit test does not load.
+    @Test
+    fun `a solid line gives a grid square ends rather than round ones`() {
+        // A round cap bulges half the stroke past the plot at each end — invisible
+        // at 1dp and plain at 12dp. Grids have always drawn with butt ends.
+        assertEquals(StrokeCap.Butt, DashStroke.Solid.gridCap)
+    }
+
     @Test
     fun `two patterns of the same lengths are equal`() {
         // Not a data class, so this is hand-written and can be broken by hand. A

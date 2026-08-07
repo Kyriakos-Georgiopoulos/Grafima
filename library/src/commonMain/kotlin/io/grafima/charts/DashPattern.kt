@@ -74,22 +74,12 @@ internal fun dashIntervalsOf(pattern: DashPattern?, density: Density): FloatArra
 /**
  * A dash resolved for drawing: the effect, and the cap that keeps its gaps open.
  *
- * The two travel together because they are one decision. Deciding the cap from the
- * pattern and the effect from its resolved lengths lets them disagree — a pattern
- * that falls back to solid would keep a butt cap and square off the ends of a line
- * that is not dashed at all.
- *
- * Built once and held, never per frame.
+ * One decision, not two — deciding the cap from the pattern and the effect from its
+ * resolved lengths lets them disagree.
  */
 internal class DashStroke(val effect: PathEffect?, val cap: StrokeCap) {
 
-    /**
-     * The cap for a grid line, which has always drawn with square ends.
-     *
-     * A round cap would bulge half the stroke past the plot at each end — invisible
-     * at 1dp and plain at 12dp. A dashed grid still takes [cap], since that is what
-     * keeps its gaps open.
-     */
+    /** As [cap], but square ends for a solid grid line, which would otherwise bulge past the plot. */
     val gridCap: StrokeCap get() = if (effect == null) StrokeCap.Butt else cap
 
     companion object {
@@ -101,10 +91,7 @@ internal class DashStroke(val effect: PathEffect?, val cap: StrokeCap) {
 /** This pattern resolved for drawing, or [DashStroke.Solid] when it draws solid. */
 internal fun DashPattern?.toDashStroke(density: Density): DashStroke {
     val intervals = dashIntervalsOf(this, density) ?: return DashStroke.Solid
-    // A round cap reaches half the stroke past each end of a dash, so a gap
-    // narrower than the stroke closes up and the line draws solid. Butt ends keep
-    // the gap asked for — except a zero-length dash, which has no geometry at all
-    // without a round cap to give it one, and is how a dotted line is drawn.
+    // Butt ends keep short gaps open; a zero-length dash needs a round cap to exist at all.
     return DashStroke(
         effect = PathEffect.dashPathEffect(intervals),
         cap = if (intervals[0] > 0f) StrokeCap.Butt else StrokeCap.Round

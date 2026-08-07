@@ -86,8 +86,15 @@ internal val ValueLabelTextStyle = TextStyle(
 internal val LineSeries.hasStrokeGradient: Boolean
     get() = strokeGradientColors.size >= 2
 
-/** What a screen reader should say for this point. */
-internal val LineDataPoint.spokenLabel: String
+/**
+ * What a screen reader should say for this point: its [LineDataPoint.contentDescription],
+ * or its [LineDataPoint.label], or failing both its x.
+ *
+ * Public because [LineA11yConfig.selectedPointDescriptionBuilder] is the documented
+ * way to reword announcements, and an override that re-derived this by hand would
+ * drift from it.
+ */
+val LineDataPoint.spokenLabel: String
     get() = contentDescription
         .ifEmpty { label }
         .ifEmpty { x.toInt().toString() }
@@ -162,8 +169,8 @@ enum class ReferenceLineAxis {
  * ```
  * axisConfig = LineAxisConfig(
  *     referenceLines = listOf(
- *         ReferenceLine(value = 14f, axis = ReferenceLineAxis.X, contentDescription = "Now"),
- *         ReferenceLine(value = 10f, axis = ReferenceLineAxis.Y, color = Color.Red)
+ *         ReferenceLine(value = 14f, axis = ReferenceLineAxis.X, label = "Now"),
+ *         ReferenceLine(value = 10f, axis = ReferenceLineAxis.Y, label = "Limit", color = Color.Red)
  *     )
  * )
  * ```
@@ -206,17 +213,20 @@ data class ReferenceLine(
     val dashPattern: DashPattern? = null,
     val contentDescription: String? = null,
     val includeInRange: Boolean = true
-)
+) {
 
-/**
- * What a screen reader calls this line: its [ReferenceLine.contentDescription], or
- * its [ReferenceLine.label] when it has none. Null when it has neither.
- *
- * Resolved on read rather than defaulted in the constructor, because `copy()` never
- * re-runs a default — `copy(label = "Limit")` would keep announcing the old name.
- */
-val ReferenceLine.spokenLabel: String?
-    get() = contentDescription?.takeIf(String::isNotBlank) ?: label?.takeIf(String::isNotBlank)
+    /**
+     * What a screen reader calls this line: its [contentDescription], or its
+     * [label] when it has none. Null when it has neither.
+     *
+     * Resolved on read rather than defaulted in the constructor, because `copy()`
+     * never re-runs a default — `copy(label = "Limit")` would keep announcing the
+     * old name.
+     */
+    val spokenLabel: String?
+        get() = contentDescription?.takeIf(String::isNotBlank)
+            ?: label?.takeIf(String::isNotBlank)
+}
 
 /** The [ReferenceLine] values that [axis] must be wide enough to show. */
 internal fun List<ReferenceLine>.boundsOn(axis: ReferenceLineAxis): List<Float> =
@@ -295,7 +305,8 @@ enum class LineCurveType {
  * @param dashedGrid Superseded by [gridDashPattern], which says how long a dash is
  *   rather than only whether there is one, and says it in dp so it is the same size
  *   on every screen. Set, it still wins.
- * @param gridDashPattern Dashes the grid lines. Null draws them solid.
+ * @param gridDashPattern Dashes the grid lines. Null draws them solid. A
+ *   [dashedGrid] of true still wins over this until it is removed.
  * @param yMin Pins the bottom of the y-axis. Null auto-computes it from the data.
  * @param yMax Pins the top of the y-axis. Null auto-computes it from the data.
  * @param xMin Pins the left of the x-axis (the right in RTL). Null uses the
@@ -433,6 +444,8 @@ data class LineChartStyle(
  *   different units can each carry their own. Given the point from the data, not
  *   the animated one, so the text never counts up during entry. Return an empty
  *   string to leave a point unlabelled, which is how you print only the last one.
+ *   Hoist a formatter that captures anything in a `remember`: a fresh lambda makes
+ *   this config unequal on every recomposition, and every point is measured again.
  * @param textStyle Label text. The default tone holds WCAG AA on a white surface
  *   and is checked by `ColorContrastTest`. A style that names no color of its own —
  *   which is every `MaterialTheme.typography` style — keeps that default tone and

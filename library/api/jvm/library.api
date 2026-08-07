@@ -453,7 +453,7 @@ public final class io/grafima/charts/line/LineChartKt {
 }
 
 public final class io/grafima/charts/line/LineChartModelsKt {
-	public static final fun getSpokenLabel (Lio/grafima/charts/line/ReferenceLine;)Ljava/lang/String;
+	public static final fun getSpokenLabel (Lio/grafima/charts/line/LineDataPoint;)Ljava/lang/String;
 }
 
 public final class io/grafima/charts/line/LineChartStyle {
@@ -640,6 +640,7 @@ public final class io/grafima/charts/line/ReferenceLine {
 	public final fun getDashPattern ()Lio/grafima/charts/DashPattern;
 	public final fun getIncludeInRange ()Z
 	public final fun getLabel ()Ljava/lang/String;
+	public final fun getSpokenLabel ()Ljava/lang/String;
 	public final fun getStrokeWidth-D9Ej5fM ()F
 	public final fun getValue ()F
 	public fun hashCode ()I

@@ -64,9 +64,9 @@ behaviour do not.
 - The line chart no longer selects a point that lies outside a pinned x range,
   by touch or through a screen reader's actions menu. Such points are not drawn,
   so selecting one moved the crosshair somewhere nothing was visible.
-- `LineAxisConfig` gained seven constructor parameters, `LineA11yConfig` two, and
-  `LineChartStyle` and `LineSeries` one each, which changes their generated
-  constructor and `copy` signatures. Source-compatible, but an app built against
+- `LineAxisConfig` gained eight constructor parameters, `LineA11yConfig` two, and
+  `LineChartStyle`, `LineSeries` and `bar.AxisConfig` one each, which changes their
+  generated constructor and `copy` signatures. Source-compatible, but an app built against
   1.0.0 must be recompiled against this release rather than swapped in place.
 - `LineAxisConfig.dashedGrid` is deprecated in favour of `gridDashPattern`, which
   says how long a dash is rather than only whether there is one, and says it in dp.
@@ -92,7 +92,6 @@ behaviour do not.
   so a theme change while the crosshair was up left the old colour on the new
   panel. It is also redrawn now when the display density changes.
 
-### Fixed
 
 - The bar, pie and radar charts kept the selection tooltip they first measured,
   so changing its text style or the display density left the old one on screen.

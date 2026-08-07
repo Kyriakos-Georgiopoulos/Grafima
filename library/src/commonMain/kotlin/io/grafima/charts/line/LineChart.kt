@@ -338,7 +338,7 @@ fun LineChart(
     val topCuts = yIsPinned && yMax < yPointMax
     val bottomCuts = yIsPinned && yMin > yPointMin
 
-    // ── Cached PathEffects: building one per frame allocates in the draw pass ──
+    // ── Resolved once per data change: building these per frame would allocate ──
     @Suppress("DEPRECATION")
     val gridDash = remember(axisConfig.dashedGrid, axisConfig.gridDashPattern, density) {
         // dashedGrid is deprecated but still honoured, and reading it is the only
@@ -347,9 +347,7 @@ fun LineChart(
             if (axisConfig.dashedGrid) LegacyDashedGrid else axisConfig.gridDashPattern
         pattern.toDashStroke(density)
     }
-    // Keyed on what the draw pass walks, not on the dataset: a series on its way
-    // out is still drawn, and looking it up in a map built from the dataset misses,
-    // turning a derived line solid exactly as it leaves.
+    // Keyed on what the draw pass walks: a departing series is still drawn.
     val seriesDashStrokes = remember(renderSeries, density) {
         renderSeries.associate { s -> s.id to s.dashPattern.toDashStroke(density) }
     }
@@ -374,9 +372,7 @@ fun LineChart(
     // Measured off the data rather than the animated value, so the entry wave does
     // not re-measure every point on every frame — and the printed number is the
     // one the point actually holds.
-    // Keyed on renderSeries for the same reason as the dash effects above: a series
-    // on its way out is still drawn, and its numbers should ride down with it.
-    val valueLabelLayouts = remember(renderSeries, valueLabelStyle, textMeasurer, valueLabels) {
+    val valueLabelLayouts = remember(renderSeries, textMeasurer, valueLabels) {
         if (!valueLabels.enabled) {
             emptyMap()
         } else {
@@ -386,9 +382,8 @@ fun LineChart(
             renderSeries.associate { s ->
                 s.id to s.points.map { p ->
                     val text = valueLabels.formatter(s, p)
-                    // Null, not a zero-width layout: an empty label is how a caller
-                    // prints only the points they want, and a box for one it never
-                    // draws would turn the real labels away.
+                    // Null, not a zero-width layout, or an unlabelled point still
+                    // claims room and turns the real labels away.
                     if (text.isBlank()) {
                         null
                     } else {
@@ -567,10 +562,8 @@ fun LineChart(
         val xRange = xMax - xMin
         val yRange = yMax - yMin
 
-        fun mapX(v: Float): Float {
-            val raw = if (xRange > 0f) chartLeft + (v - xMin) / xRange * chartWidth else chartLeft
-            return if (isRtl) chartRight - (raw - chartLeft) else raw
-        }
+        fun mapX(v: Float) =
+            mapDataXToCanvas(v, xMin, xMax, chartLeft, chartRight, isRtl)
 
         fun mapY(v: Float) =
             if (yRange > 0f) chartBottom - (v - yMin) / yRange * chartHeight else chartTop
@@ -814,8 +807,14 @@ fun LineChart(
                             chartRight = chartRight,
                             isRtl = isRtl
                         )
-                        val above = y - gap - layout.size.height
-                        val ly = if (above >= chartTop) above else y + gap
+                        val ly = valueLabelTop(
+                            pointY = y,
+                            labelHeight = layout.size.height.toFloat(),
+                            offset = gap,
+                            chartTop = chartTop,
+                            chartBottom = chartBottom,
+                            preferBelow = false
+                        )
                         drawReferenceLabel(
                             layout = layout,
                             left = lx,
@@ -837,9 +836,6 @@ fun LineChart(
                 val layouts = valueLabelLayouts[s.id] ?: continue
                 val xs = xBuffers[s.id] ?: continue
                 val ys = yBuffers[s.id] ?: continue
-                // A style that names no colour keeps the guarded default rather than
-                // silently opting into series colours — TextStyle() leaves it
-                // unspecified, so the sentinel would fire on the commonest call.
                 val labelColor = when {
                     valueLabels.useSeriesColor -> s.color
                     valueLabelStyle.color.isSpecified -> valueLabelStyle.color
@@ -868,10 +864,12 @@ fun LineChart(
                         offset = markRadiusPx + valueGap + s.strokeWidth.toPx() / 2f,
                         chartTop = chartTop,
                         chartBottom = chartBottom,
+                        // From the data: animated positions are all flat at rest, so
+                        // the side would flip as the entry wave passed.
                         preferBelow = valueLabelPrefersBelow(
-                            pointY = ys[i],
-                            previousY = ys[if (i > 0) i - 1 else i],
-                            nextY = ys[if (i < n - 1) i + 1 else i]
+                            pointY = mapY(p.y),
+                            previousY = mapY(s.points[if (i > 0) i - 1 else i].y),
+                            nextY = mapY(s.points[if (i < n - 1) i + 1 else i].y)
                         )
                     )
                     val free = labelBoxes.takeIfFree(

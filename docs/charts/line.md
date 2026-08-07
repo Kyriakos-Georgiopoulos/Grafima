@@ -360,6 +360,8 @@ axisConfig = LineAxisConfig(
 
 `gridDashPattern` replaces `dashedGrid`, which only said whether there was a dash
 and measured it in raw pixels. It is the same type the bar chart's grid takes.
+`dashedGrid` is deprecated and removed in 2.0; while it is still there, setting it
+to true wins over `gridDashPattern`.
 
 ## Animation
 

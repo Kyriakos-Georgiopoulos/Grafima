@@ -224,14 +224,10 @@ internal fun computePlotInsets(
 }
 
 /**
- * The boxes value labels have already taken, so the next one can find a free spot.
+ * The boxes labels have already taken, so the next one can find a free spot.
  *
- * One set for the whole chart rather than one per series: two series crossing puts
- * their labels in the same place, and a rule that only looked within a series would
- * print them over each other.
- *
- * Reused across frames — [reset] before each pass — because the draw pass does not
- * otherwise allocate.
+ * One set for the whole chart: two series crossing put their labels in the same
+ * place. Reused across frames — [reset] before each pass.
  */
 internal class LabelBoxes(capacity: Int) {
     private val edges = FloatArray(capacity * 4)
@@ -274,11 +270,8 @@ internal fun valueLabelLeft(
 ): Float = (pointX - labelWidth / 2f).coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
 
 /**
- * Where the label of a vertical reference line sits.
- *
- * Beside the line on the side the axis runs towards, so it trails the line as the
- * reader's eye does, and on the other side when there is no room. Clamped into the
- * plot either way: unclamped it runs off the canvas, or over the axis labels.
+ * Where a vertical reference line's label sits: trailing the line, or the other side
+ * when there is no room, clamped into the plot either way.
  */
 internal fun referenceLabelLeft(
     lineX: Float,
@@ -312,11 +305,8 @@ internal fun referenceLabelEndLeft(
 }
 
 /**
- * Draws a reference line's label where nothing else has been drawn, and records the
- * room it took so a value label does not land on it.
- *
- * A label wider than the plot is dropped rather than clipped: there is nowhere to
- * put it where it would read.
+ * Draws a reference line's label if nothing else has taken the room, and claims it.
+ * One wider than the plot is dropped rather than clipped.
  */
 internal fun DrawScope.drawReferenceLabel(
     layout: TextLayoutResult,

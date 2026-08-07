@@ -113,7 +113,8 @@ data class ChartStyle(
  * @property showYAxis Whether to draw Y-axis value labels.
  * @property showGridLines Whether to draw horizontal grid lines.
  * @property yAxisSteps Number of evenly-spaced grid lines and Y-axis labels.
- * @property gridDashPattern Dashes the grid lines. Null draws them solid.
+ * @property gridDashPattern Dashes the grid lines. Null draws them solid. An
+ *   explicit [dashEffect] still wins over this until it is removed.
  * @property dashEffect Superseded by [gridDashPattern]. A [PathEffect] compares by
  *   identity, so a config holding one is never equal to another and defeats the
  *   recomposition skipping every chart relies on — and it cannot be constructed at
