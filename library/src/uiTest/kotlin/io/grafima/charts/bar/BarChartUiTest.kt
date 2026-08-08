@@ -33,6 +33,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.DashPattern
 import io.grafima.charts.customActionLabels
 import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
@@ -246,6 +247,29 @@ class BarChartUiTest {
         val image = onChartNode().captureToImage()
         assertTrue(image.countColor(Color.Green) > 0, "the tooltip kept its old colour")
         assertEquals(0, image.countColor(Color.Red), "the old colour is still painted")
+    }
+
+    @Test
+    fun a_dotted_grid_is_drawn_rather_than_erased() = runComposeUiTest {
+        // A zero-length dash has no geometry without a round cap, and the grid drew
+        // with butt ends, so the documented way to ask for dots removed the grid.
+        setContent {
+            BarChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                axisConfig = AxisConfig(
+                    axisColor = Color.Red,
+                    gridDashPattern = DashPattern(dash = 0.dp, gap = 6.dp)
+                )
+            )
+        }
+        waitForIdle()
+
+        assertTrue(
+            onChartNode().captureToImage().countColor(Color.Red) > 0,
+            "a dotted pattern erased the grid"
+        )
     }
 
     private fun ImageBitmap.countColor(color: Color): Int {

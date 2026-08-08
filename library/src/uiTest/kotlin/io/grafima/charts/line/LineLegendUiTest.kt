@@ -43,6 +43,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.DashPattern
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -249,6 +250,45 @@ class LineLegendUiTest {
         val last = onNodeWithText("Series number 5", useUnmergedTree = true)
             .fetchSemanticsNode().size
         assertEquals(first, last, "the last entry was not laid out like the first")
+    }
+
+    @Test
+    fun a_dashed_series_gets_a_dashed_swatch() = runComposeUiTest {
+        // A key drawn solid beside a dashed line says the series is measured when
+        // it is derived. The chart's own lengths are far too long for a swatch, so
+        // the dash is sized to the swatch instead of copied from the line.
+        var pattern by mutableStateOf<DashPattern?>(null)
+        val swatch = 40.dp
+        setContent {
+            LineLegend(
+                dataSet = LineDataSet(
+                    series = listOf(
+                        LineSeries(
+                            id = "avg",
+                            label = "",
+                            points = listOf(LineDataPoint(x = 0f, y = 1f)),
+                            color = Color.Red,
+                            dashPattern = pattern
+                        )
+                    ),
+                    contentDescription = "One series"
+                ),
+                swatchWidth = swatch
+            )
+        }
+        waitForIdle()
+        val solid = onRoot().captureToImage().countColor(Color.Red)
+
+        pattern = DashPattern(dash = 10.dp, gap = 6.dp)
+        waitForIdle()
+        val dashed = onRoot().captureToImage().countColor(Color.Red)
+
+        assertTrue(solid > 0, "the solid swatch painted nothing")
+        assertTrue(dashed > 0, "the dashed swatch painted nothing at all")
+        assertTrue(
+            dashed < solid * 3 / 4,
+            "the dashed swatch painted $dashed against a solid $solid — it reads as solid"
+        )
     }
 
     @Test

@@ -61,14 +61,143 @@ LineLegend(
 )
 ```
 
-A series drawn with `strokeGradientColors` gets a gradient swatch, so the key
-matches the line it names rather than a flat colour the line never uses.
+A series drawn with `strokeGradientColors` gets a gradient swatch, and one with a
+`dashPattern` a dashed swatch, so the key matches the line it names rather than a
+flat colour the line never uses.
 
 `Horizontal` wraps onto further lines when the entries do not fit. `Vertical`
 takes an `entryAlignment` for the edge the entries line up on.
 
 A screen reader reaches the legend as one item naming every series, rather than a
 stop each. `spacing` also sets half that gap between wrapped lines.
+
+## Dashed series
+
+A dash says a line is derived rather than measured — a moving average against the
+readings it averages:
+
+```kotlin
+LineSeries(
+    id = "avg",
+    label = "7-day average",
+    points = average,
+    dashPattern = DashPattern(dash = 10.dp, gap = 5.dp)
+)
+```
+
+`LineLegend` dashes that series' swatch too, so the key matches the line. The area
+fill under a dashed stroke is not dashed — the dash describes the line, not the
+region beneath it.
+
+A `dash` of `0.dp` gives a dotted line. A pattern that could not be drawn at all —
+a negative length, or both lengths zero — leaves the line solid.
+
+`DashPattern` lives in `io.grafima.charts`, not the line package, because the bar
+chart's grid takes one too.
+
+## Reference lines
+
+A threshold the data is read against: a target, a limit, or where "now" falls on
+an axis of hours.
+
+```kotlin
+axisConfig = LineAxisConfig(
+    referenceLines = listOf(
+        ReferenceLine(value = 14f, axis = ReferenceLineAxis.X, label = "Now"),
+        ReferenceLine(
+            value = 100f,
+            axis = ReferenceLineAxis.Y,
+            label = "Target",
+            color = Color.Red,
+            dashPattern = DashPattern(dash = 6.dp, gap = 6.dp)
+        )
+    )
+)
+```
+
+Each line names the axis it is fixed to, so `value` is never ambiguous. `X` stands
+a vertical line at an x value; `Y` lays a horizontal one at a y value.
+
+The axis widens to reach the line. A target is normally above what has been
+achieved so far, and an axis fitted to the data alone would leave it off the chart
+— so `ReferenceLine(100f, Y)` on data peaking at 62 pulls the axis up to 100. Set
+`includeInRange = false` to leave the axis to the data, and accept that the line
+may then fall outside it and not be drawn.
+
+They are drawn over the series. A marker hidden behind an area fill is not a
+marker, and the crosshair still draws over them.
+
+A value outside the axis range draws nothing. Pulling it to the nearest edge would
+show a threshold sitting somewhere it is not.
+
+Vertical lines mirror with the axis in RTL, since they are fixed to a data value
+rather than to a side of the screen.
+
+`label` is drawn beside the line in the line's own colour, and is announced too —
+naming a line once names it for everyone. It claims its space before value labels
+do, so the two never print over each other, and a label with nowhere to go is
+dropped rather than drawn over something.
+
+Set `contentDescription` as well when the spoken form should say more than the plot
+has room for; it defaults to `label`. Either way the chart announces "Reference
+line: Now." Override `LineA11yConfig.referenceLineDescriptionBuilder` to reword or
+translate that, or return an empty string to leave them unspoken. A line with
+neither is drawn but not announced.
+
+An x line well outside the data is worth setting `includeInRange = false` on: an
+axis stretched to reach x = 20 for points spanning 0..2 squeezes them into a tenth
+of the plot. A y target above the data is the case the widening exists for.
+
+## Value labels
+
+A chart of a few points reads better with its numbers on it than with a tooltip
+that has to be found by touch — and a screenshot of one carries the numbers with
+it.
+
+```kotlin
+style = LineChartStyle(
+    valueLabels = LineValueLabelConfig(
+        enabled = true,
+        formatter = { series, point ->
+            if (series.id == "margin") "${point.y.toInt()}%" else "€${point.y.toInt()}"
+        }
+    )
+)
+```
+
+`formatter` takes the series as well as the point, as `tooltipFormatter` does, so
+two series in different units each carry their own. Return an empty string to leave
+a point unlabelled — that is how you print only the last one.
+
+Labels take the side of their point the curve leaves open: below in a valley, above
+on a peak, so they do not land on the line itself. Where the plot has no room on
+that side they go to the other. One that would overlap a label already drawn is
+dropped, so a crowded chart shows what fits rather than stacking text on text. That
+applies across series as well as within one.
+
+They are not kept off *lines*, only off each other, so on a busy multi-series chart
+a number can still land on a neighbouring stroke. `useSeriesColor` prints each label
+in its own series' colour, which says which line it belongs to:
+
+```kotlin
+LineValueLabelConfig(enabled = true, useSeriesColor = true)
+```
+
+The default tone is a dark slate that holds WCAG AA on a white surface, and a
+`textStyle` naming no colour of its own keeps it — so `MaterialTheme.typography`
+styles give you their font at the guarded tone. On a dark surface set a colour
+yourself, as the sample does; `LineValueLabelConfig().textStyle.copy(color = …)`
+keeps the default weight along with it.
+
+The text comes from the value in your data, not the animated one, so it never
+counts up during the entry animation.
+
+Nothing is added to the screen reader description. A listener already reaches any
+value by selecting its point, and reading all of them out up front would bury the
+summary the description opens with.
+
+A point outside a pinned range prints no value, matching its dot. The crosshair
+still appears for a point off the y range, as it does without labels.
 
 ## Curves
 
@@ -225,9 +354,14 @@ axisConfig = LineAxisConfig(
     axisColor = Color(0xFF94A3B8),
     labelColor = Color(0xFF475569),
     gridColor = Color(0xFFF1F5F9),
-    dashedGrid = true
+    gridDashPattern = DashPattern(dash = 5.dp, gap = 5.dp)
 )
 ```
+
+`gridDashPattern` replaces `dashedGrid`, which only said whether there was a dash
+and measured it in raw pixels. It is the same type the bar chart's grid takes.
+`dashedGrid` is deprecated and removed in 2.0; while it is still there, setting it
+to true wins over `gridDashPattern`.
 
 ## Animation
 
@@ -246,8 +380,8 @@ animationConfig = LineAnimationConfig(
 | Parameter | Purpose |
 |---|---|
 | `dataSet` | Series and the accessibility description |
-| `style` | Curve type, dots, stroke, minimum size |
-| `axisConfig` | Ticks, grid, labels, value formatting |
+| `style` | Curve type, dots, stroke, value labels, minimum size |
+| `axisConfig` | Ticks, grid, labels, titles, reference lines |
 | `crosshairConfig` | Crosshair and tooltip appearance; enable/disable |
 | `animationConfig` | Entry and morph timing, stagger |
 | `a11yConfig` | Screen-reader text builders |

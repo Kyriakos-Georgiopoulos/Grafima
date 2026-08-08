@@ -19,8 +19,11 @@ package io.grafima.charts.line
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.drawText
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +34,7 @@ import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
+import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -217,6 +221,185 @@ internal fun computePlotInsets(
     into.right = width - gap - if (isRtl) yBand else 0f
     into.bottom = height - gap - xBand
     return into
+}
+
+/**
+ * The boxes labels have already taken, so the next one can find a free spot.
+ *
+ * One set for the whole chart: two series crossing put their labels in the same
+ * place. Reused across frames — [reset] before each pass.
+ */
+internal class LabelBoxes(capacity: Int) {
+    private val edges = FloatArray(capacity * 4)
+    private var count = 0
+
+    fun reset() {
+        count = 0
+    }
+
+    /** Takes the box when nothing drawn already overlaps it. */
+    fun takeIfFree(left: Float, top: Float, right: Float, bottom: Float): Boolean {
+        for (i in 0 until count) {
+            val at = i * 4
+            val overlaps = left < edges[at + 2] &&
+                right > edges[at] &&
+                top < edges[at + 3] &&
+                bottom > edges[at + 1]
+            if (overlaps) return false
+        }
+        val at = count * 4
+        if (at + 4 > edges.size) return false
+        edges[at] = left
+        edges[at + 1] = top
+        edges[at + 2] = right
+        edges[at + 3] = bottom
+        count++
+        return true
+    }
+}
+
+/**
+ * Where a value label's left edge sits: centred on its point, but never past the
+ * edge of the plot, where half of it would be cut off.
+ */
+internal fun valueLabelLeft(
+    pointX: Float,
+    labelWidth: Float,
+    chartLeft: Float,
+    chartRight: Float
+): Float = (pointX - labelWidth / 2f).coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
+
+/**
+ * Where a vertical reference line's label sits: trailing the line, or the other side
+ * when there is no room, clamped into the plot either way.
+ */
+internal fun referenceLabelLeft(
+    lineX: Float,
+    labelWidth: Float,
+    gap: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean
+): Float {
+    val before = lineX - gap - labelWidth
+    val after = lineX + gap
+    val preferred = if (isRtl) before else after
+    val fits = if (isRtl) preferred >= chartLeft else preferred + labelWidth <= chartRight
+    val chosen = if (fits) preferred else if (isRtl) after else before
+    return chosen.coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
+}
+
+/**
+ * Where the label of a horizontal reference line sits: at the end the axis runs
+ * towards, clamped into the plot.
+ */
+internal fun referenceLabelEndLeft(
+    labelWidth: Float,
+    gap: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean
+): Float {
+    val end = if (isRtl) chartLeft + gap else chartRight - gap - labelWidth
+    return end.coerceIn(chartLeft, max(chartLeft, chartRight - labelWidth))
+}
+
+/**
+ * Draws a reference line's label if nothing else has taken the room, and claims it.
+ * One wider than the plot is dropped rather than clipped.
+ */
+internal fun DrawScope.drawReferenceLabel(
+    layout: TextLayoutResult,
+    left: Float,
+    top: Float,
+    boxes: LabelBoxes,
+    gap: Float,
+    plotWidth: Float
+) {
+    if (layout.size.width > plotWidth) return
+    val free = boxes.takeIfFree(
+        left = left - gap,
+        top = top,
+        right = left + layout.size.width + gap,
+        bottom = top + layout.size.height
+    )
+    if (free) drawText(textLayoutResult = layout, topLeft = Offset(x = left, y = top))
+}
+
+/**
+ * The point to visit at [step], walking left to right across the screen.
+ *
+ * Data order runs the other way in RTL, and the label kept out of a colliding pair
+ * is whichever is reached first — so without this the survivor would swap sides
+ * with the layout direction.
+ */
+internal fun screenOrderIndex(step: Int, count: Int, isRtl: Boolean): Int =
+    if (isRtl) count - 1 - step else step
+
+/**
+ * Which side of its point a value label reads better on.
+ *
+ * The label avoids other labels, but the line itself runs on through — printed
+ * above a point in a valley it lands on the curve rising away on both sides. The
+ * open side is the one the neighbours lean away from.
+ *
+ * Screen coordinates: a smaller y is higher up. An endpoint passes its own y for
+ * the neighbour it does not have, leaving the one it does have to decide.
+ */
+internal fun valueLabelPrefersBelow(pointY: Float, previousY: Float, nextY: Float): Boolean =
+    (previousY + nextY) / 2f < pointY
+
+/**
+ * Where a value label's top edge sits: [offset] clear of its point on the side it
+ * reads better, or the other side when the plot has no room there.
+ */
+internal fun valueLabelTop(
+    pointY: Float,
+    labelHeight: Float,
+    offset: Float,
+    chartTop: Float,
+    chartBottom: Float,
+    preferBelow: Boolean
+): Float {
+    val above = pointY - offset - labelHeight
+    val below = pointY + offset
+    return if (preferBelow) {
+        if (below + labelHeight <= chartBottom) below else above
+    } else {
+        if (above >= chartTop) above else below
+    }
+}
+
+/**
+ * Whether [ReferenceLine] falls on the axis it is fixed to, and so has a place on
+ * the plot at all.
+ *
+ * A value off the axis is not drawn at the nearest edge: the line would then mark
+ * a threshold nowhere near the one asked for.
+ */
+internal fun ReferenceLine.isOnAxis(xMin: Float, xMax: Float, yMin: Float, yMax: Float): Boolean {
+    if (!value.isFinite()) return false
+    return when (axis) {
+        ReferenceLineAxis.X -> isWithinAxis(value, xMin, xMax)
+        ReferenceLineAxis.Y -> isWithinAxis(value, yMin, yMax)
+    }
+}
+
+/**
+ * Appends [text] to a spoken description as a fresh sentence.
+ *
+ * A builder need not end in a full stop, and without one a screen reader runs the
+ * next phrase into its last word unbroken. Only a letter or digit is unfinished —
+ * any script's punctuation is not.
+ */
+internal fun StringBuilder.appendSentence(text: String) {
+    if (text.isBlank()) return
+    setLength(trimEnd().length)
+    if (isNotEmpty()) {
+        if (last().isLetterOrDigit()) append('.')
+        append(' ')
+    }
+    append(text)
 }
 
 /**

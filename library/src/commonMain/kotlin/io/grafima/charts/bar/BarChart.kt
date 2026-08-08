@@ -29,6 +29,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -48,7 +49,9 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.DashStroke
 import io.grafima.charts.rememberEffectiveReduceMotion
+import io.grafima.charts.toDashStroke
 
 /**
  * An animated bar chart with touch selection, RTL support, and accessibility.
@@ -86,6 +89,20 @@ fun BarChart(
     val entries = dataSet.entries
     val animationEngine = remember { ChartAnimationEngine() }
     val density = LocalDensity.current
+
+    // dashEffect is deprecated but still honoured, and reading it is the only way to
+    // keep a caller who set one from silently losing their dashes. The suppression
+    // is that read, and comes out when the property does.
+    @Suppress("DEPRECATION")
+    val gridDash = remember(axisConfig.dashEffect, axisConfig.gridDashPattern, density) {
+        val explicit = axisConfig.dashEffect
+        // An explicit effect keeps the butt ends the grid has always drawn with.
+        if (explicit != null) {
+            DashStroke(effect = explicit, cap = StrokeCap.Butt)
+        } else {
+            axisConfig.gridDashPattern.toDashStroke(density)
+        }
+    }
 
     SideEffect { animationEngine.syncAnimatables(entries) }
     val renderEntries = animationEngine.renderEntries(entries)
@@ -371,6 +388,7 @@ fun BarChart(
 
             drawHorizontalGrid(
                 axisConfig = axisConfig,
+                gridDash = gridDash,
                 yAxisTextLayouts = yAxisTextLayouts,
                 chartLeft = chartLeft,
                 chartRight = chartRight,
@@ -431,6 +449,7 @@ fun BarChart(
 
         drawVerticalGrid(
             axisConfig = axisConfig,
+            gridDash = gridDash,
             yAxisTextLayouts = yAxisTextLayouts,
             yAxisWidthPx = yAxisWidthPx,
             topSpacePx = topSpacePx,

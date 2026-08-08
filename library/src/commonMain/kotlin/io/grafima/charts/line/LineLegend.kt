@@ -25,17 +25,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.dashIntervalsOf
 import kotlin.math.min
 
 /** [LineLegend]'s default label style. Guarded by `ColorContrastTest`. */
@@ -64,8 +68,9 @@ enum class LineLegendOrientation {
  * }
  * ```
  *
- * A series drawn with [LineSeries.strokeGradientColors] gets a gradient swatch, so
- * the key matches the line it names.
+ * A series drawn with [LineSeries.strokeGradientColors] gets a gradient swatch, and
+ * one with a [LineSeries.dashPattern] a dashed swatch, so the key matches the line
+ * it names.
  *
  * A screen reader reaches it as one item naming every series, rather than one
  * stop each. The colour mapping itself is visual only — the chart's own
@@ -93,15 +98,30 @@ fun LineLegend(
     entryAlignment: Alignment.Horizontal = Alignment.Start
 ) {
     val grouped = modifier.semantics(mergeDescendants = true) { }
+    val density = LocalDensity.current
+    // The swatch is a symbol, not a scale model. A 10dp dash laid on an 18dp key
+    // draws one dash and runs its gap off the end, which reads as a short solid
+    // bar — so a dashed series gets a dash sized to the swatch instead.
+    val dashEffects = remember(dataSet.series, density, swatchWidth) {
+        val step = with(density) { swatchWidth.toPx() } / 5f
+        val symbol = PathEffect.dashPathEffect(floatArrayOf(step, step))
+        dataSet.series.map { series ->
+            if (dashIntervalsOf(series.dashPattern, density) != null) symbol else null
+        }
+    }
 
     val entries: @Composable () -> Unit = {
-        dataSet.series.forEach { series ->
+        dataSet.series.forEachIndexed { index, series ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Canvas(modifier = Modifier.size(width = swatchWidth, height = 4.dp)) {
+                    val dash = dashEffects[index]
                     val y = size.height / 2f
                     // Inset by the cap radius, or the round ends paint outside
-                    // the width the caller asked for.
-                    val cap = min(size.height, size.width) / 2f
+                    // the width the caller asked for. A dashed swatch takes butt
+                    // ends instead: round ones bleed across a gap this short and
+                    // close it up again.
+                    val cap = if (dash == null) min(size.height, size.width) / 2f else 0f
+                    val strokeCap = if (dash == null) StrokeCap.Round else StrokeCap.Butt
                     val start = Offset(x = cap, y = y)
                     val end = Offset(x = size.width - cap, y = y)
                     if (series.hasStrokeGradient) {
@@ -117,7 +137,8 @@ fun LineLegend(
                             start = start,
                             end = end,
                             strokeWidth = size.height,
-                            cap = StrokeCap.Round
+                            cap = strokeCap,
+                            pathEffect = dash
                         )
                     } else {
                         drawLine(
@@ -125,7 +146,8 @@ fun LineLegend(
                             start = start,
                             end = end,
                             strokeWidth = size.height,
-                            cap = StrokeCap.Round
+                            cap = strokeCap,
+                            pathEffect = dash
                         )
                     }
                 }
