@@ -23,7 +23,8 @@ import androidx.compose.runtime.Composable
  *
  * On Android that means flipping the status bar icons between dark and light,
  * and hiding the navigation bar until the user swipes for it. iOS manages its
- * own status bar, so the actual there does nothing.
+ * own status bar and a desktop window has no system bars at all, so the
+ * actuals there do nothing.
  */
 @Composable
 expect fun SystemBarsEffect(darkTheme: Boolean)

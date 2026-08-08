@@ -87,10 +87,16 @@ BarChart(
     axisConfig = AxisConfig(
         yAxisSteps = 5,
         showGridLines = true,
-        dashEffect = null  // solid grid lines
+        gridDashPattern = null  // solid grid lines
     )
 )
 ```
+
+`dashEffect` is deprecated and removed in 2.0. It is no longer the way to get a
+solid grid: `null` now means *unset* and falls through to `gridDashPattern`. If you
+passed `dashEffect = null`, pass `gridDashPattern = null` instead — the compiler
+will not warn you, because a deprecated constructor property warns where it is
+read, not where it is set.
 
 The y-axis maximum is computed for you: 20% headroom above the tallest bar,
 rounded up to a round number so the labels stay readable.

@@ -85,10 +85,12 @@ the description. Say what you ran and what it said.
 
 Every PR runs:
 
-- `./gradlew ktlintCheck` for formatting
+- `./gradlew ktlintCheck` for formatting, plus `-p buildSrc ktlintCheck` for the
+  build logic, which is a separate build and is not covered by the first
 - `./gradlew build` for the Android build, Android Lint and JVM tests
 - `./gradlew :library:checkKotlinAbi` to confirm the public API matches `library/api/`
 - Android instrumented UI tests on an emulator
+- The desktop JVM tests, and an assembly of the desktop sample
 - iOS compile and simulator tests
 
 Run the first three locally before pushing; they catch most of it.

@@ -12,6 +12,8 @@ kotlin {
         minSdk = 24
     }
 
+    jvm()
+
     listOf(
         iosArm64(),
         iosSimulatorArm64()

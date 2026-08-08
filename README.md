@@ -4,7 +4,7 @@
 
 # Grafima
 
-Charts for Compose Multiplatform. Android and iOS, one codebase.
+Charts for Compose Multiplatform. Android, iOS and desktop, one codebase.
 
 Five chart types (bar, line, pie, radar, gauge) drawn on `Canvas`, animated, and
 accessible by default.
@@ -17,6 +17,24 @@ accessible by default.
 | <video src="https://github.com/user-attachments/assets/5a215fdd-c9f9-43a7-847e-1ce3e6b274cf"></video> | <video src="https://github.com/user-attachments/assets/80f94bac-79df-4c68-b12f-51baa1f96e6b"></video>|
 | **Gauge** | |
 | <video src="https://github.com/user-attachments/assets/239a3982-68b6-4998-9690-9e9df98265e9"></video>| |
+
+## Install
+
+```kotlin
+commonMain.dependencies {
+    implementation("io.grafima:grafima:1.1.0")
+}
+```
+
+On an Android-only project, put it in the usual `dependencies` block instead:
+
+```kotlin
+dependencies {
+    implementation("io.grafima:grafima:1.1.0")
+}
+```
+
+## Usage
 
 ```kotlin
 BarChart(
@@ -56,8 +74,9 @@ redraws without recomposing.
 **Selection is yours.** No chart owns its selection state. You pass it in and get
 changes back.
 
-**Tested.** 101 unit tests and a UI suite on both an Android emulator and an iOS
-simulator, including accessibility contracts every chart has to pass.
+**Tested.** A unit suite on the JVM and an iOS simulator, and a UI suite on an
+Android emulator and an iOS simulator, including accessibility contracts every
+chart has to pass.
 [Test suites](docs/TESTING.md)
 
 ## Documentation
@@ -75,14 +94,16 @@ Behaviour shared by every chart is in [Concepts](docs/CONCEPTS.md).
 - Android minSdk 24
 - iOS: `iosArm64` and `iosSimulatorArm64` (Apple silicon simulators; Compose
   Multiplatform publishes no `iosX64`)
+- Desktop: the `jvm` target, for Compose for Desktop hosts
 - Kotlin 2.3.21, Compose Multiplatform 1.11.1
 
 ## Running the sample
 
-The `sample` module holds the demo UI shared by both apps.
+The `sample` module holds the demo UI shared by all three apps.
 
 ```bash
 ./gradlew :androidApp:installDebug     # Android
+./gradlew :desktopApp:run              # Desktop
 open iosApp/iosApp.xcodeproj           # iOS, then run from Xcode
 ```
 
@@ -96,6 +117,10 @@ the shape, then send a PR.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the branching model and what CI checks.
 [docs/TESTING.md](docs/TESTING.md) covers the test suites and how to run them.
+
+## Contributors
+
+Thanks to [everyone who has contributed](https://github.com/Kyriakos-Georgiopoulos/Grafima/graphs/contributors).
 
 ## On AI use
 

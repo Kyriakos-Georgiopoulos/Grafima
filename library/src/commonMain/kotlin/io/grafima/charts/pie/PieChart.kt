@@ -147,7 +147,9 @@ fun PieChart(
     val currentDensity by rememberUpdatedState(density)
     val currentEntries by rememberUpdatedState(entries)
 
-    val selectionCache = remember { mutableMapOf<String, TextLayoutResult>() }
+    val selectionCache = remember(textMeasurer, selectionRenderer) {
+        mutableMapOf<String, TextLayoutResult>()
+    }
 
     val targetTotalValue = remember(entries) {
         entries.sumOf { it.value.toDouble().coerceAtLeast(0.0) }.toFloat()

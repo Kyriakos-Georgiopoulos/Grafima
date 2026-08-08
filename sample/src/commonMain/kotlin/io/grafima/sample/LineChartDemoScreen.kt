@@ -16,7 +16,6 @@
 
 package io.grafima.sample
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,10 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,12 +45,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.grafima.charts.DashPattern
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineChartStyle
 import io.grafima.charts.line.LineCurveType
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
+import io.grafima.charts.line.LineLegend
+import io.grafima.charts.line.LineLegendOrientation
 import io.grafima.charts.line.LineSeries
+import io.grafima.charts.line.LineValueLabelConfig
+import io.grafima.charts.line.ReferenceLine
+import io.grafima.charts.line.ReferenceLineAxis
 import io.grafima.sample.theme.LocalDemoColors
 import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.themedCrosshair
@@ -99,6 +101,32 @@ private fun randomSeries(
                 y = v,
                 label = MonthLabels[i],
                 contentDescription = SpokenMonths[i]
+            )
+        }
+    )
+}
+
+/**
+ * The mean of every series at each x, dashed because it is derived rather than
+ * measured — the dash is what stops it being read as another set of readings.
+ *
+ * Recomputed from whatever is on the chart, so adding or randomizing a series
+ * moves it.
+ */
+private fun LineDataSet.averageSeries(): LineSeries {
+    val reference = series.first().points
+    return LineSeries(
+        id = "average",
+        label = "Average",
+        color = Color(0xFF10B981),
+        strokeWidth = 2.dp,
+        dashPattern = DashPattern(dash = 10.dp, gap = 6.dp),
+        points = reference.indices.map { i ->
+            LineDataPoint(
+                x = reference[i].x,
+                y = series.mapNotNull { it.points.getOrNull(i)?.y }.average().toFloat(),
+                label = reference[i].label,
+                contentDescription = reference[i].contentDescription
             )
         }
     )
@@ -165,6 +193,8 @@ private fun seededDataSet(): LineDataSet = LineDataSet(
 internal class LineChartViewModel : ViewModel() {
     var showFill by mutableStateOf(true)
     var curveType by mutableStateOf(LineCurveType.MonotoneCubic)
+    var showValues by mutableStateOf(false)
+    var showTrend by mutableStateOf(false)
     var dataSet by mutableStateOf(seededDataSet())
     var selectedIdx by mutableStateOf<Int?>(null)
 }
@@ -179,19 +209,49 @@ internal fun LineChartDemoScreen(
     val showFill = viewModel.showFill
     val curveType = viewModel.curveType
     val selectedIdx = viewModel.selectedIdx
+    val showValues = viewModel.showValues
+    val showTrend = viewModel.showTrend
 
     // Stripping the fill rewrites every series, so derive it once per change:
     // rebuilding inline hands the chart a new dataset on every recomposition and
     // it can never skip.
-    val visibleDataSet = remember(dataSet, showFill) {
-        if (showFill) {
+    // Derived here rather than held in the dataset: it is not data of its own, and
+    // it has to follow every series being added, removed or re-rolled.
+    val visibleDataSet = remember(dataSet, showFill, showTrend) {
+        val shown = if (showFill) {
             dataSet
         } else {
             dataSet.copy(series = dataSet.series.map { it.copy(fillAlpha = 0f) })
         }
+        if (!showTrend || shown.series.size < 2) {
+            shown
+        } else {
+            shown.copy(series = shown.series + shown.averageSeries())
+        }
     }
 
-    val chartStyle = remember(curveType) { LineChartStyle(curveType = curveType) }
+    val chartStyle = remember(curveType, showValues, colors) {
+        LineChartStyle(
+            curveType = curveType,
+            valueLabels = LineValueLabelConfig(
+                enabled = showValues,
+                // Copied from the default rather than rebuilt, which keeps its weight.
+                textStyle = LineValueLabelConfig().textStyle.copy(color = colors.onSurface)
+            )
+        )
+    }
+    val targetLine = remember(colors) {
+        listOf(
+            ReferenceLine(
+                value = 100f,
+                axis = ReferenceLineAxis.Y,
+                label = "Target",
+                color = colors.accentWarm,
+                dashPattern = DashPattern(dash = 6.dp, gap = 6.dp),
+                contentDescription = "Target of 100 thousand euros"
+            )
+        )
+    }
 
     DemoScreenScaffold(
         controls = {
@@ -251,6 +311,44 @@ internal fun LineChartDemoScreen(
                 }
             }
 
+            DemoControls { buttonModifier ->
+                Button(
+                    onClick = { viewModel.showValues = !showValues },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        if (showValues) "Hide Values" else "Show Values",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Button(
+                    onClick = { viewModel.showTrend = !showTrend },
+                    enabled = dataSet.series.size > 1,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accentWarm,
+                        contentColor = colors.onAccentWarm
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        if (showTrend) "Hide Average" else "Show Average",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
             Button(
                 onClick = { viewModel.dataSet = dataSet.randomized() },
                 colors = ButtonDefaults.buttonColors(
@@ -292,43 +390,13 @@ internal fun LineChartDemoScreen(
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        dataSet.series.forEach { s ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            ) {
-                                Text(
-                                    s.label,
-                                    fontSize = 11.sp,
-                                    color = colors.onSurfaceMuted,
-                                    modifier = Modifier.padding(end = 6.dp)
-                                )
-                                Canvas(Modifier.size(width = 18.dp, height = 4.dp)) {
-                                    val cy = size.height / 2f
-                                    val start = Offset(x = 0f, y = cy)
-                                    val end = Offset(x = size.width, y = cy)
-                                    if (s.strokeGradientColors.size >= 2) {
-                                        drawLine(
-                                            brush = Brush.horizontalGradient(s.strokeGradientColors),
-                                            start = start,
-                                            end = end,
-                                            strokeWidth = size.height,
-                                            cap = StrokeCap.Round
-                                        )
-                                    } else {
-                                        drawLine(
-                                            color = s.color,
-                                            start = start,
-                                            end = end,
-                                            strokeWidth = size.height,
-                                            cap = StrokeCap.Round
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    LineLegend(
+                        dataSet = visibleDataSet,
+                        orientation = LineLegendOrientation.Vertical,
+                        textStyle = TextStyle(fontSize = 11.sp, color = colors.onSurfaceMuted),
+                        spacing = 4.dp,
+                        entryAlignment = Alignment.End
+                    )
                 }
                 Box(
                     Modifier
@@ -341,8 +409,11 @@ internal fun LineChartDemoScreen(
                         style = chartStyle,
                         axisConfig = themedLineAxis(
                             yTickCount = 5,
-                            dashedGrid = true,
-                            xLabels = MonthLabels
+                            gridDashPattern = DashPattern(dash = 2.dp, gap = 3.dp),
+                            xLabels = MonthLabels,
+                            xAxisTitle = "Month",
+                            yAxisTitle = "Thousands of euros",
+                            referenceLines = targetLine
                         ),
                         crosshairConfig = themedCrosshair(),
                         selectedPointIndex = selectedIdx,

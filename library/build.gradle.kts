@@ -9,7 +9,8 @@ plugins {
 kotlin {
     // Dumps the public API to api/. `checkKotlinAbi` fails when it drifts, so
     // API changes surface as a reviewable diff instead of shipping unnoticed.
-    // The dump covers the klib targets, which is the whole public surface:
+    // Two dumps, because the formats differ: api/library.klib.api for the iOS
+    // targets, api/jvm/library.api for the JVM one. Android needs neither —
     // androidMain holds no public API, only an internal `actual`.
     @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
     abiValidation {
@@ -37,6 +38,15 @@ kotlin {
 
     iosArm64()
     iosSimulatorArm64()
+
+    // Compose Multiplatform's own desktop artifacts are Java 11. Without a target
+    // here the published jar takes the bytecode level of whichever JDK built the
+    // release, and a consumer on an older one fails at class load.
+    jvm {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -88,7 +98,7 @@ mavenPublishing {
         name.set("Grafima")
         description.set(
             "Charts for Compose Multiplatform: bar, line, pie, radar and gauge, drawn on " +
-                "Canvas with animations, accessibility and RTL support on Android and iOS."
+                "Canvas with animations, accessibility and RTL support on Android, iOS and desktop."
         )
         inceptionYear.set("2026")
         url.set("https://github.com/Kyriakos-Georgiopoulos/Grafima")
