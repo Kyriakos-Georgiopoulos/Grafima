@@ -120,10 +120,6 @@ First release.
 - Per-chart `a11yConfig`, `style`, `axisConfig` and `animationConfig` for
   overriding text, geometry and timing.
 
-<<<<<<< HEAD
-[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...HEAD
-=======
 [Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...v1.1.0
->>>>>>> origin/main
 [1.0.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/releases/tag/v1.0.0
