@@ -11,6 +11,8 @@ behaviour do not.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-08
+
 ### Added
 
 - A `jvm` target, so the charts run on Compose for Desktop as well as Android and
@@ -118,5 +120,10 @@ First release.
 - Per-chart `a11yConfig`, `style`, `axisConfig` and `animationConfig` for
   overriding text, geometry and timing.
 
+<<<<<<< HEAD
 [Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...HEAD
+=======
+[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...v1.1.0
+>>>>>>> origin/main
 [1.0.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/releases/tag/v1.0.0
