@@ -44,6 +44,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.DashPattern
+import io.grafima.charts.assumePixelCapture
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -86,6 +87,7 @@ class LineLegendUiTest {
 
     @Test
     fun each_swatch_carries_the_colour_of_the_series_it_names() = runComposeUiTest {
+        assumePixelCapture()
         // Vertical, so the first series owns the top half and the second the
         // bottom. Asserting both colours exist somewhere would still pass with
         // the swatches swapped, which is the only failure that matters here.
@@ -108,6 +110,7 @@ class LineLegendUiTest {
 
     @Test
     fun a_gradient_series_gets_a_gradient_swatch_not_its_flat_colour() = runComposeUiTest {
+        assumePixelCapture()
         // color is what a naive swatch would use; the line is drawn from the
         // gradient, so the key would not match it.
         setContent {
@@ -128,6 +131,7 @@ class LineLegendUiTest {
     @Test
     fun a_single_gradient_colour_falls_back_to_the_flat_colour_as_the_chart_does() =
         runComposeUiTest {
+            assumePixelCapture()
             // The chart needs two stops to build a gradient and draws `color`
             // otherwise. A swatch that disagreed would name the wrong line.
             setContent {
@@ -201,6 +205,7 @@ class LineLegendUiTest {
 
     @Test
     fun a_swatch_paints_no_wider_than_the_width_it_was_given() = runComposeUiTest {
+        assumePixelCapture()
         // Round caps reach half the stroke beyond each endpoint, and a Canvas is
         // not clipped, so an uninset line paints outside the node it lives in.
         val swatch = 40.dp
@@ -254,6 +259,7 @@ class LineLegendUiTest {
 
     @Test
     fun a_dashed_series_gets_a_dashed_swatch() = runComposeUiTest {
+        assumePixelCapture()
         // A key drawn solid beside a dashed line says the series is measured when
         // it is derived. The chart's own lengths are far too long for a swatch, so
         // the dash is sized to the swatch instead of copied from the line.
@@ -308,6 +314,7 @@ class LineLegendUiTest {
 
     @Test
     fun a_gradient_swatch_runs_the_same_way_as_the_line_it_names() = runComposeUiTest {
+        assumePixelCapture()
         // Both the block and the gradient mirror, so compare the green end
         // against the swatch's own extent rather than against the canvas.
         var rtl by mutableStateOf(false)

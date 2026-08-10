@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.DashStroke
+import io.grafima.charts.drawDashableLine
 import io.grafima.charts.rememberEffectiveReduceMotion
 import io.grafima.charts.toDashStroke
 import kotlin.math.max
@@ -433,6 +434,7 @@ fun LineChart(
         LabelBoxes(capacity = points + axisConfig.referenceLines.size)
     }
     val linePath = remember { Path() }
+    val dashPath = remember { Path() }
     val areaPath = remember { Path() }
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
@@ -575,13 +577,13 @@ fun LineChart(
             val gridPx = axisConfig.gridStrokeWidth.toPx()
             yTickValues.forEach { v ->
                 val y = mapY(v)
-                drawLine(
+                drawDashableLine(
+                    path = dashPath,
                     color = axisConfig.gridColor,
                     start = Offset(x = chartLeft, y = y),
                     end = Offset(x = chartRight, y = y),
                     strokeWidth = gridPx,
-                    cap = gridDash.gridCap,
-                    pathEffect = gridDash.effect
+                    dash = gridDash
                 )
             }
         }
@@ -590,13 +592,13 @@ fun LineChart(
             firstPoints.forEach { p ->
                 if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) return@forEach
                 val x = mapX(p.x)
-                drawLine(
+                drawDashableLine(
+                    path = dashPath,
                     color = axisConfig.gridColor,
                     start = Offset(x = x, y = chartTop),
                     end = Offset(x = x, y = chartBottom),
                     strokeWidth = gridPx,
-                    cap = gridDash.gridCap,
-                    pathEffect = gridDash.effect
+                    dash = gridDash
                 )
             }
         }
@@ -758,13 +760,13 @@ fun LineChart(
             when (line.axis) {
                 ReferenceLineAxis.X -> {
                     val x = mapX(line.value)
-                    drawLine(
+                    drawDashableLine(
+                        path = dashPath,
                         color = line.color,
                         start = Offset(x = x, y = chartTop),
                         end = Offset(x = x, y = chartBottom),
                         strokeWidth = lineWidth,
-                        cap = dash.cap,
-                        pathEffect = dash.effect
+                        dash = dash
                     )
                     referenceLabelLayouts.getOrNull(i)?.let { layout ->
                         val gap = labelGapPx / 2f
@@ -789,13 +791,13 @@ fun LineChart(
 
                 ReferenceLineAxis.Y -> {
                     val y = mapY(line.value)
-                    drawLine(
+                    drawDashableLine(
+                        path = dashPath,
                         color = line.color,
                         start = Offset(x = chartLeft, y = y),
                         end = Offset(x = chartRight, y = y),
                         strokeWidth = lineWidth,
-                        cap = dash.cap,
-                        pathEffect = dash.effect
+                        dash = dash
                     )
                     referenceLabelLayouts.getOrNull(i)?.let { layout ->
                         // At the trailing end, above the line, or below it at the top.

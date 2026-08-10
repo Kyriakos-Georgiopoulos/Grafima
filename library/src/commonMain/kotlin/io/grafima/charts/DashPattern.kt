@@ -17,8 +17,13 @@
 package io.grafima.charts
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 
@@ -86,6 +91,37 @@ internal class DashStroke(val effect: PathEffect?, val cap: StrokeCap) {
         /** An undashed line: no effect, and the round ends every solid line has. */
         val Solid = DashStroke(effect = null, cap = StrokeCap.Round)
     }
+}
+
+/**
+ * Draws a straight line that honours [dash].
+ *
+ * A dashed line goes through [path] rather than `drawLine`: Android's hardware
+ * canvas takes a fast path for `drawLine` that ignores the effect, so the line
+ * comes out solid below API 28. [path] is reused to keep the draw pass allocation
+ * free.
+ */
+internal fun DrawScope.drawDashableLine(
+    path: Path,
+    color: Color,
+    start: Offset,
+    end: Offset,
+    strokeWidth: Float,
+    dash: DashStroke
+) {
+    val effect = dash.effect
+    if (effect == null) {
+        drawLine(color, start, end, strokeWidth, dash.cap)
+        return
+    }
+    path.reset()
+    path.moveTo(start.x, start.y)
+    path.lineTo(end.x, end.y)
+    drawPath(
+        path = path,
+        color = color,
+        style = Stroke(width = strokeWidth, cap = dash.cap, pathEffect = effect)
+    )
 }
 
 /** This pattern resolved for drawing, or [DashStroke.Solid] when it draws solid. */

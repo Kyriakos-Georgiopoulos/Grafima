@@ -34,6 +34,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.assumePixelCapture
 import io.grafima.charts.contentDescription
 import io.grafima.charts.customActionLabels
 import io.grafima.charts.onChartNode
@@ -235,6 +236,7 @@ class LineChartUiTest {
     @Test
     fun an_unusable_pinned_x_range_falls_back_to_the_data_rather_than_stacking_points() =
         runComposeUiTest {
+            assumePixelCapture()
             // xMax below every x in the data leaves a negative span, which used to map
             // every point onto chartLeft and draw the series as one vertical stroke.
             val farFromOrigin = LineDataSet(
@@ -324,6 +326,7 @@ class LineChartUiTest {
 
     @Test
     fun a_point_inside_a_pinned_range_gets_its_crosshair_dot() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             LineChart(
                 dataSet = overTheCeiling,
@@ -342,6 +345,7 @@ class LineChartUiTest {
 
     @Test
     fun a_point_just_past_a_pinned_bound_gets_no_crosshair_dot() = runComposeUiTest {
+        assumePixelCapture()
         // 10.05 on a 0..10 axis sits about 1.4dp above chartTop, well inside the dot
         // radius that used to be tolerated, so the ring painted outside the plot.
         setContent {
@@ -395,6 +399,7 @@ class LineChartUiTest {
 
     @Test
     fun the_y_axis_title_is_painted_on_the_right_in_a_right_to_left_layout() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 LineChart(
@@ -420,6 +425,7 @@ class LineChartUiTest {
 
     @Test
     fun a_long_y_axis_title_is_trimmed_rather_than_drawn_past_the_plot() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             LineChart(
                 dataSet = dataSet,
@@ -448,6 +454,7 @@ class LineChartUiTest {
 
     @Test
     fun the_x_axis_title_is_painted_below_the_plot_not_across_it() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             LineChart(
                 dataSet = dataSet,
@@ -496,6 +503,7 @@ class LineChartUiTest {
 
     @Test
     fun a_tooltip_is_remeasured_when_its_text_style_changes() = runComposeUiTest {
+        assumePixelCapture()
         // A theme flip while the crosshair is up: the panel behind the text is
         // drawn straight from the config, so a cached layout leaves the old
         // colour on the new background.
@@ -572,6 +580,7 @@ class LineChartUiTest {
 
     @Test
     fun the_crosshair_lands_under_the_finger_when_a_y_axis_title_is_set() = runComposeUiTest {
+        assumePixelCapture()
         val many = LineDataSet(
             series = listOf(
                 LineSeries(
@@ -619,6 +628,7 @@ class LineChartUiTest {
 
     @Test
     fun an_axis_title_is_actually_painted_and_not_merely_reserved_space() = runComposeUiTest {
+        assumePixelCapture()
         // Labels off, so the only text the label colour can come from is a title.
         setContent {
             LineChart(
@@ -642,6 +652,7 @@ class LineChartUiTest {
 
     @Test
     fun a_chart_with_no_axis_title_paints_none_of_the_title_colour() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             LineChart(
                 dataSet = dataSet,
