@@ -176,6 +176,7 @@ fun BarChart(
         mutableMapOf<Int, TextLayoutResult>()
     }
     val barPath = remember { Path() }
+    val gridPath = remember { Path() }
 
     val bottomSpacePx = remember(style.bottomLabelSpace, density) {
         with(density) { style.bottomLabelSpace.toPx() }
@@ -389,6 +390,7 @@ fun BarChart(
             drawHorizontalGrid(
                 axisConfig = axisConfig,
                 gridDash = gridDash,
+                gridPath = gridPath,
                 yAxisTextLayouts = yAxisTextLayouts,
                 chartLeft = chartLeft,
                 chartRight = chartRight,
@@ -450,6 +452,7 @@ fun BarChart(
         drawVerticalGrid(
             axisConfig = axisConfig,
             gridDash = gridDash,
+            gridPath = gridPath,
             yAxisTextLayouts = yAxisTextLayouts,
             yAxisWidthPx = yAxisWidthPx,
             topSpacePx = topSpacePx,
