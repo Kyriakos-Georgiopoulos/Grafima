@@ -22,7 +22,7 @@ accessible by default.
 
 ```kotlin
 commonMain.dependencies {
-    implementation("io.grafima:grafima:1.1.0")
+    implementation("io.grafima:grafima:1.1.1")
 }
 ```
 
@@ -30,7 +30,7 @@ On an Android-only project, put it in the usual `dependencies` block instead:
 
 ```kotlin
 dependencies {
-    implementation("io.grafima:grafima:1.1.0")
+    implementation("io.grafima:grafima:1.1.1")
 }
 ```
 
