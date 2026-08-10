@@ -9,7 +9,7 @@ Grafima's public API is recorded in `library/api/library.klib.api` and
 alters a signature has a matching diff in those files; entries that only change
 behaviour do not.
 
-## [Unreleased]
+## [1.1.1] - 2026-08-10
 
 ### Fixed
 
@@ -56,9 +56,12 @@ behaviour do not.
   series, since a marker behind the data is not a marker. The axis widens to reach
   the line, because a target is normally above what has been achieved so far and an
   axis fitted to the data would leave it off the chart; `includeInRange = false`
-  opts out, and a line still outside the range is skipped rather than clamped. `contentDescription` announces it to a
-  screen reader through `LineA11yConfig.referenceLineDescriptionBuilder`. See
-  [docs/charts/line.md](docs/charts/line.md).
+  opts out, and a line still outside the range is skipped rather than clamped.
+  `ReferenceLine.label` is drawn beside the line in its own colour and announced
+  through `LineA11yConfig.referenceLineDescriptionBuilder`. `spokenLabel` resolves
+  what a screen reader says — the `contentDescription` when set, otherwise the
+  label. A drawn label claims its space before value labels do, so the two never
+  overlap. See [docs/charts/line.md](docs/charts/line.md).
 - `LineSeries.dashPattern` dashes a stroke, which is what tells a reader a series
   is derived rather than measured — a moving average against the readings it
   averages. `LineLegend` dashes that series' swatch to match. The area fill is
@@ -66,9 +69,10 @@ behaviour do not.
   grid takes one too.
 - `LineChartStyle.valueLabels` prints each point's value beside it, rather than
   only in the tooltip once something is selected, which suits a chart of few
-  points and a screenshot of one. Labels are placed above their point, or below
-  where there is no room above, and one that would overlap a label already drawn
-  is dropped rather than stacked on it. See
+  points and a screenshot of one. Labels take the side of their point the curve
+  leaves open, and one that would overlap a label already drawn is dropped rather
+  than stacked on it. `useSeriesColor` prints each in its own series' colour, which
+  says which line a number belongs to on a crowded chart. See
   [docs/charts/line.md](docs/charts/line.md).
 - `LineAxisConfig.xAxisTitle` and `yAxisTitle` name an axis, so the numbers on it
   carry their unit. The y title is drawn rotated beside its labels, on the right
@@ -92,8 +96,9 @@ behaviour do not.
   so selecting one moved the crosshair somewhere nothing was visible.
 - `LineAxisConfig` gained eight constructor parameters, `LineA11yConfig` two, and
   `LineChartStyle`, `LineSeries` and `bar.AxisConfig` one each, which changes their
-  generated constructor and `copy` signatures. Source-compatible, but an app built against
-  1.0.0 must be recompiled against this release rather than swapped in place.
+  generated constructor and `copy` signatures. Source-compatible, but an app built
+  against 1.0.0 must be recompiled against this release rather than swapped in
+  place.
 - `LineAxisConfig.dashedGrid` is deprecated in favour of `gridDashPattern`, which
   says how long a dash is rather than only whether there is one, and says it in dp.
   A grid is solid by default as before, and `dashedGrid = true` still works — now
@@ -144,6 +149,7 @@ First release.
 - Per-chart `a11yConfig`, `style`, `axisConfig` and `animationConfig` for
   overriding text, geometry and timing.
 
-[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/releases/tag/v1.0.0
