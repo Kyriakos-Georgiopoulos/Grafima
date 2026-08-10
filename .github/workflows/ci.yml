@@ -18,7 +18,6 @@ env:
   JAVA_VERSION: '21'
   # Bumping this invalidates every emulator snapshot at once.
   ANDROID_API_LEVEL: 30
-  # The library's minSdk. The floor job runs there so the promise stays true.
   ANDROID_MIN_SDK: 21
 
 jobs:
@@ -158,13 +157,8 @@ jobs:
           name: android-ui-reports
           path: library/build/reports/androidTests/**
 
-  # minSdk is a promise to consumers that nothing verifies, so it drifts the
-  # first time someone reaches for a newer API. This runs the suite on the
-  # oldest Android we claim, catching a NoSuchMethodError at the floor rather
-  # than in someone's crash reports.
-  #
-  # Only the classes that assert semantics: everything else captures the screen,
-  # and `captureToImage` goes through PixelCopy, which is API 26 and up.
+  # Nothing else verifies minSdk, so it drifts the first time someone reaches for
+  # a newer API. Screenshot tests skip here: PixelCopy is API 26 and up.
   android-floor:
     name: Android tests at minSdk
     needs: changes

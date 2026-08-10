@@ -30,11 +30,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.DashStroke
+import io.grafima.charts.drawDashableLine
 
 /** Horizontal grid lines with y-axis labels, plus the baseline. */
 internal fun DrawScope.drawVerticalGrid(
     axisConfig: AxisConfig,
     gridDash: DashStroke,
+    gridPath: Path,
     yAxisTextLayouts: Map<Int, TextLayoutResult>,
     yAxisWidthPx: Float,
     topSpacePx: Float,
@@ -48,7 +50,8 @@ internal fun DrawScope.drawVerticalGrid(
             val yPos = topSpacePx + (chartHeight * yRatio)
 
             if (axisConfig.showGridLines) {
-                drawLine(
+                drawDashableLine(
+                    path = gridPath,
                     color = axisConfig.axisColor,
                     start = Offset(x = if (isRtl) 0f else yAxisWidthPx, y = yPos),
                     end = Offset(
@@ -56,8 +59,7 @@ internal fun DrawScope.drawVerticalGrid(
                         y = yPos
                     ),
                     strokeWidth = 1.dp.toPx(),
-                    cap = gridDash.gridCap,
-                    pathEffect = gridDash.effect
+                    dash = gridDash
                 )
             }
 
@@ -95,6 +97,7 @@ internal fun DrawScope.drawVerticalGrid(
 internal fun DrawScope.drawHorizontalGrid(
     axisConfig: AxisConfig,
     gridDash: DashStroke,
+    gridPath: Path,
     yAxisTextLayouts: Map<Int, TextLayoutResult>,
     chartLeft: Float,
     chartRight: Float,
@@ -113,13 +116,13 @@ internal fun DrawScope.drawHorizontalGrid(
             }
 
             if (axisConfig.showGridLines) {
-                drawLine(
+                drawDashableLine(
+                    path = gridPath,
                     color = axisConfig.axisColor,
                     start = Offset(x = gridX, y = topPadPx),
                     end = Offset(x = gridX, y = chartBottom),
                     strokeWidth = 1.dp.toPx(),
-                    cap = gridDash.gridCap,
-                    pathEffect = gridDash.effect
+                    dash = gridDash
                 )
             }
 

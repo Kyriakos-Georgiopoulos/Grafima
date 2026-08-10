@@ -29,6 +29,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import io.grafima.charts.assumePixelCapture
 import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
 import kotlin.test.Test
@@ -116,6 +117,7 @@ class RadarChartUiTest {
 
     @Test
     fun the_selection_tooltip_is_remeasured_when_its_text_style_changes() = runComposeUiTest {
+        assumePixelCapture()
         var textColor by mutableStateOf(Color.Red)
         setContent {
             RadarChart(

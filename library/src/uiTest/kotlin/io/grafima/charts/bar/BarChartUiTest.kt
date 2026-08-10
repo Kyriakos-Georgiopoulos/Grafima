@@ -34,6 +34,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.DashPattern
+import io.grafima.charts.assumePixelCapture
 import io.grafima.charts.customActionLabels
 import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
@@ -202,6 +203,7 @@ class BarChartUiTest {
      */
     @Test
     fun bars_actually_paint_after_the_entry_animation() = runComposeUiTest {
+        assumePixelCapture()
         val solidRed = dataSet.copy(defaultGradientColors = listOf(Color.Red, Color.Red))
         setContent {
             BarChart(
@@ -226,6 +228,7 @@ class BarChartUiTest {
 
     @Test
     fun the_selection_tooltip_is_remeasured_when_its_text_style_changes() = runComposeUiTest {
+        assumePixelCapture()
         var textColor by mutableStateOf(Color.Red)
         setContent {
             BarChart(
@@ -251,6 +254,7 @@ class BarChartUiTest {
 
     @Test
     fun a_dotted_grid_is_drawn_rather_than_erased() = runComposeUiTest {
+        assumePixelCapture()
         // A zero-length dash has no geometry without a round cap, and the grid drew
         // with butt ends, so the documented way to ask for dots removed the grid.
         setContent {

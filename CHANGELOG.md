@@ -11,6 +11,15 @@ behaviour do not.
 
 ## [Unreleased]
 
+### Fixed
+
+- Dashed grid lines and dashed reference lines rendered solid on Android below API
+  28. They were drawn with `drawLine`, and the hardware canvas takes a fast path
+  for it that ignores the path effect; they now go through a `Path`, which honours
+  it on every API. Dashed series strokes were never affected. The bar chart's grid
+  has dashed by default since 1.0.0, so this is the first release where that is
+  true on an older device.
+
 ### Changed
 
 - `compileSdk` is 36 rather than 37, and `minSdk` 21 rather than 24. AGP writes

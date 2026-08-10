@@ -32,6 +32,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.assumePixelCapture
 import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
 import kotlin.test.Test
@@ -139,6 +140,7 @@ class PieChartUiTest {
 
     @Test
     fun the_selection_tooltip_is_remeasured_when_its_font_size_changes() = runComposeUiTest {
+        assumePixelCapture()
         // The colour is passed to drawText, so only the cached metrics can go
         // stale here — a bigger font must paint more of it.
         var fontSize by mutableStateOf(14.sp)

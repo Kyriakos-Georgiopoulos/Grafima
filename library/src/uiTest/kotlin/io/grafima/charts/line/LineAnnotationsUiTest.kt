@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.DashPattern
+import io.grafima.charts.assumePixelCapture
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -123,6 +124,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_vertical_reference_line_stands_at_its_x_value() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             Chart(
                 axisConfig = LineAxisConfig(
@@ -146,6 +148,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_horizontal_reference_line_lies_at_its_y_value() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             Chart(
                 axisConfig = LineAxisConfig(
@@ -169,6 +172,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_target_above_the_data_is_drawn_because_the_axis_reaches_it() = runComposeUiTest {
+        assumePixelCapture()
         // The data peaks at 25. An axis fitted to it alone leaves a target of 60
         // off the chart, which is the one case a reference line is drawn for.
         setContent {
@@ -189,6 +193,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_line_that_opts_out_of_the_range_leaves_the_axis_alone() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             Chart(
                 axisConfig = LineAxisConfig(
@@ -210,6 +215,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_dash_with_a_gap_narrower_than_its_stroke_still_shows_gaps() = runComposeUiTest {
+        assumePixelCapture()
         // Round caps reach half the stroke past each dash and close a short gap,
         // drawing a line that is solid on the chart and dashed in the legend.
         var pattern by mutableStateOf<DashPattern?>(null)
@@ -229,6 +235,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_reference_line_off_the_axis_is_not_drawn_at_the_edge_instead() = runComposeUiTest {
+        assumePixelCapture()
         // Clamping would put the line on a boundary, marking a threshold that is
         // nowhere near the value the caller gave.
         setContent {
@@ -254,6 +261,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_reference_line_is_drawn_over_the_series_it_qualifies() = runComposeUiTest {
+        assumePixelCapture()
         // Behind an opaque area fill a threshold disappears exactly where the data
         // is, which is the only place it is worth reading.
         setContent {
@@ -275,6 +283,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_vertical_reference_line_travels_with_the_axis_in_rtl() = runComposeUiTest {
+        assumePixelCapture()
         // The line is fixed to a data value, not to a side of the screen.
         var rtl by mutableStateOf(false)
         setContent {
@@ -388,6 +397,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_named_reference_line_is_drawn_with_its_name() = runComposeUiTest {
+        assumePixelCapture()
         // contentDescription only reaches a listener. A sighted reader was left
         // with an unexplained line across the plot.
         var label by mutableStateOf<String?>(null)
@@ -444,6 +454,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun the_grid_dash_is_asked_for_in_dp_like_every_other_chart() = runComposeUiTest {
+        assumePixelCapture()
         var pattern by mutableStateOf<DashPattern?>(null)
         setContent {
             Chart(
@@ -468,6 +479,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_reference_line_off_a_pinned_axis_does_not_clip_the_series() = runComposeUiTest {
+        assumePixelCapture()
         // The axis bounds count reference lines; the clip flags must not. One that
         // is never drawn was shaving the stroke off at the pinned edge.
         var lines by mutableStateOf(emptyList<ReferenceLine>())
@@ -513,10 +525,40 @@ class LineAnnotationsUiTest {
         )
     }
 
+    @Test
+    fun a_dashed_reference_line_leaves_gaps() = runComposeUiTest {
+        // Drawn through a Path, not drawLine: the hardware canvas ignores a path
+        // effect on drawLine below API 28 and the line comes out solid.
+        assumePixelCapture()
+        var pattern by mutableStateOf<DashPattern?>(null)
+        setContent {
+            Chart(
+                axisConfig = LineAxisConfig(
+                    showGrid = false,
+                    yMin = 0f,
+                    yMax = 40f,
+                    referenceLines = listOf(
+                        redLine(30f, ReferenceLineAxis.Y).copy(dashPattern = pattern)
+                    )
+                )
+            )
+        }
+        waitForIdle()
+        val solid = onRoot().captureToImage().countReddish()
+
+        pattern = DashPattern(dash = 6.dp, gap = 6.dp)
+        waitForIdle()
+        val dashed = onRoot().captureToImage().countReddish()
+
+        assertTrue(solid > 0, "the reference line was not drawn")
+        assertTrue(dashed < solid, "the dashed line painted $dashed against a solid $solid")
+    }
+
     // ── Dashed series ──
 
     @Test
     fun a_dashed_stroke_leaves_gaps_a_solid_one_does_not() = runComposeUiTest {
+        assumePixelCapture()
         var pattern by mutableStateOf<DashPattern?>(null)
         setContent { Chart(data = dataSet(dashPattern = pattern)) }
         waitForIdle()
@@ -533,6 +575,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_pattern_that_draws_and_skips_nothing_stays_solid() = runComposeUiTest {
+        assumePixelCapture()
         // Both lengths zero leaves Skia with no line to draw at all.
         var pattern by mutableStateOf<DashPattern?>(null)
         setContent { Chart(data = dataSet(dashPattern = pattern)) }
@@ -550,6 +593,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun the_area_fill_under_a_dashed_stroke_is_not_dashed() = runComposeUiTest {
+        assumePixelCapture()
         // The dash says the line is derived. Punching the same holes in the region
         // beneath it would say something about the data instead.
         var pattern by mutableStateOf<DashPattern?>(null)
@@ -578,6 +622,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_point_prints_its_value_only_when_asked() = runComposeUiTest {
+        assumePixelCapture()
         var show by mutableStateOf(false)
         setContent {
             Chart(style = if (show) labelStyle() else LineChartStyle())
@@ -592,6 +637,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_style_naming_no_colour_keeps_the_default_tone() = runComposeUiTest {
+        assumePixelCapture()
         // TextStyle() leaves its colour unspecified, and so does every
         // MaterialTheme.typography style, so this is the commonest way to ask for a
         // font. It must not be read as asking for the series' colour.
@@ -620,6 +666,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun labels_can_take_the_colour_of_the_series_they_name() = runComposeUiTest {
+        assumePixelCapture()
         var useSeriesColor by mutableStateOf(false)
         setContent {
             Chart(
@@ -652,6 +699,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_value_label_sits_above_the_point_it_names() = runComposeUiTest {
+        assumePixelCapture()
         setContent {
             Chart(
                 axisConfig = LineAxisConfig(
@@ -678,6 +726,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_label_with_no_room_above_flips_under_its_point() = runComposeUiTest {
+        assumePixelCapture()
         // Pinned so the highest point sits on the top of the plot: kept above, its
         // label would be drawn off the chart.
         setContent {
@@ -705,6 +754,7 @@ class LineAnnotationsUiTest {
     @Test
     fun an_empty_label_leaves_the_point_bare_without_crowding_out_the_rest() =
         runComposeUiTest {
+            assumePixelCapture()
             // The documented way to print only the last point. A zero-width layout
             // still claimed a box, and on a crowded series those phantom boxes
             // turned away the one label the caller actually asked for.
@@ -742,6 +792,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun labels_that_would_collide_are_dropped_rather_than_stacked() = runComposeUiTest {
+        assumePixelCapture()
         // Identical text on every point, so the ink is a straight count of how many
         // were drawn.
         var points by mutableStateOf(3)
@@ -772,6 +823,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun labels_from_different_series_do_not_print_over_each_other() = runComposeUiTest {
+        assumePixelCapture()
         // Two series through the same points put every label in the same place. A
         // rule that only looked within one series would draw each of them twice.
         var copies by mutableStateOf(1)
@@ -805,6 +857,7 @@ class LineAnnotationsUiTest {
 
     @Test
     fun a_point_off_a_pinned_axis_prints_no_value() = runComposeUiTest {
+        assumePixelCapture()
         // Its dot and its crosshair are already suppressed. A value floating where
         // no point is drawn reads as belonging to the line.
         var pinned by mutableStateOf<Float?>(null)
