@@ -19,8 +19,11 @@ kotlin {
 
     android {
         namespace = "io.grafima.charts"
-        compileSdk = 37
-        minSdk = 24
+        // Written into the aar as minCompileSdk, so this is a floor every
+        // consumer inherits — raise it only when something here needs the newer
+        // APIs. Nothing does: the one platform call is API 17.
+        compileSdk = 36
+        minSdk = 21
         optimization {
             // Published inside the AAR so a consumer's R8 picks the rules up
             // without them having to copy anything.

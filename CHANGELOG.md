@@ -11,6 +11,21 @@ behaviour do not.
 
 ## [Unreleased]
 
+### Changed
+
+- `compileSdk` is 36 rather than 37, and `minSdk` 21 rather than 24. AGP writes
+  `compileSdk` into the aar as `minCompileSdk`, so a library on 37 refuses to build
+  for any consumer below it — a hard gate, not a warning. Nothing here needed
+  either floor: the only platform call in the library reads
+  `Settings.Global.ANIMATOR_DURATION_SCALE`, which is API 17, and there is no
+  `@RequiresApi` or `SDK_INT` check anywhere in `library/src`.
+  Reported by [Leo Colman](https://github.com/LeoColman) in #32 and #33.
+
+  On API 21 the semantics, accessibility, interaction and layout tests all pass.
+  The screenshot-based ones cannot run there — `captureToImage` goes through
+  `PixelCopy`, which is API 26 and up — so CI runs the API-independent classes at
+  the floor and the full suite on the newer emulator.
+
 ## [1.1.0] - 2026-08-08
 
 ### Added
