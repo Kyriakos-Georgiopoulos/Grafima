@@ -143,4 +143,21 @@ class ExitTrackerTest {
 
         assertEquals(listOf("a", "b", "c"), tracker.render(emptyList()).map { it.id })
     }
+
+    @Test
+    fun `a departing item stays beside the neighbour it followed`() {
+        val tracker = ExitTracker<String> { it }
+        val before = listOf("q1-a", "q1-b", "q2-a", "q2-b")
+        tracker.sync(before)
+
+        // A category prepended in the same update that removes q2-a: every later
+        // index shifts, so the raw index would drop q2-a inside Q1's run.
+        val after = listOf("q0-a", "q0-b", "q1-a", "q1-b", "q2-b")
+        tracker.sync(after)
+
+        assertEquals(
+            listOf("q0-a", "q0-b", "q1-a", "q1-b", "q2-a", "q2-b"),
+            tracker.render(after)
+        )
+    }
 }

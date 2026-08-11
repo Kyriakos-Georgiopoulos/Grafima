@@ -22,7 +22,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 @Stable
-internal class Exiting<T>(val item: T, val index: Int)
+internal class Exiting<T>(
+    val item: T,
+    val index: Int,
+    /** Id of the item it followed when it left, or null if it led the list. */
+    val predecessorId: String? = null
+)
 
 internal data class ExitSync<T>(val departed: List<Exiting<T>>, val returned: List<Exiting<T>>)
 
@@ -50,7 +55,9 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
 
         val departed = lastItems.withIndex()
             .filter { (_, item) -> idOf(item) !in currentIds && idOf(item) !in exitingIds }
-            .map { (index, item) -> Exiting(item, index) }
+            .map { (index, item) ->
+                Exiting(item, index, lastItems.getOrNull(index - 1)?.let(idOf))
+            }
         val returned = exiting.filter { idOf(it.item) in currentIds }
 
         if (departed.isNotEmpty() || returned.isNotEmpty()) {
@@ -77,8 +84,22 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
         if (leaving.isEmpty()) return current
 
         val merged = current.toMutableList()
-        leaving.sortedBy { it.index }.forEach { merged.add(it.index.coerceIn(0, merged.size), it.item) }
+        leaving.sortedBy { it.index }.forEach { merged.add(insertionPoint(merged, it), it.item) }
         return merged
+    }
+
+    /**
+     * Where the departing item sat among the survivors, rather than the raw index it
+     * held. An update that also adds or reorders items shifts every later index, and
+     * for a bar chart that drops a departing bar inside a different category's run,
+     * splitting a group that is still on screen.
+     */
+    private fun insertionPoint(merged: List<T>, exit: Exiting<T>): Int {
+        val predecessor = exit.predecessorId ?: return 0
+        val at = merged.indexOfFirst { idOf(it) == predecessor }
+        // Exits are replayed in the order they held, so a predecessor that is also
+        // leaving is already back in the list by the time this one is placed.
+        return if (at >= 0) at + 1 else exit.index.coerceIn(0, merged.size)
     }
 
     private fun leaving(current: List<T>): List<Exiting<T>> {
@@ -87,7 +108,9 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
         val currentIds = current.mapTo(mutableSetOf(), idOf)
         val pending = lastItems.withIndex()
             .filter { (_, item) -> idOf(item) !in currentIds }
-            .map { (index, item) -> Exiting(item, index) }
+            .map { (index, item) ->
+                Exiting(item, index, lastItems.getOrNull(index - 1)?.let(idOf))
+            }
         if (exiting.isEmpty() && pending.isEmpty()) return emptyList()
         return (exiting + pending).distinctBy { idOf(it.item) }
     }

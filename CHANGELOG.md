@@ -45,6 +45,14 @@ behaviour do not.
 
 ### Fixed
 
+- Bar chart hit testing follows the bars while one is animating out. It measured
+  against the dataset while the draw pass measured against what was on screen, so
+  every tap landed on the wrong bar for the length of a removal.
+- A removed bar's exit animation is no longer restarted from full duration by an
+  unrelated data change, so a chart updating faster than the animation still lets
+  its departing bars finish and be released.
+- A bar removed while another is selected fades with the rest rather than staying
+  at full opacity while it animates out.
 - Bar chart touch handling followed `ChartStyle.bottomLabelSpace` and `topValueSpace`.
   Both were read when hit testing but neither restarted the gesture detector, so
   changing either left taps aimed at where the bars used to be.

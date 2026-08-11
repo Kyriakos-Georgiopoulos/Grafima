@@ -383,15 +383,15 @@ fun BarChart(
 
                                 // No slop on the axis bars touch along, or the loop
                                 // would claim the touch for whichever it reached first.
-                                // Slop goes only on the sides facing a sibling's edge.
-                                // The ends of a stack and the outer bars of a group
-                                // face open space and keep the full tolerance.
+                                // Zero on the sides facing a sibling, full tolerance
+                                // on the sides facing open space. RTL mirrors the run,
+                                // so the two swap over.
                                 val opensRun = !isStacked || i == first
                                 val closesRun = !isStacked || i == end - 1
                                 val nearSlop = if (isStacked || i == first) hitSlopPx else 0f
                                 val farSlop = if (isStacked || i == end - 1) hitSlopPx else 0f
-                                val zeroSlop = if (opensRun xor isRtl) hitSlopPx else 0f
-                                val growthSlop = if (closesRun xor isRtl) hitSlopPx else 0f
+                                val zeroSlop = if (if (isRtl) closesRun else opensRun) hitSlopPx else 0f
+                                val growthSlop = if (if (isRtl) opensRun else closesRun) hitSlopPx else 0f
                                 val top = yOff - nearSlop
                                 val bottom = yOff + barThickness + farSlop
                                 val near = xOff - zeroSlop
@@ -458,13 +458,13 @@ fun BarChart(
 
                             // No slop on the axis bars touch along, or the loop would
                             // claim the touch for whichever it reached first.
-                            // Slop goes only on the sides facing a sibling's edge. The
-                            // top of a stack and the outer bars of a group face open
-                            // space and keep the full tolerance.
+                            // Zero on the sides facing a sibling, full tolerance on the
+                            // sides facing open space. RTL mirrors the run, so the two
+                            // swap over.
                             val opensGroup = isStacked || i == first
                             val closesGroup = isStacked || i == end - 1
-                            val leftSlop = if (opensGroup xor isRtl) hitSlopPx else 0f
-                            val rightSlop = if (closesGroup xor isRtl) hitSlopPx else 0f
+                            val leftSlop = if (if (isRtl) closesGroup else opensGroup) hitSlopPx else 0f
+                            val rightSlop = if (if (isRtl) opensGroup else closesGroup) hitSlopPx else 0f
                             val topSlop = if (!isStacked || i == end - 1) hitSlopPx else 0f
                             val baseSlop = if (!isStacked || i == first) hitSlopPx else 0f
                             val withinX = touchPos.x in (startX - leftSlop)..(endX + rightSlop)

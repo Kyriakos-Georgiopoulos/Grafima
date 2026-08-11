@@ -113,6 +113,21 @@ class BarGroupedA11yTest {
     }
 
     @Test
+    fun `one bar per category is not announced as groups of one`() {
+        val spread = BarDataSet(
+            entries = (1..4).map { BarEntry("q$it", "Q$it", 10f * it, seriesId = "rev") },
+            contentDescription = "revenue"
+        )
+
+        // Tagging a seriesId is how you get series-named actions; on an ungrouped
+        // chart it must not turn the summary into "4 groups of 1".
+        assertEquals(
+            "Bar Chart representing revenue. 4 bars. Use the actions menu to select one.",
+            buildBarChartDescription(spread, A11yConfig())
+        )
+    }
+
+    @Test
     fun `a single category is announced in the singular`() {
         val one = BarDataSet(
             entries = listOf(

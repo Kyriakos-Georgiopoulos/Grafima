@@ -49,6 +49,16 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalTestApi::class)
 class GroupedBarChartUiTest {
 
+    private val chartSize = 300.dp
+
+    /**
+     * A hair below the baseline: inside the x-label strip, where the fat-finger
+     * tolerance is supposed to reach. Derived so raising the default label space
+     * moves the tap rather than silently breaking the assertion.
+     */
+    private val justBelowBaseline =
+        1f - (ChartStyle().bottomLabelSpace / chartSize) + 0.02f
+
     private val entries = listOf(
         BarEntry("q1-rev", "Q1", 45f, seriesId = "rev", seriesLabel = "Revenue"),
         BarEntry("q1-cost", "Q1", 30f, seriesId = "cost", seriesLabel = "Cost"),
@@ -431,6 +441,43 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun a_lone_bar_keeps_its_touch_tolerance_in_rtl() = runComposeUiTest {
+        val plain = BarDataSet(
+            entries = listOf(BarEntry("jan", "Jan", 45f), BarEntry("feb", "Feb", 80f)),
+            contentDescription = "Monthly"
+        )
+        var direction by mutableStateOf(LayoutDirection.Ltr)
+        var selected: BarEntry? by mutableStateOf(null)
+
+        setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                BarChart(
+                    dataSet = plain,
+                    modifier = Modifier.size(300.dp),
+                    animationConfig = snapAnimations,
+                    selectedEntry = selected,
+                    onBarSelected = { selected = it }
+                )
+            }
+        }
+        // Just outside the first bar's left edge, inside its slop.
+        onChartNode().performTouchInput { down(Offset(width * 0.19f, height * 0.8f)) }
+        onChartNode().performTouchInput { up() }
+        val ltr = selected
+
+        selected = null
+        direction = LayoutDirection.Rtl
+        waitForIdle()
+        onChartNode().performTouchInput { down(Offset(width * 0.81f, height * 0.8f)) }
+        onChartNode().performTouchInput { up() }
+
+        // A bar alone in its slot opens and closes its own category, so mirroring by
+        // xor rather than by swapping sides left it no tolerance at all in RTL.
+        assertNotNull(ltr, "the LTR tap in the slop found nothing")
+        assertNotNull(selected, "the mirrored RTL tap in the slop found nothing")
+    }
+
+    @Test
     fun a_stack_keeps_its_touch_tolerance_at_the_baseline() = runComposeUiTest {
         var mode by mutableStateOf(BarGroupMode.Grouped)
         var selected: BarEntry? by mutableStateOf(null)
@@ -443,14 +490,14 @@ class GroupedBarChartUiTest {
                 onBarSelected = { selected = it }
             )
         }
-        onChartNode().performTouchInput { down(Offset(width * 0.22f, height * 0.906f)) }
+        onChartNode().performTouchInput { down(Offset(width * 0.22f, height * justBelowBaseline)) }
         onChartNode().performTouchInput { up() }
         val grouped = selected
 
         selected = null
         mode = BarGroupMode.Stacked
         waitForIdle()
-        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
+        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * justBelowBaseline)) }
         onChartNode().performTouchInput { up() }
 
         // Just below the baseline, where people aim. Zeroing the slop for the whole
@@ -528,14 +575,14 @@ class GroupedBarChartUiTest {
             )
         }
         // Just inside the label strip: the fat-finger tolerance every mode should give.
-        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
+        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * justBelowBaseline)) }
         onChartNode().performTouchInput { up() }
         val grouped = selected
 
         selected = null
         mode = BarGroupMode.Stacked
         waitForIdle()
-        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
+        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * justBelowBaseline)) }
         onChartNode().performTouchInput { up() }
 
         // `BarDataSet.mode` documents that it has no effect without a seriesId.
@@ -577,34 +624,37 @@ class GroupedBarChartUiTest {
     @Test
     fun a_stacked_segment_too_short_for_its_value_drops_the_label() = runComposeUiTest {
         assumePixelCapture()
-        // One tall segment and one one-unit sliver: the sliver is far shorter than
-        // its own label, which is the half of the gate the grouped case never reaches.
-        val slivers = BarDataSet(
-            entries = (1..4).flatMap { q ->
-                listOf(
-                    BarEntry("q$q-big", "Q$q", 400f, seriesId = "big"),
-                    BarEntry("q$q-thin", "Q$q", 1.5f, seriesId = "thin")
-                )
-            },
-            defaultGradientColors = listOf(Color.Blue, Color.Blue),
-            contentDescription = "Slivers",
-            mode = BarGroupMode.Stacked
-        )
+        var sliver by mutableStateOf(0f)
+        // One tall segment plus a sliver. At 0f the sliver draws nothing at all, so
+        // that run is the baseline for "the tall segments' labels only".
         setContent {
             BarChart(
-                dataSet = slivers,
+                dataSet = BarDataSet(
+                    entries = (1..4).flatMap { q ->
+                        listOf(
+                            BarEntry("q$q-big", "Q$q", 400f, seriesId = "big"),
+                            BarEntry("q$q-thin", "Q$q", sliver, seriesId = "thin")
+                        )
+                    },
+                    defaultGradientColors = listOf(Color.Blue, Color.Blue),
+                    contentDescription = "Slivers",
+                    mode = BarGroupMode.Stacked
+                ),
                 modifier = Modifier.size(300.dp),
                 style = ChartStyle(valueTextStyle = TextStyle(color = Color.Red, fontSize = 14.sp)),
                 animationConfig = snapAnimations
             )
         }
         waitForIdle()
+        val tallLabelsOnly = onChartNode().captureToImage().countOpaqueRed()
 
-        // The tall segments hold their labels; the slivers must not paint one.
-        assertTrue(
-            onChartNode().captureToImage().countOpaqueRed() > 0,
-            "the tall segments lost their labels too"
-        )
+        sliver = 1.5f
+        waitForIdle()
+        val withSlivers = onChartNode().captureToImage().countOpaqueRed()
+
+        assertTrue(tallLabelsOnly > 0, "the tall segments drew no labels")
+        // A sliver far shorter than its own text must not paint one.
+        assertEquals(tallLabelsOnly, withSlivers, "a sliver painted a value it cannot hold")
     }
 
     @Test

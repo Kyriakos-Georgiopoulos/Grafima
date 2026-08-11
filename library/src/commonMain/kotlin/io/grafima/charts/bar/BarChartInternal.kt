@@ -147,8 +147,8 @@ internal fun groupedBarOffset(position: Float, thickness: Float, gap: Float): Fl
 
 /**
  * Where each bar sits within its category. Built once per dataset from the drawn
- * entries, exiting ones included, so the draw pass only does arithmetic. Every
- * array is indexed by position in the render list.
+ * entries, exiting ones included, so the draw pass only does arithmetic. Indexed by
+ * position in the render list.
  */
 internal class BarGroupLayout(
     val categoryOf: IntArray,
@@ -225,6 +225,14 @@ internal fun summarizeBars(entries: List<BarEntry>): BarChartSummary {
         uniformGroupSize = sizes.distinct().singleOrNull()
     )
 }
+
+/**
+ * Whether [target] still has to be animated to. `targetValue` alone is not enough:
+ * a cancelled animation keeps the target it was aiming at, so a bar left part-way
+ * by a dataset change would never be driven the rest of the way.
+ */
+private fun Animatable<Float, AnimationVector1D>.needsAnimatingTo(target: Float): Boolean =
+    targetValue != target || (!isRunning && value != target)
 
 @Stable
 internal class ChartAnimationEngine {
@@ -339,7 +347,7 @@ internal class ChartAnimationEngine {
                     delay(config.startDelayMs + (position * config.staggerDelayMs))
                     heightAnim.animateTo(entry.y, config.initialEntrySpec)
                 }
-            } else if (heightAnim.targetValue != entry.y) {
+            } else if (heightAnim.needsAnimatingTo(entry.y)) {
                 scope.launch { heightAnim.animateTo(entry.y, config.morphSpec) }
             }
         }
@@ -361,7 +369,7 @@ internal class ChartAnimationEngine {
             val targetAlpha =
                 if (selectedId != null && id != selectedId) style.unselectedAlpha else 1f
 
-            if (animatable.targetValue != targetAlpha) {
+            if (animatable.needsAnimatingTo(targetAlpha)) {
                 scope.launch { animatable.animateTo(targetAlpha, config.selectionSpec) }
             }
         }
