@@ -252,7 +252,6 @@ fun BarChart(
 
     LaunchedEffect(entries, selectedEntry) {
         animationEngine.updateSelectionState(
-            entries,
             selectedEntry,
             style,
             effectiveAnimationConfig,

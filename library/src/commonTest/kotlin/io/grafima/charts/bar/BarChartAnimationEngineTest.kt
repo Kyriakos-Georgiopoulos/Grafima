@@ -262,12 +262,12 @@ class BarChartAnimationEngineTest {
         val data = entries("a" to 10f, "b" to 20f)
         engine.syncAnimatables(data)
 
-        engine.updateSelectionState(data, data[0], style, snapConfig, harness.launchScope())
+        engine.updateSelectionState(data[0], style, snapConfig, harness.launchScope())
         harness.advanceFrames(100)
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("a").value)
         assertEquals(0.25f, engine.selectionAlphaAnimatables.getValue("b").value)
 
-        engine.updateSelectionState(data, null, style, snapConfig, harness.launchScope())
+        engine.updateSelectionState(null, style, snapConfig, harness.launchScope())
         harness.advanceFrames(100)
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("a").value)
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("b").value)
@@ -345,6 +345,23 @@ class BarChartAnimationEngineTest {
 
         assertEquals(1f, engine.categorySlotCount(rendered, layout), 0.001f)
     }
+
+    @Test
+    fun `a departing bar dims with the rest when something else is selected`() =
+        runEngineTest { harness ->
+            val engine = ChartAnimationEngine()
+            val style = ChartStyle(unselectedAlpha = 0.25f)
+            engine.syncAnimatables(twoStacks)
+            val remaining = twoStacks.filterNot { it.id == "Q1-cost" }
+            engine.syncAnimatables(remaining)
+
+            engine.updateSelectionState(remaining[0], style, snapConfig, harness.launchScope())
+            harness.advanceFrames(100)
+
+            // Left at 1f it stays the brightest bar in Q1 and, being the category's
+            // maximum, holds Q1's axis label lit against a selection elsewhere.
+            assertEquals(0.25f, engine.selectionAlphaAnimatables.getValue("Q1-cost").value)
+        }
 
     @Test
     fun `slot counting is unaffected by grouping while nothing is leaving`() = runEngineTest {

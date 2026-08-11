@@ -438,18 +438,21 @@ internal class ChartAnimationEngine {
         }
     }
 
+    /**
+     * Every bar being drawn, departing ones included. A bar that left before the
+     * selection was made would otherwise keep full alpha and, being the brightest
+     * thing in its category, hold that category's axis label lit.
+     */
     fun updateSelectionState(
-        entries: List<BarEntry>,
         selectedEntry: BarEntry?,
         style: ChartStyle,
         config: AnimationConfig,
         scope: CoroutineScope
     ) {
-        entries.forEach { entry ->
-            val animatable = selectionAlphaAnimatables[entry.id] ?: return@forEach
-            val isSelected = (selectedEntry?.id == entry.id)
+        val selectedId = selectedEntry?.id
+        selectionAlphaAnimatables.forEach { (id, animatable) ->
             val targetAlpha =
-                if (selectedEntry != null && !isSelected) style.unselectedAlpha else 1f
+                if (selectedId != null && id != selectedId) style.unselectedAlpha else 1f
 
             if (animatable.targetValue != targetAlpha) {
                 scope.launch { animatable.animateTo(targetAlpha, config.selectionSpec) }
