@@ -140,7 +140,7 @@ class BarChartAnimationEngineTest {
 
             harness.advanceFrames(100)
             val midExit = engine.heightAnimatables.getValue("b").value
-            assertTrue(midExit > 0f && midExit < 20f, "expected a partial shrink, got ${'$'}midExit")
+            assertTrue(midExit > 0f && midExit < 20f, "expected a partial shrink, got $midExit")
             assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
 
             // Sunk, but the slot is still collapsing, so the bar is still drawn.

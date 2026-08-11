@@ -43,13 +43,9 @@ internal fun seriesOrder(entries: List<BarEntry>): List<String> =
     entries.mapNotNull { it.seriesId }.distinct()
 
 /**
- * Y-axis maximum: 20% headroom over the tallest bar, rounded up to a tidy
- * step (5, 10, or 50 depending on magnitude) so axis labels stay round numbers.
- */
-/**
- * The same maximum over a layout the caller already has, which is how the chart
- * itself asks: it groups its render list once and both the bars and the axis read
- * that one partition.
+ * Y-axis maximum for a layout the caller already has: 20% headroom over the tallest
+ * bar, rounded up to a tidy step (5, 10 or 50 by magnitude) so the labels stay round.
+ * The chart groups its render list once and both the bars and the axis read it.
  */
 internal fun axisMaxForLayout(
     entries: List<BarEntry>,
@@ -94,7 +90,7 @@ internal fun barGap(extent: Float, count: Float, spacingFactor: Float): Float {
     return extent * spacingFactor.coerceIn(0f, 0.9f) / (slots + 1f)
 }
 
-/** The same offset for a fractional slot [position] — the slots ahead of this bar. */
+/** LTR offset of a slot, measured from [leadingInset] by the slots ahead of it. */
 internal fun barSlotOffset(
     position: Float,
     leadingInset: Float,
@@ -112,17 +108,11 @@ internal fun mirrorForRtl(
 
 /**
  * Thickness of one bar when a category slot is split across [seriesCount] of them.
- * Unlike [barThicknessAndGap] no gap flanks the group, because the slot's own gaps
- * already separate it from its neighbours; the whole slot goes to the bars and the
- * spacing between them.
+ * No gap flanks the group: the slot's own gaps already separate it from its
+ * neighbours, so the whole slot goes to the bars and the spacing between them.
  *
- * Returned as two scalars rather than a pair because the draw pass calls this once
- * per category per frame, and a `Pair` there is an allocation per frame.
- */
-/**
- * The same split over a fractional [seriesCount], which is what a group holds while
- * one of its bars is leaving. The survivors widen across the departure rather than
- * doubling on the frame it completes.
+ * [seriesCount] is fractional because a group holds one while a bar is leaving; the
+ * survivors widen across the departure rather than doubling when it completes.
  */
 internal fun groupedBarThickness(
     slotThickness: Float,
@@ -151,7 +141,7 @@ internal fun groupedBarGap(
     return slotThickness * innerGapFraction(count, innerSpacingFactor) / (count - 1f)
 }
 
-/** The same offset over the fractional share of the group that precedes this bar. */
+/** LTR offset within a slot, by the share of the group that precedes this bar. */
 internal fun groupedBarOffset(position: Float, thickness: Float, gap: Float): Float =
     position * (thickness + gap)
 
@@ -322,7 +312,7 @@ internal class ChartAnimationEngine {
     fun slotOccupancy(id: String): Float = slotAnimatables[id]?.value ?: 1f
 
     /**
-     * The same count over categories rather than bars. A grouped category holds its
+     * Slots in use, counted over categories rather than bars. A grouped category holds its
      * slot until its last bar has gone, so it collapses on the survivor's occupancy
      * rather than shrinking a step per bar removed.
      */

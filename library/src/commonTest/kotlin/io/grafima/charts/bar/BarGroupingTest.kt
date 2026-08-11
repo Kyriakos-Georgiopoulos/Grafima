@@ -73,6 +73,15 @@ class BarGroupingTest {
     }
 
     @Test
+    fun `a series bar does not reach back into a plain bar sharing its label`() {
+        val layout = computeBarGroupLayout(listOf(plain("Q1", 45f), grouped("Q1", "cost", 30f)))
+
+        // Weakening the predecessor clause to "previous != null" merges these.
+        assertEquals(2, layout.categoryCount, "a plain bar is a category in its own right")
+        assertContentEquals(intArrayOf(0, 1), layout.categoryOf)
+    }
+
+    @Test
     fun `the stacked axis max clears the tallest stack rather than the tallest bar`() {
         // Grouped only has to clear 80. Stacked has to clear 45+30=75 and 80+52=132.
         assertEquals(100f, axisMaxForLayout(twoByTwo, computeBarGroupLayout(twoByTwo), BarGroupMode.Grouped))

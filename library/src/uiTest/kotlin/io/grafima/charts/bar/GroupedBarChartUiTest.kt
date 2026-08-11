@@ -575,6 +575,39 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun a_stacked_segment_too_short_for_its_value_drops_the_label() = runComposeUiTest {
+        assumePixelCapture()
+        // One tall segment and one one-unit sliver: the sliver is far shorter than
+        // its own label, which is the half of the gate the grouped case never reaches.
+        val slivers = BarDataSet(
+            entries = (1..4).flatMap { q ->
+                listOf(
+                    BarEntry("q$q-big", "Q$q", 400f, seriesId = "big"),
+                    BarEntry("q$q-thin", "Q$q", 1.5f, seriesId = "thin")
+                )
+            },
+            defaultGradientColors = listOf(Color.Blue, Color.Blue),
+            contentDescription = "Slivers",
+            mode = BarGroupMode.Stacked
+        )
+        setContent {
+            BarChart(
+                dataSet = slivers,
+                modifier = Modifier.size(300.dp),
+                style = ChartStyle(valueTextStyle = TextStyle(color = Color.Red, fontSize = 14.sp)),
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        // The tall segments hold their labels; the slivers must not paint one.
+        assertTrue(
+            onChartNode().captureToImage().countOpaqueRed() > 0,
+            "the tall segments lost their labels too"
+        )
+    }
+
+    @Test
     fun a_narrow_bar_without_series_still_draws_its_value() = runComposeUiTest {
         assumePixelCapture()
         // Enough bars that each is narrower than its own three-digit label.

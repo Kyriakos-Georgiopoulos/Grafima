@@ -78,8 +78,8 @@ Three rules are worth knowing:
 - **An entry with no `seriesId` is always its own bar.** A dataset that sets none
   behaves exactly as it did before groups existed, in either `mode`.
 - **The axis clears the stack, not the segment.** In `Stacked` the y-axis is scaled
-  to the tallest total, or to the tallest single segment when a negative value
-  makes that larger, so segments are never clipped.
+  to the tallest total, so segments are never clipped. `BarEntry.y` must be positive;
+  a negative value is not drawn.
 
 Colors are per entry, as they always were, so a series gets its color by giving
 every entry of that series the same `gradientColors`. Spacing within a group is

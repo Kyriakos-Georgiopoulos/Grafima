@@ -28,12 +28,13 @@ behaviour do not.
 - The default `A11yConfig.selectedStateDescription` names the series when a bar has
   one, so the two bars of a group are told apart. Its signature is unchanged and a
   bar without a series is described exactly as before.
-- `A11yConfig.barCountDescriptionBuilder` is replaced by `countDescriptionBuilder`,
-  which takes a `BarChartSummary` and covers a dataset whether or not it carries
-  series. The previous pair of builders switched on the data, so adding a series to
-  a chart that had localised its bar count silently reverted it to English. The
-  default wording is unchanged, and ragged categories now say "3 bars in 2 groups"
-  rather than claiming a group size they do not share.
+- **Source breaking.** `A11yConfig.barCountDescriptionBuilder: (Int) -> String` is
+  removed and replaced by `countDescriptionBuilder: (BarChartSummary) -> String`, so
+  one override covers a dataset whether or not it carries series. A count alone
+  cannot describe grouping, and a second builder beside it would have left a chart
+  that localised only the first reverting to English the day it gained a series. The
+  default wording is unchanged for an ungrouped chart; ragged categories say
+  "3 bars in 2 groups" rather than claiming a group size they do not share.
 - **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle` and `A11yConfig`
   each gained a defaulted constructor parameter. Apart from the builder rename above
   your code compiles unchanged, but Kotlin regenerates a data class's constructor and
@@ -44,6 +45,9 @@ behaviour do not.
 
 ### Fixed
 
+- Bar chart touch handling followed `ChartStyle.bottomLabelSpace` and `topValueSpace`.
+  Both were read when hit testing but neither restarted the gesture detector, so
+  changing either left taps aimed at where the bars used to be.
 - The horizontal bar chart's selection tooltip is drawn on the end the bar grows
   towards. In RTL it was placed past the bar's other end, landing on the axis over
   the category labels. `TooltipSelectionRenderer` reads the layout direction from
