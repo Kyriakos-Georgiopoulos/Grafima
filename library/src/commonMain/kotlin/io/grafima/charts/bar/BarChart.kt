@@ -377,14 +377,20 @@ fun BarChart(
 
                                 // No slop on the axis bars touch along, or the loop
                                 // would claim the touch for whichever it reached first.
-                                val stackedInterior = isStacked && end - first > 1
-                                val xSlop = if (stackedInterior) 0f else hitSlopPx
-                                val ySlop =
-                                    if (stackedInterior || end - first == 1) hitSlopPx else 0f
-                                if (touchPos.y in
-                                    (yOff - ySlop)..(yOff + barThickness + ySlop) &&
-                                    touchPos.x in (xOff - xSlop)..(xOff + barLen + xSlop)
-                                ) {
+                                // Slop goes only on the sides facing a sibling's edge.
+                                // The ends of a stack and the outer bars of a group
+                                // face open space and keep the full tolerance.
+                                val opensRun = !isStacked || i == first
+                                val closesRun = !isStacked || i == end - 1
+                                val nearSlop = if (isStacked || i == first) hitSlopPx else 0f
+                                val farSlop = if (isStacked || i == end - 1) hitSlopPx else 0f
+                                val zeroSlop = if (opensRun xor isRtl) hitSlopPx else 0f
+                                val growthSlop = if (closesRun xor isRtl) hitSlopPx else 0f
+                                val top = yOff - nearSlop
+                                val bottom = yOff + barThickness + farSlop
+                                val near = xOff - zeroSlop
+                                val far = xOff + barLen + growthSlop
+                                if (touchPos.y in top..bottom && touchPos.x in near..far) {
                                     applySelection(entry, isInitialDown)
                                     return
                                 }
@@ -446,12 +452,17 @@ fun BarChart(
 
                             // No slop on the axis bars touch along, or the loop would
                             // claim the touch for whichever it reached first.
-                            val stackedInterior = isStacked && end - first > 1
-                            val xSlop =
-                                if (stackedInterior || end - first == 1) hitSlopPx else 0f
-                            val ySlop = if (stackedInterior) 0f else hitSlopPx
-                            val withinX = touchPos.x in (startX - xSlop)..(endX + xSlop)
-                            val withinY = touchPos.y in (startY - ySlop)..(endY + ySlop)
+                            // Slop goes only on the sides facing a sibling's edge. The
+                            // top of a stack and the outer bars of a group face open
+                            // space and keep the full tolerance.
+                            val opensGroup = isStacked || i == first
+                            val closesGroup = isStacked || i == end - 1
+                            val leftSlop = if (opensGroup xor isRtl) hitSlopPx else 0f
+                            val rightSlop = if (closesGroup xor isRtl) hitSlopPx else 0f
+                            val topSlop = if (!isStacked || i == end - 1) hitSlopPx else 0f
+                            val baseSlop = if (!isStacked || i == first) hitSlopPx else 0f
+                            val withinX = touchPos.x in (startX - leftSlop)..(endX + rightSlop)
+                            val withinY = touchPos.y in (startY - topSlop)..(endY + baseSlop)
                             if (withinX && withinY) {
                                 applySelection(entry, isInitialDown)
                                 return

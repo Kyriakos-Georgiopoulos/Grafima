@@ -431,42 +431,116 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun a_stack_keeps_its_touch_tolerance_at_the_baseline() = runComposeUiTest {
+        var mode by mutableStateOf(BarGroupMode.Grouped)
+        var selected: BarEntry? by mutableStateOf(null)
+        setContent {
+            BarChart(
+                dataSet = dataSet(mode),
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectedEntry = selected,
+                onBarSelected = { selected = it }
+            )
+        }
+        onChartNode().performTouchInput { down(Offset(width * 0.22f, height * 0.906f)) }
+        onChartNode().performTouchInput { up() }
+        val grouped = selected
+
+        selected = null
+        mode = BarGroupMode.Stacked
+        waitForIdle()
+        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
+        onChartNode().performTouchInput { up() }
+
+        // Just below the baseline, where people aim. Zeroing the slop for the whole
+        // stacking axis rather than only between segments loses this tap.
+        assertNotNull(grouped, "the grouped tap below the baseline found nothing")
+        assertNotNull(selected, "the stacked tap below the baseline found nothing")
+    }
+
+    @Test
+    fun the_two_series_of_a_group_are_reachable_by_tap_horizontally() = runComposeUiTest {
+        var selected: BarEntry? by mutableStateOf(null)
+        setContent {
+            BarChart(
+                dataSet = dataSet(BarGroupMode.Grouped),
+                modifier = Modifier.size(300.dp),
+                orientation = BarOrientation.Horizontal,
+                animationConfig = snapAnimations,
+                selectedEntry = selected,
+                onBarSelected = { selected = it }
+            )
+        }
+
+        val hits = mutableSetOf<String>()
+        for (fraction in listOf(0.15f, 0.20f, 0.30f, 0.35f, 0.40f)) {
+            selected = null
+            onChartNode().performTouchInput { down(Offset(width * 0.20f, height * fraction)) }
+            selected?.let { hits.add(it.id) }
+            onChartNode().performTouchInput { up() }
+        }
+
+        // Horizontal hit testing was rewritten with the rest; nothing tapped it.
+        assertTrue(hits.size >= 2, "sweeping the first group only ever selected $hits")
+    }
+
+    @Test
+    fun a_horizontal_stack_reaches_the_segment_beyond_the_first() = runComposeUiTest {
+        var selected: BarEntry? by mutableStateOf(null)
+        setContent {
+            BarChart(
+                dataSet = dataSet(BarGroupMode.Stacked),
+                modifier = Modifier.size(300.dp),
+                orientation = BarOrientation.Horizontal,
+                animationConfig = snapAnimations,
+                selectedEntry = selected,
+                onBarSelected = { selected = it }
+            )
+        }
+
+        val hits = mutableSetOf<String>()
+        for (fraction in listOf(0.15f, 0.22f, 0.31f, 0.37f)) {
+            onChartNode().performTouchInput { down(Offset(width * fraction, height * 0.28f)) }
+            selected?.let { hits.add(it.id) }
+            onChartNode().performTouchInput { up() }
+        }
+
+        assertTrue(hits.size >= 2, "sweeping the stack only ever selected $hits")
+    }
+
+    @Test
     fun stacking_a_dataset_with_no_series_changes_nothing_about_it() = runComposeUiTest {
         val plain = BarDataSet(
             entries = listOf(BarEntry("jan", "Jan", 45f), BarEntry("feb", "Feb", 80f)),
             contentDescription = "Monthly"
         )
-        var grouped: BarEntry? by mutableStateOf(null)
-        var stacked: BarEntry? by mutableStateOf(null)
+        var mode by mutableStateOf(BarGroupMode.Grouped)
+        var selected: BarEntry? by mutableStateOf(null)
 
         setContent {
             BarChart(
-                dataSet = plain.copy(mode = BarGroupMode.Grouped),
+                dataSet = plain.copy(mode = mode),
                 modifier = Modifier.size(300.dp),
                 animationConfig = snapAnimations,
-                selectedEntry = grouped,
-                onBarSelected = { grouped = it }
+                selectedEntry = selected,
+                onBarSelected = { selected = it }
             )
         }
         // Just inside the label strip: the fat-finger tolerance every mode should give.
         onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
         onChartNode().performTouchInput { up() }
+        val grouped = selected
 
-        setContent {
-            BarChart(
-                dataSet = plain.copy(mode = BarGroupMode.Stacked),
-                modifier = Modifier.size(300.dp),
-                animationConfig = snapAnimations,
-                selectedEntry = stacked,
-                onBarSelected = { stacked = it }
-            )
-        }
+        selected = null
+        mode = BarGroupMode.Stacked
+        waitForIdle()
         onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
         onChartNode().performTouchInput { up() }
 
         // `BarDataSet.mode` documents that it has no effect without a seriesId.
-        assertEquals(grouped?.id, stacked?.id, "mode changed hit testing on plain data")
-        assertNotNull(stacked, "the stacked tap found nothing")
+        assertEquals(grouped?.id, selected?.id, "mode changed hit testing on plain data")
+        assertNotNull(selected, "the stacked tap found nothing")
     }
 
     @Test
