@@ -358,6 +358,7 @@ fun BarChart(
                             slotPosition += occupancy
 
                             var memberPosition = 0f
+                            var stackBase = 0f
                             for (i in first until end) {
                                 val entry = rendered[i]
                                 val yOff =
@@ -367,19 +368,14 @@ fun BarChart(
                                     )
                                 memberPosition += animationEngine.slotOccupancy(entry.id)
 
-                                if (entry.id !in currentSelectableIds) continue
-
                                 val animVal =
                                     animationEngine.heightAnimatables[entry.id]?.value ?: 0f
                                 val barLen = (animVal / currentMaxBarValue) * hChartWidth
-                                val base =
-                                    if (isStacked) {
-                                        animationEngine.stackedBase(
-                                            rendered, renderLayout, i, currentMaxBarValue, hChartWidth
-                                        )
-                                    } else {
-                                        0f
-                                    }
+                                val base = if (isStacked) stackBase else 0f
+                                if (isStacked) stackBase += barLen
+
+                                if (entry.id !in currentSelectableIds) continue
+
                                 val xOff =
                                     if (isRtl) hChartRight - base - barLen else hChartLeft + base
 
@@ -426,6 +422,7 @@ fun BarChart(
                         slotPosition += occupancy
 
                         var memberPosition = 0f
+                        var stackBase = 0f
                         for (i in first until end) {
                             val entry = rendered[i]
                             val ltrStartX =
@@ -435,23 +432,17 @@ fun BarChart(
                                 )
                             memberPosition += animationEngine.slotOccupancy(entry.id)
 
-                            if (entry.id !in currentSelectableIds) continue
-
-                            val startX = mirrorForRtl(ltrStartX, canvasWidth, barWidth, isRtl)
-                            val endX = startX + barWidth
-
                             val currentAnimatedValue =
                                 animationEngine.heightAnimatables[entry.id]?.value ?: 0f
                             val targetHeight =
                                 (currentAnimatedValue / currentMaxBarValue) * chartHeight
-                            val base =
-                                if (isStacked) {
-                                    animationEngine.stackedBase(
-                                        rendered, renderLayout, i, currentMaxBarValue, chartHeight
-                                    )
-                                } else {
-                                    0f
-                                }
+                            val base = if (isStacked) stackBase else 0f
+                            if (isStacked) stackBase += targetHeight
+
+                            if (entry.id !in currentSelectableIds) continue
+
+                            val startX = mirrorForRtl(ltrStartX, canvasWidth, barWidth, isRtl)
+                            val endX = startX + barWidth
                             val endY = canvasHeight - bottomSpacePx - base
                             val startY = endY - targetHeight
 
