@@ -135,8 +135,8 @@ fun BarChart(
 
     // Over what is drawn, so removing the tallest bar doesn't rescale the axis
     // out from under it mid-exit.
-    val maxBarValue = remember(renderEntries, dataSet.mode) {
-        computeBarAxisMax(renderEntries, dataSet.mode)
+    val maxBarValue = remember(renderEntries, barLayout, dataSet.mode) {
+        axisMaxForLayout(renderEntries, barLayout, dataSet.mode)
     }
 
     val maxLabelResult = remember(maxBarValue, axisConfig.axisLabelTextStyle) {

@@ -55,13 +55,6 @@ internal fun groupBarEntries(entries: List<BarEntry>): List<BarCategory> {
 internal fun seriesOrder(entries: List<BarEntry>): List<String> =
     entries.mapNotNull { it.seriesId }.distinct()
 
-/** The tallest thing the axis has to clear: a stack total, or a single bar. */
-internal fun categoryExtent(category: BarCategory, mode: BarGroupMode): Float =
-    when (mode) {
-        BarGroupMode.Stacked -> category.entries.fold(0f) { acc, entry -> acc + entry.y }
-        BarGroupMode.Grouped -> category.entries.maxOfOrNull { it.y } ?: 0f
-    }
-
 /**
  * Y-axis maximum: 20% headroom over the tallest bar, rounded up to a tidy
  * step (5, 10, or 50 depending on magnitude) so axis labels stay round numbers.
@@ -69,12 +62,32 @@ internal fun categoryExtent(category: BarCategory, mode: BarGroupMode): Float =
 internal fun computeBarAxisMax(
     entries: List<BarEntry>,
     mode: BarGroupMode = BarGroupMode.Grouped
-): Float = axisMaxForCategories(groupBarEntries(entries), mode)
+): Float = axisMaxForLayout(entries, computeBarGroupLayout(entries), mode)
 
-/** The same rounding over pre-grouped categories, so the chart groups only once. */
-internal fun axisMaxForCategories(categories: List<BarCategory>, mode: BarGroupMode): Float {
-    val rawMax = categories.maxOfOrNull { categoryExtent(it, mode) }?.takeIf { it > 0f } ?: 1f
-    val maxWithHeadroom = rawMax * 1.2f
+/**
+ * The same maximum over a layout the caller already has, which is how the chart
+ * itself asks: it groups its render list once and both the bars and the axis read
+ * that one partition.
+ */
+internal fun axisMaxForLayout(
+    entries: List<BarEntry>,
+    layout: BarGroupLayout,
+    mode: BarGroupMode
+): Float {
+    val stacked = mode == BarGroupMode.Stacked
+    var rawMax = 0f
+    var index = 0
+    while (index < entries.size) {
+        val category = layout.categoryOf[index]
+        var extent = 0f
+        while (index < entries.size && layout.categoryOf[index] == category) {
+            val y = entries[index].y
+            if (stacked) extent += y else if (y > extent) extent = y
+            index++
+        }
+        if (extent > rawMax) rawMax = extent
+    }
+    val maxWithHeadroom = (if (rawMax > 0f) rawMax else 1f) * 1.2f
     val step = if (maxWithHeadroom > 100) 50f else if (maxWithHeadroom > 10) 10f else 5f
     return ceil(maxWithHeadroom / step) * step
 }
