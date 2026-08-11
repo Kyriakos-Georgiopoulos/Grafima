@@ -363,6 +363,55 @@ class BarChartAnimationEngineTest {
         }
 
     @Test
+    fun `the category walk weights members by what each still holds`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        val style = ChartStyle(unselectedAlpha = 0.25f)
+        engine.syncAnimatables(twoStacks)
+        val remaining = twoStacks.filterNot { it.id == "Q1-cost" }
+        engine.syncAnimatables(remaining)
+        engine.slotAnimatables.getValue("Q1-cost").snapTo(0.5f)
+        engine.selectionAlphaAnimatables.getValue("Q1-rev").snapTo(style.unselectedAlpha)
+
+        val rendered = engine.renderEntries(remaining)
+        val layout = computeBarGroupLayout(rendered)
+        var q1Members = -1f
+        var q1Alpha = -1f
+        var q1Occupancy = -1f
+        forEachBarCategory(rendered, layout, engine) { first, _, members, occupancy, alpha ->
+            if (rendered[first].xLabel == "Q1") {
+                q1Members = members
+                q1Alpha = alpha
+                q1Occupancy = occupancy
+            }
+        }
+
+        // Members are summed so the survivors widen smoothly; the slot takes the
+        // maximum so it lasts as long as its longest-lived bar; alpha takes the
+        // maximum so the category's label follows its most selected bar.
+        assertEquals(1.5f, q1Members, 0.001f)
+        assertEquals(1f, q1Occupancy, 0.001f)
+        assertEquals(1f, q1Alpha, 0.001f)
+    }
+
+    @Test
+    fun `the axis max spans a bar that is still animating out`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        val tall = entries("a" to 10f, "b" to 200f)
+        engine.syncAnimatables(tall)
+        val before = computeBarAxisMax(tall, BarGroupMode.Grouped)
+
+        engine.syncAnimatables(entries("a" to 10f))
+        val rendered = engine.renderEntries(entries("a" to 10f))
+
+        // Scaling to the dataset instead would rescale the axis out from under the
+        // departing bar while it is still on screen sinking.
+        assertEquals(
+            before,
+            axisMaxForLayout(rendered, computeBarGroupLayout(rendered), BarGroupMode.Grouped)
+        )
+    }
+
+    @Test
     fun `slot counting is unaffected by grouping while nothing is leaving`() = runEngineTest {
         val engine = ChartAnimationEngine()
         engine.syncAnimatables(twoStacks)

@@ -157,12 +157,17 @@ class BarGroupingTest {
     }
 
     @Test
-    fun `the second bar of a group starts one thickness and one gap along`() {
-        val thickness = groupedBarThickness(120f, 2, innerSpacingFactor = 0.1f)
-        val gap = groupedBarGap(120f, 2, innerSpacingFactor = 0.1f)
+    fun `the last bar of a group ends exactly on the slot boundary`() {
+        val slot = 120f
+        val f = 0.1f
+        val thickness = groupedBarThickness(slot, 3, f)
+        val gap = groupedBarGap(slot, 3, f)
 
-        assertEquals(0f, groupedBarOffset(0, thickness, gap))
-        assertEquals(thickness + gap, groupedBarOffset(1, thickness, gap))
+        assertEquals(slot, groupedBarOffset(2, thickness, gap) + thickness, 0.001f)
+        // The same has to hold mid-departure, or the group spills out of its slot.
+        val partial = groupedBarThickness(slot, 2.4f, f)
+        val partialGap = groupedBarGap(slot, 2.4f, f)
+        assertEquals(slot, groupedBarOffset(1.4f, partial, partialGap) + partial, 0.001f)
     }
 
     @Test
@@ -224,15 +229,33 @@ class BarGroupingTest {
     }
 
     @Test
-    fun `a group of a fractional size matches the whole sizes it sits between`() {
+    fun `a group of a whole size splits its slot by the documented formula`() {
         val slot = 120f
         val f = 0.1f
 
-        assertEquals(groupedBarThickness(slot, 1, f), groupedBarThickness(slot, 1f, f), 0.001f)
-        assertEquals(groupedBarThickness(slot, 2, f), groupedBarThickness(slot, 2f, f), 0.001f)
-        assertEquals(groupedBarThickness(slot, 3, f), groupedBarThickness(slot, 3f, f), 0.001f)
-        assertEquals(groupedBarGap(slot, 2, f), groupedBarGap(slot, 2f, f), 0.001f)
-        assertEquals(groupedBarGap(slot, 3, f), groupedBarGap(slot, 3f, f), 0.001f)
+        // thickness*n + gap*(n-1) == slot, with gaps taking f of the slot.
+        assertEquals(slot, groupedBarThickness(slot, 1, f), 0.001f)
+        assertEquals(slot * 0.9f / 2f, groupedBarThickness(slot, 2, f), 0.001f)
+        assertEquals(slot * 0.1f, groupedBarGap(slot, 2, f), 0.001f)
+        assertEquals(slot * 0.9f / 3f, groupedBarThickness(slot, 3, f), 0.001f)
+        assertEquals(slot * 0.05f, groupedBarGap(slot, 3, f), 0.001f)
+    }
+
+    @Test
+    fun `a half-departed group sits half way between the two whole sizes`() {
+        val slot = 120f
+        val f = 0.1f
+
+        // At 1.5 members the gap fraction is half of f, so the two bars and the
+        // one gap between them still add up to the slot.
+        val thickness = groupedBarThickness(slot, 1.5f, f)
+        val gap = groupedBarGap(slot, 1.5f, f)
+        assertEquals(slot * 0.95f / 1.5f, thickness, 0.001f)
+        assertEquals(slot * 0.05f / 0.5f, gap, 0.001f)
+        assertTrue(
+            thickness > groupedBarThickness(slot, 2, f) && thickness < slot,
+            "a half-departed bar must sit between the pair width and the whole slot"
+        )
     }
 
     @Test
