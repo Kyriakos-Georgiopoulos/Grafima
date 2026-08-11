@@ -268,14 +268,8 @@ fun BarChart(
                 stateDescription = chartStateDescription
                 customActions = buildList {
                     entries.forEach { entry ->
-                        // A group's bars share an xLabel; the series is all that
-                        // tells their actions apart.
-                        val series = entry.spokenSeriesLabel
-                        val actionLabel =
-                            if (series == null) "Select ${entry.xLabel}"
-                            else "Select ${entry.xLabel}, $series"
                         add(
-                            CustomAccessibilityAction(label = actionLabel) {
+                            CustomAccessibilityAction(label = a11yConfig.selectActionLabel(entry)) {
                                 onBarSelected(entry)
                                 true
                             }

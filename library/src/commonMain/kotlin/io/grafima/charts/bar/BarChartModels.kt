@@ -209,6 +209,9 @@ data class AnimationConfig(
 /**
  * What a chart amounts to, for the opening line of its description.
  *
+ * Only the library constructs it, so it can report more in a later release without
+ * the `copy` and `componentN` of a data class freezing its shape.
+ *
  * @property bars Total bars, series included.
  * @property categories Positions along the axis.
  * @property series Distinct measures. Zero when no entry carries one.
@@ -216,7 +219,7 @@ data class AnimationConfig(
  *   number, null when they differ. Ragged data has no single group size to report.
  */
 @Immutable
-data class BarChartSummary(
+class BarChartSummary internal constructor(
     val bars: Int,
     val categories: Int,
     val series: Int,
@@ -229,6 +232,9 @@ data class BarChartSummary(
  * @property countDescriptionBuilder Opens the chart's description with what it holds.
  *   Receives a [BarChartSummary] rather than loose numbers, so one override covers a
  *   dataset whether or not it carries series.
+ * @property selectActionLabel Names the per-bar action in the actions menu. Grouped
+ *   bars share an [BarEntry.xLabel], so the default adds the series to keep the
+ *   labels distinct.
  */
 @Stable
 data class A11yConfig(
@@ -252,5 +258,9 @@ data class A11yConfig(
             else -> "${summary.bars} bars in ${summary.categories} groups"
         }
         "$held. Use the actions menu to select one."
+    },
+    val selectActionLabel: (BarEntry) -> String = { entry ->
+        val series = entry.spokenSeriesLabel
+        if (series == null) "Select ${entry.xLabel}" else "Select ${entry.xLabel}, $series"
     }
 )

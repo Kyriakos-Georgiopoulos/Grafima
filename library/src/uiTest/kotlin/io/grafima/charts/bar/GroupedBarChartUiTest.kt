@@ -92,6 +92,27 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun the_select_action_label_can_be_replaced() = runComposeUiTest {
+        setContent {
+            BarChart(
+                dataSet = dataSet(BarGroupMode.Grouped),
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                a11yConfig = A11yConfig(
+                    selectActionLabel = { "${it.spokenSeriesLabel} in ${it.xLabel}" }
+                )
+            )
+        }
+
+        // Hardcoded, this string was the last thing on the grouped path a
+        // non-English app could not translate.
+        assertTrue(
+            onChartNode().customActionLabels().contains("Cost in Q1"),
+            "actions were ${onChartNode().customActionLabels()}"
+        )
+    }
+
+    @Test
     fun the_description_reports_the_grouping_rather_than_a_bare_bar_count() = runComposeUiTest {
         setContent {
             BarChart(
