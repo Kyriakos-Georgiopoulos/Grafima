@@ -26,9 +26,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
-/** One position on the category axis, holding the bars drawn at it. */
-internal class BarCategory(val xLabel: String, val entries: List<BarEntry>)
-
 /**
  * Whether [entry] continues the category that [previous] belongs to. Both the axis
  * and the draw pass group by this, and must not diverge.
@@ -39,17 +36,6 @@ internal fun joinsCategory(previous: BarEntry?, entry: BarEntry): Boolean =
     entry.seriesId != null &&
         previous?.seriesId != null &&
         previous.xLabel == entry.xLabel
-
-/** Splits entries into the categories drawn along the axis. */
-internal fun groupBarEntries(entries: List<BarEntry>): List<BarCategory> {
-    val grouped = mutableListOf<MutableList<BarEntry>>()
-    entries.forEach { entry ->
-        val open = grouped.lastOrNull()
-        if (joinsCategory(open?.last(), entry)) open?.add(entry)
-        else grouped.add(mutableListOf(entry))
-    }
-    return grouped.map { BarCategory(it.first().xLabel, it) }
-}
 
 /** Distinct series in list order. Empty when nothing carries one. */
 internal fun seriesOrder(entries: List<BarEntry>): List<String> =
@@ -231,9 +217,8 @@ internal fun computeBarGroupLayout(renderEntries: List<BarEntry>): BarGroupLayou
 /**
  * Walks the render list one category at a time, handing [body] the half-open range
  * of its bars and the three quantities every pass needs: how many bars share the
- * slot ([members], summed so a departing bar counts by what it still holds), how
- * long the slot itself lasts ([occupancy], the longest-lived bar), and how lit the
- * category is ([alpha], its most selected bar).
+ * slot ([members], summed so a departing bar counts by what it still holds) and how
+ * long the slot itself lasts ([occupancy], the longest-lived bar).
  *
  * Inline, because the draw pass runs this every frame.
  */
@@ -241,7 +226,7 @@ internal inline fun forEachBarCategory(
     renderEntries: List<BarEntry>,
     layout: BarGroupLayout,
     engine: ChartAnimationEngine,
-    body: (first: Int, end: Int, members: Float, occupancy: Float, alpha: Float) -> Unit
+    body: (first: Int, end: Int, members: Float, occupancy: Float) -> Unit
 ) {
     var index = 0
     while (index < renderEntries.size) {
@@ -249,17 +234,13 @@ internal inline fun forEachBarCategory(
         val first = index
         var occupancy = 0f
         var members = 0f
-        var alpha = 0f
         while (index < renderEntries.size && layout.categoryOf[index] == category) {
-            val id = renderEntries[index].id
-            val held = engine.slotOccupancy(id)
+            val held = engine.slotOccupancy(renderEntries[index].id)
             if (held > occupancy) occupancy = held
             members += held
-            val selection = engine.selectionAlphaAnimatables[id]?.value ?: 1f
-            if (selection > alpha) alpha = selection
             index++
         }
-        body(first, index, members, occupancy, alpha)
+        body(first, index, members, occupancy)
     }
 }
 
@@ -278,10 +259,12 @@ internal fun buildBarChartDescription(
 
 /** Counts the entries hold, without claiming a group size ragged data lacks. */
 internal fun summarizeBars(entries: List<BarEntry>): BarChartSummary {
-    val sizes = groupBarEntries(entries).map { it.entries.size }
+    val layout = computeBarGroupLayout(entries)
+    val sizes = IntArray(layout.categoryCount)
+    for (i in entries.indices) sizes[layout.categoryOf[i]]++
     return BarChartSummary(
         bars = entries.size,
-        categories = sizes.size,
+        categories = layout.categoryCount,
         series = seriesOrder(entries).size,
         uniformGroupSize = sizes.distinct().singleOrNull()
     )
@@ -371,7 +354,7 @@ internal class ChartAnimationEngine {
     fun categorySlotCount(renderEntries: List<BarEntry>, layout: BarGroupLayout): Float {
         if (exitTracker.exiting.isEmpty()) return layout.categoryCount.toFloat()
         var total = 0f
-        forEachBarCategory(renderEntries, layout, this) { _, _, _, occupancy, _ ->
+        forEachBarCategory(renderEntries, layout, this) { _, _, _, occupancy ->
             total += occupancy
         }
         return total

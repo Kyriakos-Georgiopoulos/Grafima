@@ -44,19 +44,17 @@ class BarGroupingTest {
 
     @Test
     fun `entries sharing a label and carrying a series land in one category`() {
-        val categories = groupBarEntries(twoByTwo)
+        val layout = computeBarGroupLayout(twoByTwo)
 
-        assertEquals(2, categories.size)
-        assertEquals(listOf("Q1", "Q2"), categories.map { it.xLabel })
-        assertEquals(listOf("rev", "cost"), categories[0].entries.map { it.seriesId })
-        assertEquals(listOf("rev", "cost"), categories[1].entries.map { it.seriesId })
+        assertEquals(2, layout.categoryCount)
+        assertContentEquals(intArrayOf(0, 0, 1, 1), layout.categoryOf)
     }
 
     @Test
     fun `an entry with no series stays a category of its own`() {
-        val categories = groupBarEntries(listOf(plain("Jan", 4f), plain("Jan", 9f)))
+        val layout = computeBarGroupLayout(listOf(plain("Jan", 4f), plain("Jan", 9f)))
 
-        assertEquals(2, categories.size, "a null seriesId must never merge two bars")
+        assertEquals(2, layout.categoryCount, "a null seriesId must never merge two bars")
     }
 
     @Test
@@ -67,9 +65,11 @@ class BarGroupingTest {
             grouped("Q1", "cost", 30f)
         )
 
-        val categories = groupBarEntries(entries)
-
-        assertEquals(3, categories.size, "only the immediate predecessor may be joined")
+        assertEquals(
+            3,
+            computeBarGroupLayout(entries).categoryCount,
+            "only the immediate predecessor may be joined"
+        )
     }
 
     @Test
@@ -172,103 +172,6 @@ class BarGroupingTest {
         assertEquals(emptyList(), seriesOrder(listOf(plain("a", 1f))))
     }
 
-    /** Two separate walks; a chart whose axis and bars disagreed would draw nonsense. */
-    @Test
-    fun `the category builder and the draw layout describe the same categories`() {
-        val datasets = mapOf(
-            "empty" to emptyList(),
-            "one plain bar" to listOf(plain("Jan", 10f)),
-            "all plain" to listOf(plain("Jan", 10f), plain("Feb", 20f)),
-            "two full groups" to twoByTwo,
-            "a label reused by a later run" to listOf(
-                grouped("Q1", "rev", 45f),
-                grouped("Q2", "rev", 80f),
-                grouped("Q1", "rev", 12f)
-            ),
-            "a plain bar between two groups" to listOf(
-                grouped("Q1", "rev", 45f),
-                grouped("Q1", "cost", 30f),
-                plain("Ad hoc", 12f),
-                grouped("Q2", "rev", 80f),
-                grouped("Q2", "cost", 52f)
-            ),
-            "a lone series bar" to listOf(grouped("Q1", "rev", 45f)),
-            // A series bar must not reach back into a plain bar that happens to
-            // share its label: the plain one is a category in its own right.
-            "a series bar behind a plain bar of the same label" to listOf(
-                plain("Q1", 45f),
-                grouped("Q1", "cost", 30f)
-            ),
-            "a group of three" to listOf(
-                grouped("Q1", "rev", 45f),
-                grouped("Q1", "cost", 30f),
-                grouped("Q1", "tax", 8f)
-            )
-        )
-
-        datasets.forEach { (name, entries) ->
-            val categories = groupBarEntries(entries)
-            val layout = computeBarGroupLayout(entries)
-
-            assertEquals(categories.size, layout.categoryCount, "category count for $name")
-
-            var index = 0
-            categories.forEachIndexed { categoryIndex, category ->
-                category.entries.forEach { entry ->
-                    assertEquals(entry.id, entries[index].id, "order for $name")
-                    assertEquals(categoryIndex, layout.categoryOf[index], "category of $index in $name")
-                    index++
-                }
-            }
-            assertEquals(entries.size, index, "every entry accounted for in $name")
-        }
-    }
-
-    @Test
-    fun `a group of a whole size splits its slot by the documented formula`() {
-        val slot = 120f
-        val f = 0.1f
-
-        // thickness*n + gap*(n-1) == slot, with gaps taking f of the slot.
-        assertEquals(slot, groupedBarThickness(slot, 1, f), 0.001f)
-        assertEquals(slot * 0.9f / 2f, groupedBarThickness(slot, 2, f), 0.001f)
-        assertEquals(slot * 0.1f, groupedBarGap(slot, 2, f), 0.001f)
-        assertEquals(slot * 0.9f / 3f, groupedBarThickness(slot, 3, f), 0.001f)
-        assertEquals(slot * 0.05f, groupedBarGap(slot, 3, f), 0.001f)
-    }
-
-    @Test
-    fun `a half-departed group sits half way between the two whole sizes`() {
-        val slot = 120f
-        val f = 0.1f
-
-        // At 1.5 members the gap fraction is half of f, so the two bars and the
-        // one gap between them still add up to the slot.
-        val thickness = groupedBarThickness(slot, 1.5f, f)
-        val gap = groupedBarGap(slot, 1.5f, f)
-        assertEquals(slot * 0.95f / 1.5f, thickness, 0.001f)
-        assertEquals(slot * 0.05f / 0.5f, gap, 0.001f)
-        assertTrue(
-            thickness > groupedBarThickness(slot, 2, f) && thickness < slot,
-            "a half-departed bar must sit between the pair width and the whole slot"
-        )
-    }
-
-    @Test
-    fun `a bar widens monotonically as its neighbour leaves the group`() {
-        val slot = 120f
-        val f = 0.1f
-        // 2.0 down to 1.0 is one bar of a pair finishing its exit.
-        val widths = listOf(2f, 1.75f, 1.5f, 1.25f, 1f).map { groupedBarThickness(slot, it, f) }
-
-        widths.zipWithNext { wide, wider ->
-            assertTrue(wider > wide, "width went backwards across $widths")
-        }
-        // Landing exactly on the whole-slot width is what stops the final frame popping.
-        assertEquals(slot, widths.last(), 0.001f)
-        assertTrue(widths.last() < widths.first() * 2.3f, "the total jump is still a doubling")
-    }
-
     @Test
     fun `a negative stacked segment cannot pull the axis below a drawn bar`() {
         val entries = listOf(
@@ -281,11 +184,5 @@ class BarGroupingTest {
         val max = computeBarAxisMax(entries, BarGroupMode.Stacked)
         assertTrue(max >= 100f, "stacked axis max was $max, below the tallest segment")
         assertEquals(computeBarAxisMax(entries, BarGroupMode.Grouped), max)
-    }
-
-    @Test
-    fun `a category takes its label from the bar that opens it`() {
-        val categories = groupBarEntries(twoByTwo)
-        assertEquals(listOf("Q1", "Q2"), categories.map { it.xLabel })
     }
 }

@@ -340,7 +340,7 @@ fun BarChart(
 
                         var slotPosition = 0f
                         forEachBarCategory(rendered, renderLayout, animationEngine) {
-                                first, end, members, occupancy, _ ->
+                                first, end, members, occupancy ->
                             val barThickness =
                                 if (isStacked) slotThickness
                                 else groupedBarThickness(
@@ -409,7 +409,7 @@ fun BarChart(
 
                     var slotPosition = 0f
                     forEachBarCategory(rendered, renderLayout, animationEngine) {
-                            first, end, members, occupancy, _ ->
+                            first, end, members, occupancy ->
                         val barWidth =
                             if (isStacked) slotWidth
                             else groupedBarThickness(slotWidth, members, style.groupSpacingFactor)

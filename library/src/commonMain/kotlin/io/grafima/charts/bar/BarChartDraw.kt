@@ -213,7 +213,7 @@ internal fun DrawScope.drawVerticalBars(
     var position = 0f
 
     forEachBarCategory(renderEntries, layout, animationEngine) {
-            first, end, members, categoryOccupancy, categoryAlpha ->
+            first, end, members, categoryOccupancy ->
 
         val ltrSlotX = barSlotOffset(position, yAxisWidthPx, slotWidth, barSpacing)
         position += categoryOccupancy
@@ -227,6 +227,7 @@ internal fun DrawScope.drawVerticalBars(
             else groupedBarGap(slotWidth, members, style.groupSpacingFactor)
 
         var animatedStackBase = 0f
+        var categoryAlpha = 0f
         // How much of the group precedes this bar, counting a departing one
         // by what it still holds, so the survivors slide as it shrinks.
         var memberPosition = 0f
@@ -235,8 +236,9 @@ internal fun DrawScope.drawVerticalBars(
             val entry = renderEntries[i]
             val occupancy = animationEngine.slotOccupancy(entry.id)
             val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-            val selectionAlpha =
-                (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
+            val entryAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+            if (entryAlpha > categoryAlpha) categoryAlpha = entryAlpha
+            val selectionAlpha = entryAlpha * occupancy
             val targetHeight = (animatedValue / maxBarValue) * chartHeight
 
             val ltrXOffset =
@@ -366,7 +368,7 @@ internal fun DrawScope.drawHorizontalBars(
     var position = 0f
 
     forEachBarCategory(renderEntries, layout, animationEngine) {
-            first, end, members, categoryOccupancy, categoryAlpha ->
+            first, end, members, categoryOccupancy ->
 
         val ltrSlotY = barSlotOffset(position, topPadPx, slotThickness, barGap)
         position += categoryOccupancy
@@ -380,6 +382,7 @@ internal fun DrawScope.drawHorizontalBars(
             else groupedBarGap(slotThickness, members, style.groupSpacingFactor)
 
         var animatedStackBase = 0f
+        var categoryAlpha = 0f
         // How much of the group precedes this bar, counting a departing one
         // by what it still holds, so the survivors slide as it shrinks.
         var memberPosition = 0f
@@ -388,8 +391,9 @@ internal fun DrawScope.drawHorizontalBars(
             val entry = renderEntries[i]
             val occupancy = animationEngine.slotOccupancy(entry.id)
             val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-            val selectionAlpha =
-                (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
+            val entryAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+            if (entryAlpha > categoryAlpha) categoryAlpha = entryAlpha
+            val selectionAlpha = entryAlpha * occupancy
             val barLen = (animatedValue / maxBarValue) * chartWidth
 
             val yOff =

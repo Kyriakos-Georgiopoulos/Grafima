@@ -365,32 +365,26 @@ class BarChartAnimationEngineTest {
     @Test
     fun `the category walk weights members by what each still holds`() = runEngineTest {
         val engine = ChartAnimationEngine()
-        val style = ChartStyle(unselectedAlpha = 0.25f)
         engine.syncAnimatables(twoStacks)
         val remaining = twoStacks.filterNot { it.id == "Q1-cost" }
         engine.syncAnimatables(remaining)
         engine.slotAnimatables.getValue("Q1-cost").snapTo(0.5f)
-        engine.selectionAlphaAnimatables.getValue("Q1-rev").snapTo(style.unselectedAlpha)
 
         val rendered = engine.renderEntries(remaining)
         val layout = computeBarGroupLayout(rendered)
         var q1Members = -1f
-        var q1Alpha = -1f
         var q1Occupancy = -1f
-        forEachBarCategory(rendered, layout, engine) { first, _, members, occupancy, alpha ->
+        forEachBarCategory(rendered, layout, engine) { first, _, members, occupancy ->
             if (rendered[first].xLabel == "Q1") {
                 q1Members = members
-                q1Alpha = alpha
                 q1Occupancy = occupancy
             }
         }
 
         // Members are summed so the survivors widen smoothly; the slot takes the
-        // maximum so it lasts as long as its longest-lived bar; alpha takes the
-        // maximum so the category's label follows its most selected bar.
+        // maximum so it lasts as long as its longest-lived bar.
         assertEquals(1.5f, q1Members, 0.001f)
         assertEquals(1f, q1Occupancy, 0.001f)
-        assertEquals(1f, q1Alpha, 0.001f)
     }
 
     @Test
