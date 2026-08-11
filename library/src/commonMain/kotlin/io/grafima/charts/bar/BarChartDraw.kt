@@ -225,7 +225,6 @@ internal fun DrawScope.drawVerticalBars(
             if (stacked) 0f
             else groupedBarGap(slotWidth, members, style.groupSpacingFactor)
 
-        var targetStackBase = 0f
         var animatedStackBase = 0f
         // How much of the group precedes this bar, counting a departing one
         // by what it still holds, so the survivors slide as it shrinks.
@@ -251,12 +250,11 @@ internal fun DrawScope.drawVerticalBars(
                 val fullHeight = (entry.y / maxBarValue) * chartHeight
                 selectionBounds.set(
                     left = xOffset,
-                    top = baseline - targetStackBase - fullHeight,
+                    top = baseline - animatedStackBase - fullHeight,
                     width = barWidth,
                     height = fullHeight
                 )
             }
-            if (stacked) targetStackBase += (entry.y / maxBarValue) * chartHeight
             if (stacked) animatedStackBase += targetHeight
             memberPosition += occupancy
 
@@ -378,7 +376,6 @@ internal fun DrawScope.drawHorizontalBars(
             if (stacked) 0f
             else groupedBarGap(slotThickness, members, style.groupSpacingFactor)
 
-        var targetStackBase = 0f
         var animatedStackBase = 0f
         // How much of the group precedes this bar, counting a departing one
         // by what it still holds, so the survivors slide as it shrinks.
@@ -401,14 +398,13 @@ internal fun DrawScope.drawHorizontalBars(
             if (entry.id == selectedEntry?.id) {
                 val fullLen = (entry.y / maxBarValue) * chartWidth
                 selectionBounds.set(
-                    left = if (isRtl) chartRight - targetStackBase - fullLen
-                    else chartLeft + targetStackBase,
+                    left = if (isRtl) chartRight - animatedStackBase - fullLen
+                    else chartLeft + animatedStackBase,
                     top = yOff,
                     width = fullLen,
                     height = barThickness
                 )
             }
-            if (stacked) targetStackBase += (entry.y / maxBarValue) * chartWidth
             if (stacked) animatedStackBase += barLen
             memberPosition += occupancy
 
