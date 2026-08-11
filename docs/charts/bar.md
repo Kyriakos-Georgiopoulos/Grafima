@@ -78,7 +78,8 @@ Three rules are worth knowing:
 - **An entry with no `seriesId` is always its own bar.** A dataset that sets none
   behaves exactly as it did before groups existed.
 - **The axis clears the stack, not the segment.** In `Stacked` the y-axis is scaled
-  to the tallest total, so segments are never clipped.
+  to the tallest total, or to the tallest single segment when a negative value
+  makes that larger, so segments are never clipped.
 
 Colors are per entry, as they always were, so a series gets its color by giving
 every entry of that series the same `gradientColors`. Spacing within a group is
@@ -94,12 +95,20 @@ data — the labels are already on the entries:
 
 ```kotlin
 dataSet.entries
+    .filter { it.seriesId != null }
     .distinctBy { it.seriesId }
-    .mapNotNull { entry -> entry.spokenSeriesLabel?.let { it to entry.gradientColors } }
+    .mapNotNull { entry ->
+        entry.spokenSeriesLabel?.to(
+            entry.gradientColors ?: dataSet.defaultGradientColors
+        )
+    }
 ```
 
-Screen-reader users do not need it: the chart's description names the series count
-and every action names its own series.
+`gradientColors` is null on any bar that falls back to the dataset default, so read
+through to `defaultGradientColors`. A bar setting `colorStops` overrides both.
+
+Screen-reader users do not need it: the chart's description counts the bars and the
+groups, and every action names its own series.
 
 ## Orientation
 

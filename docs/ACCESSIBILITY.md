@@ -36,8 +36,10 @@ The one exception is a line chart with a pinned x range: points outside it are n
 drawn and get no action, because selecting one would move the crosshair somewhere
 nothing is visible. See [the line chart guide](charts/line.md).
 
-Give your entries distinct labels. Two bars both labelled "Q1" produce two
-identical actions and one of them becomes unreachable.
+Give your entries distinct labels. Two bars both labelled "Q1" and carrying no
+`seriesId` produce two identical actions and one of them becomes unreachable.
+Grouped bars are the exception: they share an `xLabel` by design, and the default
+`A11yConfig.selectActionLabel` adds the series so the actions stay distinct.
 
 A line chart's `xAxisTitle` and `yAxisTitle` are appended to its description, so
 the numbers reach a screen reader with the unit they are in. Set neither and the

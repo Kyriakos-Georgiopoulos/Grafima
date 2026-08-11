@@ -19,9 +19,9 @@ behaviour do not.
   handled, each bar keeps its own selection and accessibility action, and the
   y-axis clears the tallest stack rather than the tallest segment.
 - `BarEntry.seriesId` and `BarEntry.seriesLabel`, `BarGroupMode`, `BarDataSet.mode`,
-  `ChartStyle.groupSpacingFactor`, `A11yConfig.groupedCountDescriptionBuilder` and
-  the `BarEntry.spokenSeriesLabel` extension. Every one is defaulted, so a dataset
-  that sets no series behaves exactly as it did in 1.1.1.
+  `ChartStyle.groupSpacingFactor`, `BarChartSummary`, `A11yConfig.selectActionLabel`
+  and the `BarEntry.spokenSeriesLabel` extension. Every one is defaulted, so a
+  dataset that sets no series behaves exactly as it did in 1.1.1.
 
 ### Changed
 
