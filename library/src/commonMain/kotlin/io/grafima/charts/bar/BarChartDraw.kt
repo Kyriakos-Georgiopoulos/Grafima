@@ -218,15 +218,18 @@ internal fun DrawScope.drawVerticalBars(
         val first = index
         var categoryOccupancy = 0f
         var categoryAlpha = 0f
+        // Summed, where the slot takes the max: the slot lasts as long as its
+        // longest-lived bar, but the bars share it in proportion to what is left.
+        var members = 0f
         while (index < renderEntries.size && layout.categoryOf[index] == category) {
             val id = renderEntries[index].id
             val held = animationEngine.slotOccupancy(id)
             if (held > categoryOccupancy) categoryOccupancy = held
+            members += held
             val alpha = animationEngine.selectionAlphaAnimatables[id]?.value ?: 1f
             if (alpha > categoryAlpha) categoryAlpha = alpha
             index++
         }
-        val members = index - first
 
         val ltrSlotX = barSlotOffset(position, yAxisWidthPx, slotWidth, barSpacing)
         position += categoryOccupancy
@@ -239,6 +242,9 @@ internal fun DrawScope.drawVerticalBars(
             else groupedBarGap(slotWidth, members, style.groupSpacingFactor)
 
         var targetStackBase = 0f
+        // How much of the group precedes this bar, counting a departing one
+        // by what it still holds, so the survivors slide as it shrinks.
+        var memberPosition = 0f
 
         for (i in first until index) {
             val entry = renderEntries[i]
@@ -250,7 +256,7 @@ internal fun DrawScope.drawVerticalBars(
 
             val ltrXOffset =
                 if (stacked) ltrSlotX
-                else ltrSlotX + groupedBarOffset(layout.positionInCategory[i], barWidth, innerGap)
+                else ltrSlotX + groupedBarOffset(memberPosition, barWidth, innerGap)
             val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
 
             val stackBase =
@@ -271,6 +277,7 @@ internal fun DrawScope.drawVerticalBars(
                 )
             }
             if (stacked) targetStackBase += (entry.y / maxBarValue) * chartHeight
+            memberPosition += occupancy
 
             if (targetHeight > 0f) {
                 // Rounding every segment would leave gaps where they meet.
@@ -383,15 +390,18 @@ internal fun DrawScope.drawHorizontalBars(
         val first = index
         var categoryOccupancy = 0f
         var categoryAlpha = 0f
+        // Summed, where the slot takes the max: the slot lasts as long as its
+        // longest-lived bar, but the bars share it in proportion to what is left.
+        var members = 0f
         while (index < renderEntries.size && layout.categoryOf[index] == category) {
             val id = renderEntries[index].id
             val held = animationEngine.slotOccupancy(id)
             if (held > categoryOccupancy) categoryOccupancy = held
+            members += held
             val alpha = animationEngine.selectionAlphaAnimatables[id]?.value ?: 1f
             if (alpha > categoryAlpha) categoryAlpha = alpha
             index++
         }
-        val members = index - first
 
         val ltrSlotY = barSlotOffset(position, topPadPx, slotThickness, barGap)
         position += categoryOccupancy
@@ -404,6 +414,9 @@ internal fun DrawScope.drawHorizontalBars(
             else groupedBarGap(slotThickness, members, style.groupSpacingFactor)
 
         var targetStackBase = 0f
+        // How much of the group precedes this bar, counting a departing one
+        // by what it still holds, so the survivors slide as it shrinks.
+        var memberPosition = 0f
 
         for (i in first until index) {
             val entry = renderEntries[i]
@@ -415,7 +428,7 @@ internal fun DrawScope.drawHorizontalBars(
 
             val yOff =
                 if (stacked) ltrSlotY
-                else ltrSlotY + groupedBarOffset(layout.positionInCategory[i], barThickness, innerGap)
+                else ltrSlotY + groupedBarOffset(memberPosition, barThickness, innerGap)
             val base =
                 if (stacked) {
                     animationEngine.stackedBase(renderEntries, layout, i, maxBarValue, chartWidth)
@@ -435,6 +448,7 @@ internal fun DrawScope.drawHorizontalBars(
                 )
             }
             if (stacked) targetStackBase += (entry.y / maxBarValue) * chartWidth
+            memberPosition += occupancy
 
             if (barLen > 0f) {
                 // Only the growing end is rounded, and which side that is flips in RTL.

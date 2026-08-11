@@ -234,6 +234,33 @@ class BarGroupingTest {
     }
 
     @Test
+    fun `a group of a fractional size matches the whole sizes it sits between`() {
+        val slot = 120f
+        val f = 0.1f
+
+        assertEquals(groupedBarThickness(slot, 1, f), groupedBarThickness(slot, 1f, f), 0.001f)
+        assertEquals(groupedBarThickness(slot, 2, f), groupedBarThickness(slot, 2f, f), 0.001f)
+        assertEquals(groupedBarThickness(slot, 3, f), groupedBarThickness(slot, 3f, f), 0.001f)
+        assertEquals(groupedBarGap(slot, 2, f), groupedBarGap(slot, 2f, f), 0.001f)
+        assertEquals(groupedBarGap(slot, 3, f), groupedBarGap(slot, 3f, f), 0.001f)
+    }
+
+    @Test
+    fun `a bar widens monotonically as its neighbour leaves the group`() {
+        val slot = 120f
+        val f = 0.1f
+        // 2.0 down to 1.0 is one bar of a pair finishing its exit.
+        val widths = listOf(2f, 1.75f, 1.5f, 1.25f, 1f).map { groupedBarThickness(slot, it, f) }
+
+        widths.zipWithNext { wide, wider ->
+            assertTrue(wider > wide, "width went backwards across $widths")
+        }
+        // Landing exactly on the whole-slot width is what stops the final frame popping.
+        assertEquals(slot, widths.last(), 0.001f)
+        assertTrue(widths.last() < widths.first() * 2.3f, "the total jump is still a doubling")
+    }
+
+    @Test
     fun `a category takes its label from the bar that opens it`() {
         val categories = groupBarEntries(twoByTwo)
         assertEquals(listOf("Q1", "Q2"), categories.map { it.xLabel })

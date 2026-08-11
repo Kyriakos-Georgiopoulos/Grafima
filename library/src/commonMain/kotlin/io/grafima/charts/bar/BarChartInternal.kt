@@ -137,25 +137,52 @@ internal fun groupedBarThickness(
     slotThickness: Float,
     seriesCount: Int,
     innerSpacingFactor: Float
+): Float = groupedBarThickness(slotThickness, seriesCount.toFloat(), innerSpacingFactor)
+
+/**
+ * The same split over a fractional [seriesCount], which is what a group holds while
+ * one of its bars is leaving. The survivors widen across the departure rather than
+ * doubling on the frame it completes.
+ */
+internal fun groupedBarThickness(
+    slotThickness: Float,
+    seriesCount: Float,
+    innerSpacingFactor: Float
 ): Float {
-    val count = seriesCount.coerceAtLeast(1)
-    if (count == 1) return slotThickness
-    return (slotThickness - slotThickness * innerSpacingFactor.coerceIn(0f, 0.9f)) / count
+    val count = seriesCount.coerceAtLeast(1f)
+    return (slotThickness - slotThickness * innerGapFraction(count, innerSpacingFactor)) / count
 }
+
+/**
+ * Share of the slot given over to inner gaps. Tapers to zero as the count falls to
+ * one, without which a group of one would jump by the whole spacing factor.
+ */
+private fun innerGapFraction(count: Float, innerSpacingFactor: Float): Float =
+    innerSpacingFactor.coerceIn(0f, 0.9f) * (count - 1f).coerceIn(0f, 1f)
 
 /** Gap between two side-by-side bars of one category. Zero for a single-bar category. */
 internal fun groupedBarGap(
     slotThickness: Float,
     seriesCount: Int,
     innerSpacingFactor: Float
+): Float = groupedBarGap(slotThickness, seriesCount.toFloat(), innerSpacingFactor)
+
+internal fun groupedBarGap(
+    slotThickness: Float,
+    seriesCount: Float,
+    innerSpacingFactor: Float
 ): Float {
-    val count = seriesCount.coerceAtLeast(1)
-    if (count == 1) return 0f
-    return slotThickness * innerSpacingFactor.coerceIn(0f, 0.9f) / (count - 1)
+    val count = seriesCount.coerceAtLeast(1f)
+    if (count <= 1f) return 0f
+    return slotThickness * innerGapFraction(count, innerSpacingFactor) / (count - 1f)
 }
 
 /** LTR offset of the bar at series [position] within its category slot. */
 internal fun groupedBarOffset(position: Int, thickness: Float, gap: Float): Float =
+    groupedBarOffset(position.toFloat(), thickness, gap)
+
+/** The same offset over the fractional share of the group that precedes this bar. */
+internal fun groupedBarOffset(position: Float, thickness: Float, gap: Float): Float =
     position * (thickness + gap)
 
 /**
