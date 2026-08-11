@@ -16,7 +16,9 @@ description already names every series.
 
 The description is built from your data:
 
-> "Bar Chart representing Monthly revenue. Jan value is 45. Feb value is 80."
+> "Bar Chart representing Monthly revenue. 2 bars. Use the actions menu to select one."
+
+A grouped chart counts its groups instead: *"4 bars in 2 groups of 2."*
 
 Selection is exposed separately as a state description, so selecting a bar
 announces only *"Currently selected: Feb, 80."* instead of re-reading the whole

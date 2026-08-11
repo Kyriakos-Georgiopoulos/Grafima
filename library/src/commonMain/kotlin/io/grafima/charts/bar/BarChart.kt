@@ -277,7 +277,7 @@ fun BarChart(
                     }
                     if (selectedEntry != null) {
                         add(
-                            CustomAccessibilityAction(label = "Clear selection") {
+                            CustomAccessibilityAction(label = a11yConfig.clearSelectionLabel) {
                                 onBarSelected(null)
                                 true
                             }

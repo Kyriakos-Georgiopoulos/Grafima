@@ -76,7 +76,7 @@ Three rules are worth knowing:
   label reused further down the list opens a new category rather than reaching back.
   Build the list category by category.
 - **An entry with no `seriesId` is always its own bar.** A dataset that sets none
-  behaves exactly as it did before groups existed.
+  behaves exactly as it did before groups existed, in either `mode`.
 - **The axis clears the stack, not the segment.** In `Stacked` the y-axis is scaled
   to the tallest total, or to the tallest single segment when a negative value
   makes that larger, so segments are never clipped.

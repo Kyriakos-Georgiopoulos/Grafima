@@ -103,8 +103,9 @@ enum class BarGroupMode { Grouped, Stacked }
  * @property entries The bars to display, in order.
  * @property defaultGradientColors Gradient applied to bars that don't specify their own.
  * @property contentDescription Accessibility label describing the chart's purpose.
- * @property mode Arrangement of bars within a category. Has no effect on a dataset
- *   whose entries carry no [BarEntry.seriesId], since every bar is then its own category.
+ * @property mode Arrangement of bars within a category. A dataset whose entries carry
+ *   no [BarEntry.seriesId] draws identically either way, since every bar is then its
+ *   own category and has nothing to stack against.
  */
 @Immutable
 data class BarDataSet(
@@ -118,7 +119,9 @@ data class BarDataSet(
  * Visual styling for bars and labels.
  *
  * @property barCornerRadius Rounding applied to the top corners of each bar.
- * @property barSpacingFactor Fraction of chart width used for inter-bar spacing (0f..0.9f).
+ * @property barSpacingFactor Fraction of the chart given to the gaps between axis
+ *   positions (0f..0.9f). On a grouped dataset that is the gap between groups;
+ *   [groupSpacingFactor] is the gap within one.
  * @property groupSpacingFactor Fraction of a category's slot given to the gaps between
  *   its side-by-side bars (0f..0.9f). Only applies to [BarGroupMode.Grouped] with more
  *   than one series; 0f makes the bars of a group touch.
@@ -235,6 +238,7 @@ class BarChartSummary(
  * @property selectActionLabel Names the per-bar action in the actions menu. Grouped
  *   bars share an [BarEntry.xLabel], so the default adds the series to keep the
  *   labels distinct.
+ * @property clearSelectionLabel Names the action that clears the selection.
  */
 @Stable
 data class A11yConfig(
@@ -263,5 +267,6 @@ data class A11yConfig(
     val selectActionLabel: (BarEntry) -> String = { entry ->
         val series = entry.spokenSeriesLabel
         if (series == null) "Select ${entry.xLabel}" else "Select ${entry.xLabel}, $series"
-    }
+    },
+    val clearSelectionLabel: String = "Clear selection"
 )
