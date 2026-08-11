@@ -418,16 +418,16 @@ class GroupedBarChartUiTest {
             )
         }
         waitForIdle()
-        val onOpener = onChartNode().captureToImage().countRed()
+        val onOpener = onChartNode().captureToImage().countOpaqueRed()
 
         // The second series of the same category: the label is the category's, so
         // reading its alpha off the first bar dims a group that holds the selection.
         selected = entries[1]
         waitForIdle()
-        val onSecond = onChartNode().captureToImage().countRed()
+        val onSecond = onChartNode().captureToImage().countOpaqueRed()
 
         assertTrue(onOpener > 0, "no axis labels drawn")
-        assertEquals(onOpener, onSecond, "Q1's label changed when the selection moved within Q1")
+        assertEquals(onOpener, onSecond, "Q1's label dimmed when the selection moved within Q1")
     }
 
     @Test
@@ -470,6 +470,37 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun a_grouped_bar_too_narrow_for_its_value_drops_the_label() = runComposeUiTest {
+        assumePixelCapture()
+        // Six categories of three series each: every bar is far narrower than a
+        // three-digit label, so the gate has to suppress all of them.
+        val crowded = BarDataSet(
+            entries = (1..6).flatMap { q ->
+                listOf("rev", "cost", "tax").map { series ->
+                    BarEntry("q$q-$series", "Q$q", 100f + q, seriesId = series)
+                }
+            },
+            defaultGradientColors = listOf(Color.Blue, Color.Blue),
+            contentDescription = "Crowded groups"
+        )
+        setContent {
+            BarChart(
+                dataSet = crowded,
+                modifier = Modifier.size(300.dp),
+                style = ChartStyle(valueTextStyle = TextStyle(color = Color.Red, fontSize = 14.sp)),
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        assertEquals(
+            0,
+            onChartNode().captureToImage().countOpaqueRed(),
+            "value labels were drawn over bars too narrow to hold them"
+        )
+    }
+
+    @Test
     fun a_narrow_bar_without_series_still_draws_its_value() = runComposeUiTest {
         assumePixelCapture()
         // Enough bars that each is narrower than its own three-digit label.
@@ -490,17 +521,22 @@ class GroupedBarChartUiTest {
 
         // 1.1.1 drew these unconditionally; a fit gate that also covered ungrouped
         // charts silently removed every one of them.
-        assertTrue(onChartNode().captureToImage().countRed() > 0, "no value labels drawn")
+        assertTrue(onChartNode().captureToImage().countOpaqueRed() > 0, "no value labels drawn")
     }
 
-    private fun ImageBitmap.countRed(): Int {
+    /**
+     * Red text at alpha 0.25 has the same red channel as at 1.0 in unpremultiplied
+     * ARGB, so a brightness assertion has to read the alpha channel itself.
+     */
+    private fun ImageBitmap.countOpaqueRed(): Int {
         val pixels = IntArray(width * height)
         readPixels(pixels)
         return pixels.count { p ->
+            val a = (p ushr 24) and 0xFF
             val r = (p shr 16) and 0xFF
             val g = (p shr 8) and 0xFF
             val b = p and 0xFF
-            r > 150 && g < 80 && b < 80
+            a > 200 && r > 150 && g < 80 && b < 80
         }
     }
 
