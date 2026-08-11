@@ -211,25 +211,9 @@ internal fun DrawScope.drawVerticalBars(
     // bars after it across rather than teleporting them. One slot per category,
     // so a group moves as a unit.
     var position = 0f
-    var index = 0
 
-    while (index < renderEntries.size) {
-        val category = layout.categoryOf[index]
-        val first = index
-        var categoryOccupancy = 0f
-        var categoryAlpha = 0f
-        // Summed, where the slot takes the max: the slot lasts as long as its
-        // longest-lived bar, but the bars share it in proportion to what is left.
-        var members = 0f
-        while (index < renderEntries.size && layout.categoryOf[index] == category) {
-            val id = renderEntries[index].id
-            val held = animationEngine.slotOccupancy(id)
-            if (held > categoryOccupancy) categoryOccupancy = held
-            members += held
-            val alpha = animationEngine.selectionAlphaAnimatables[id]?.value ?: 1f
-            if (alpha > categoryAlpha) categoryAlpha = alpha
-            index++
-        }
+    forEachBarCategory(renderEntries, layout, animationEngine) {
+            first, end, members, categoryOccupancy, categoryAlpha ->
 
         val ltrSlotX = barSlotOffset(position, yAxisWidthPx, slotWidth, barSpacing)
         position += categoryOccupancy
@@ -246,7 +230,7 @@ internal fun DrawScope.drawVerticalBars(
         // by what it still holds, so the survivors slide as it shrinks.
         var memberPosition = 0f
 
-        for (i in first until index) {
+        for (i in first until end) {
             val entry = renderEntries[i]
             val occupancy = animationEngine.slotOccupancy(entry.id)
             val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
@@ -281,7 +265,7 @@ internal fun DrawScope.drawVerticalBars(
 
             if (targetHeight > 0f) {
                 // Rounding every segment would leave gaps where they meet.
-                val roundsTop = !stacked || i == index - 1
+                val roundsTop = !stacked || i == end - 1
                 val corner =
                     if (roundsTop) CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
                     else CornerRadius.Zero
@@ -383,25 +367,9 @@ internal fun DrawScope.drawHorizontalBars(
     val stacked = mode == BarGroupMode.Stacked
     selectionBounds.clear()
     var position = 0f
-    var index = 0
 
-    while (index < renderEntries.size) {
-        val category = layout.categoryOf[index]
-        val first = index
-        var categoryOccupancy = 0f
-        var categoryAlpha = 0f
-        // Summed, where the slot takes the max: the slot lasts as long as its
-        // longest-lived bar, but the bars share it in proportion to what is left.
-        var members = 0f
-        while (index < renderEntries.size && layout.categoryOf[index] == category) {
-            val id = renderEntries[index].id
-            val held = animationEngine.slotOccupancy(id)
-            if (held > categoryOccupancy) categoryOccupancy = held
-            members += held
-            val alpha = animationEngine.selectionAlphaAnimatables[id]?.value ?: 1f
-            if (alpha > categoryAlpha) categoryAlpha = alpha
-            index++
-        }
+    forEachBarCategory(renderEntries, layout, animationEngine) {
+            first, end, members, categoryOccupancy, categoryAlpha ->
 
         val ltrSlotY = barSlotOffset(position, topPadPx, slotThickness, barGap)
         position += categoryOccupancy
@@ -418,7 +386,7 @@ internal fun DrawScope.drawHorizontalBars(
         // by what it still holds, so the survivors slide as it shrinks.
         var memberPosition = 0f
 
-        for (i in first until index) {
+        for (i in first until end) {
             val entry = renderEntries[i]
             val occupancy = animationEngine.slotOccupancy(entry.id)
             val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
@@ -452,7 +420,7 @@ internal fun DrawScope.drawHorizontalBars(
 
             if (barLen > 0f) {
                 // Only the growing end is rounded, and which side that is flips in RTL.
-                val roundsEnd = !stacked || i == index - 1
+                val roundsEnd = !stacked || i == end - 1
                 val corner =
                     if (roundsEnd) CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
                     else CornerRadius.Zero

@@ -230,6 +230,41 @@ internal fun computeBarGroupLayout(renderEntries: List<BarEntry>): BarGroupLayou
 }
 
 /**
+ * Walks the render list one category at a time, handing [body] the half-open range
+ * of its bars and the three quantities every pass needs: how many bars share the
+ * slot ([members], summed so a departing bar counts by what it still holds), how
+ * long the slot itself lasts ([occupancy], the longest-lived bar), and how lit the
+ * category is ([alpha], its most selected bar).
+ *
+ * Inline, because the draw pass runs this every frame.
+ */
+internal inline fun forEachBarCategory(
+    renderEntries: List<BarEntry>,
+    layout: BarGroupLayout,
+    engine: ChartAnimationEngine,
+    body: (first: Int, end: Int, members: Float, occupancy: Float, alpha: Float) -> Unit
+) {
+    var index = 0
+    while (index < renderEntries.size) {
+        val category = layout.categoryOf[index]
+        val first = index
+        var occupancy = 0f
+        var members = 0f
+        var alpha = 0f
+        while (index < renderEntries.size && layout.categoryOf[index] == category) {
+            val id = renderEntries[index].id
+            val held = engine.slotOccupancy(id)
+            if (held > occupancy) occupancy = held
+            members += held
+            val selection = engine.selectionAlphaAnimatables[id]?.value ?: 1f
+            if (selection > alpha) alpha = selection
+            index++
+        }
+        body(first, index, members, occupancy, alpha)
+    }
+}
+
+/**
  * A summary, not a reading of the data: this node is a live region, so anything
  * here is repeated on every selection. Per-bar values live in the select actions
  * and in `stateDescription`.
@@ -342,15 +377,7 @@ internal class ChartAnimationEngine {
     fun categorySlotCount(renderEntries: List<BarEntry>, layout: BarGroupLayout): Float {
         if (exitTracker.exiting.isEmpty()) return layout.categoryCount.toFloat()
         var total = 0f
-        var index = 0
-        while (index < renderEntries.size) {
-            val category = layout.categoryOf[index]
-            var occupancy = 0f
-            while (index < renderEntries.size && layout.categoryOf[index] == category) {
-                val held = slotOccupancy(renderEntries[index].id)
-                if (held > occupancy) occupancy = held
-                index++
-            }
+        forEachBarCategory(renderEntries, layout, this) { _, _, _, occupancy, _ ->
             total += occupancy
         }
         return total
