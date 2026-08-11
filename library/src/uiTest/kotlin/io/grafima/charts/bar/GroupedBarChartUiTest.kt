@@ -384,6 +384,32 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun selecting_either_bar_of_a_group_keeps_that_group_s_label_lit() = runComposeUiTest {
+        assumePixelCapture()
+        var selected: BarEntry? by mutableStateOf(entries[0])
+        setContent {
+            BarChart(
+                dataSet = tooltipProbeDataSet(BarGroupMode.Grouped),
+                modifier = Modifier.size(300.dp),
+                style = ChartStyle(labelTextStyle = TextStyle(color = Color.Red, fontSize = 12.sp)),
+                animationConfig = snapAnimations,
+                selectedEntry = selected
+            )
+        }
+        waitForIdle()
+        val onOpener = onChartNode().captureToImage().countRed()
+
+        // The second series of the same category: the label is the category's, so
+        // reading its alpha off the first bar dims a group that holds the selection.
+        selected = entries[1]
+        waitForIdle()
+        val onSecond = onChartNode().captureToImage().countRed()
+
+        assertTrue(onOpener > 0, "no axis labels drawn")
+        assertEquals(onOpener, onSecond, "Q1's label changed when the selection moved within Q1")
+    }
+
+    @Test
     fun a_narrow_bar_without_series_still_draws_its_value() = runComposeUiTest {
         assumePixelCapture()
         // Enough bars that each is narrower than its own three-digit label.

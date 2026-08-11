@@ -217,9 +217,13 @@ internal fun DrawScope.drawVerticalBars(
         val category = layout.categoryOf[index]
         val first = index
         var categoryOccupancy = 0f
+        var categoryAlpha = 0f
         while (index < renderEntries.size && layout.categoryOf[index] == category) {
-            val held = animationEngine.slotOccupancy(renderEntries[index].id)
+            val id = renderEntries[index].id
+            val held = animationEngine.slotOccupancy(id)
             if (held > categoryOccupancy) categoryOccupancy = held
+            val alpha = animationEngine.selectionAlphaAnimatables[id]?.value ?: 1f
+            if (alpha > categoryAlpha) categoryAlpha = alpha
             index++
         }
         val members = index - first
@@ -337,8 +341,8 @@ internal fun DrawScope.drawVerticalBars(
                     x = mirrorForRtl(ltrLabelX, size.width, labelLayout.size.width.toFloat(), isRtl),
                     y = baseline + 12.dp.toPx()
                 ),
-                alpha = (animationEngine.selectionAlphaAnimatables[labelEntry.id]?.value ?: 1f) *
-                    categoryOccupancy
+                // The label belongs to the category, so any selected bar keeps it lit.
+                alpha = categoryAlpha * categoryOccupancy
             )
         }
     }
@@ -378,9 +382,13 @@ internal fun DrawScope.drawHorizontalBars(
         val category = layout.categoryOf[index]
         val first = index
         var categoryOccupancy = 0f
+        var categoryAlpha = 0f
         while (index < renderEntries.size && layout.categoryOf[index] == category) {
-            val held = animationEngine.slotOccupancy(renderEntries[index].id)
+            val id = renderEntries[index].id
+            val held = animationEngine.slotOccupancy(id)
             if (held > categoryOccupancy) categoryOccupancy = held
+            val alpha = animationEngine.selectionAlphaAnimatables[id]?.value ?: 1f
+            if (alpha > categoryAlpha) categoryAlpha = alpha
             index++
         }
         val members = index - first
@@ -506,8 +514,8 @@ internal fun DrawScope.drawHorizontalBars(
                     },
                     y = ltrSlotY + (slotThickness - labelLayout.size.height) / 2
                 ),
-                alpha = (animationEngine.selectionAlphaAnimatables[labelEntry.id]?.value ?: 1f) *
-                    categoryOccupancy
+                // The label belongs to the category, so any selected bar keeps it lit.
+                alpha = categoryAlpha * categoryOccupancy
             )
         }
     }
