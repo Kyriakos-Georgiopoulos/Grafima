@@ -95,8 +95,6 @@ class BarGroupingTest {
         val layout = computeBarGroupLayout(twoByTwo)
 
         assertContentEquals(intArrayOf(0, 0, 1, 1), layout.categoryOf)
-        assertContentEquals(intArrayOf(0, 1, 0, 1), layout.positionInCategory)
-        assertContentEquals(intArrayOf(2, 2, 2, 2), layout.categorySize)
         assertEquals(2, layout.categoryCount)
         assertTrue(layout.hasSeries)
     }
@@ -106,8 +104,6 @@ class BarGroupingTest {
         val layout = computeBarGroupLayout(listOf(plain("a", 1f), plain("b", 2f)))
 
         assertContentEquals(intArrayOf(0, 1), layout.categoryOf)
-        assertContentEquals(intArrayOf(0, 0), layout.positionInCategory)
-        assertContentEquals(intArrayOf(1, 1), layout.categorySize)
         assertEquals(2, layout.categoryCount)
         assertFalse(layout.hasSeries)
     }
@@ -122,7 +118,7 @@ class BarGroupingTest {
     }
 
     @Test
-    fun `categories of differing size each report their own member count`() {
+    fun `categories of differing size are still numbered in order`() {
         val entries = listOf(
             grouped("Q1", "rev", 45f),
             grouped("Q1", "cost", 30f),
@@ -132,7 +128,7 @@ class BarGroupingTest {
 
         val layout = computeBarGroupLayout(entries)
 
-        assertContentEquals(intArrayOf(3, 3, 3, 1), layout.categorySize)
+        assertContentEquals(intArrayOf(0, 0, 0, 1), layout.categoryOf)
         assertEquals(2, layout.categoryCount)
     }
 
@@ -217,15 +213,9 @@ class BarGroupingTest {
 
             var index = 0
             categories.forEachIndexed { categoryIndex, category ->
-                category.entries.forEachIndexed { position, entry ->
+                category.entries.forEach { entry ->
                     assertEquals(entry.id, entries[index].id, "order for $name")
                     assertEquals(categoryIndex, layout.categoryOf[index], "category of $index in $name")
-                    assertEquals(position, layout.positionInCategory[index], "position of $index in $name")
-                    assertEquals(
-                        category.entries.size,
-                        layout.categorySize[index],
-                        "size at $index in $name"
-                    )
                     index++
                 }
             }

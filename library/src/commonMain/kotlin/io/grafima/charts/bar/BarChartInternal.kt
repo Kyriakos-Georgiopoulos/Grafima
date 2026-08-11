@@ -210,41 +210,26 @@ internal fun groupedBarOffset(position: Float, thickness: Float, gap: Float): Fl
  */
 internal class BarGroupLayout(
     val categoryOf: IntArray,
-    val positionInCategory: IntArray,
-    val categorySize: IntArray,
     val categoryCount: Int,
     val hasSeries: Boolean
 )
 
-/** The single-bar-per-category layout, which is what a dataset with no series gets. */
+/** Which category each drawn bar belongs to, and whether any series is present. */
 internal fun computeBarGroupLayout(renderEntries: List<BarEntry>): BarGroupLayout {
     val count = renderEntries.size
     val categoryOf = IntArray(count)
-    val positionInCategory = IntArray(count)
-    val categorySize = IntArray(count)
     var category = -1
-    var position = 0
     var hasSeries = false
 
     for (i in 0 until count) {
         val entry = renderEntries[i]
         if (entry.seriesId != null) hasSeries = true
         val previous = if (i > 0) renderEntries[i - 1] else null
-        if (joinsCategory(previous, entry)) {
-            position++
-        } else {
-            category++
-            position = 0
-        }
+        if (!joinsCategory(previous, entry)) category++
         categoryOf[i] = category
-        positionInCategory[i] = position
     }
 
-    val sizes = IntArray(category + 1)
-    for (i in 0 until count) sizes[categoryOf[i]]++
-    for (i in 0 until count) categorySize[i] = sizes[categoryOf[i]]
-
-    return BarGroupLayout(categoryOf, positionInCategory, categorySize, category + 1, hasSeries)
+    return BarGroupLayout(categoryOf, category + 1, hasSeries)
 }
 
 /**
@@ -381,11 +366,6 @@ internal class ChartAnimationEngine {
 
     /** A bar's remaining claim on its slot. Read while drawing: it changes per frame. */
     fun slotOccupancy(id: String): Float = slotAnimatables[id]?.value ?: 1f
-
-    /** Slots currently in use, counting a collapsing one as the fraction it still holds. */
-    fun slotCount(renderEntries: List<BarEntry>): Float =
-        if (exitTracker.exiting.isEmpty()) renderEntries.size.toFloat()
-        else renderEntries.fold(0f) { acc, entry -> acc + slotOccupancy(entry.id) }
 
     /**
      * The same count over categories rather than bars. A grouped category holds its

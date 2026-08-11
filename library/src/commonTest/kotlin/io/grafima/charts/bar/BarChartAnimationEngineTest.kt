@@ -327,7 +327,6 @@ class BarChartAnimationEngineTest {
 
         // Counting per bar would shrink Q1 while a bar still stands in it.
         assertEquals(2f, engine.categorySlotCount(rendered, layout), 0.001f)
-        assertEquals(3f, engine.slotCount(rendered), 0.001f)
     }
 
     @Test
