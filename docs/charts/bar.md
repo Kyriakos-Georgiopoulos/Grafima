@@ -89,6 +89,18 @@ both the category and the series, so `Select Q1, Revenue` and `Select Q1, Cost`
 are distinct. Give every series a `seriesLabel`, or screen-reader users hear the
 raw `seriesId`.
 
+There is no bar legend. A grouped chart needs a key, so draw one from the same
+data — the labels are already on the entries:
+
+```kotlin
+dataSet.entries
+    .distinctBy { it.seriesId }
+    .mapNotNull { entry -> entry.spokenSeriesLabel?.let { it to entry.gradientColors } }
+```
+
+Screen-reader users do not need it: the chart's description names the series count
+and every action names its own series.
+
 ## Orientation
 
 ```kotlin

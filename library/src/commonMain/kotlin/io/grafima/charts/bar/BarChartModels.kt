@@ -68,7 +68,7 @@ data class ColorStop(val position: Float, val color: Color)
  * @property colorStops Explicit gradient [ColorStop]s. Takes priority over [gradientColors].
  * @property seriesId Which measure this bar belongs to. Null leaves the bar standalone.
  * @property seriesLabel Human-readable name of the series, spoken by screen readers
- *   and shown in the legend. Falls back to [seriesId] when null.
+ *   and available for a legend you draw yourself. Falls back to [seriesId] when null.
  */
 @Immutable
 data class BarEntry(
@@ -81,7 +81,7 @@ data class BarEntry(
     val seriesLabel: String? = null
 )
 
-/** The name a screen reader and the legend use for this bar's series. */
+/** The name a screen reader uses for this bar's series. */
 val BarEntry.spokenSeriesLabel: String?
     get() = seriesLabel?.takeIf { it.isNotBlank() } ?: seriesId?.takeIf { it.isNotBlank() }
 
