@@ -441,6 +441,57 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun a_horizontal_group_paints_its_series_in_separate_bands() = runComposeUiTest {
+        assumePixelCapture()
+        val coloured = BarDataSet(
+            entries = entries.map { entry ->
+                entry.copy(
+                    gradientColors =
+                    if (entry.seriesId == "rev") listOf(Color.Red, Color.Red)
+                    else listOf(Color.Blue, Color.Blue)
+                )
+            },
+            contentDescription = "Quarterly figures"
+        )
+        setContent {
+            BarChart(
+                dataSet = coloured,
+                modifier = Modifier.size(chartSize),
+                orientation = BarOrientation.Horizontal,
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        val image = onChartNode().captureToImage()
+        val rev = image.meanY { r, _, b -> r > 150 && b < 80 }
+        val cost = image.meanY { r, _, b -> b > 150 && r < 80 }
+
+        assertNotNull(rev, "no revenue bars painted")
+        assertNotNull(cost, "no cost bars painted")
+        // The first series sits above the second in every group. Dropping the
+        // within-slot offset would stack them on the same band.
+        assertTrue(rev < cost, "series painted at the same height: rev=$rev cost=$cost")
+    }
+
+    private fun ImageBitmap.meanY(matches: (Int, Int, Int) -> Boolean): Float? {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        var sum = 0L
+        var count = 0
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            if (((p ushr 24) and 0xFF) > 200 &&
+                matches((p shr 16) and 0xFF, (p shr 8) and 0xFF, p and 0xFF)
+            ) {
+                sum += i / width
+                count++
+            }
+        }
+        return if (count == 0) null else sum.toFloat() / count
+    }
+
+    @Test
     fun a_lone_bar_keeps_its_touch_tolerance_in_rtl() = runComposeUiTest {
         val plain = BarDataSet(
             entries = listOf(BarEntry("jan", "Jan", 45f), BarEntry("feb", "Feb", 80f)),

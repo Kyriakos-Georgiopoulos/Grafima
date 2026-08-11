@@ -23,24 +23,7 @@ import kotlin.test.assertTrue
 
 class BarGroupingTest {
 
-    private fun grouped(label: String, series: String, y: Float) =
-        BarEntry(
-            id = "$label-$series",
-            xLabel = label,
-            y = y,
-            seriesId = series,
-            seriesLabel = series.replaceFirstChar { it.uppercase() }
-        )
-
-    private fun plain(label: String, y: Float) =
-        BarEntry(id = label, xLabel = label, y = y)
-
-    private val twoByTwo = listOf(
-        grouped("Q1", "rev", 45f),
-        grouped("Q1", "cost", 30f),
-        grouped("Q2", "rev", 80f),
-        grouped("Q2", "cost", 52f)
-    )
+    private val twoByTwo = twoByTwoEntries
 
     @Test
     fun `entries sharing a label and carrying a series land in one category`() {
@@ -52,7 +35,7 @@ class BarGroupingTest {
 
     @Test
     fun `an entry with no series stays a category of its own`() {
-        val layout = computeBarGroupLayout(listOf(plain("Jan", 4f), plain("Jan", 9f)))
+        val layout = computeBarGroupLayout(listOf(plainBar("Jan", 4f), plainBar("Jan", 9f)))
 
         assertEquals(2, layout.categoryCount, "a null seriesId must never merge two bars")
     }
@@ -60,9 +43,9 @@ class BarGroupingTest {
     @Test
     fun `a label reused by a later run opens a new category`() {
         val entries = listOf(
-            grouped("Q1", "rev", 45f),
-            grouped("Q2", "rev", 80f),
-            grouped("Q1", "cost", 30f)
+            seriesBar("Q1", "rev", 45f),
+            seriesBar("Q2", "rev", 80f),
+            seriesBar("Q1", "cost", 30f)
         )
 
         assertEquals(
@@ -74,7 +57,7 @@ class BarGroupingTest {
 
     @Test
     fun `a series bar does not reach back into a plain bar sharing its label`() {
-        val layout = computeBarGroupLayout(listOf(plain("Q1", 45f), grouped("Q1", "cost", 30f)))
+        val layout = computeBarGroupLayout(listOf(plainBar("Q1", 45f), seriesBar("Q1", "cost", 30f)))
 
         // Weakening the predecessor clause to "previous != null" merges these.
         assertEquals(2, layout.categoryCount, "a plain bar is a category in its own right")
@@ -90,7 +73,7 @@ class BarGroupingTest {
 
     @Test
     fun `a dataset with no series gives the same axis max in either mode`() {
-        val entries = listOf(plain("a", 45f), plain("b", 12f))
+        val entries = listOf(plainBar("a", 45f), plainBar("b", 12f))
 
         assertEquals(
             axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Grouped),
@@ -100,7 +83,7 @@ class BarGroupingTest {
 
     @Test
     fun `a layout over plain entries reports one bar per category`() {
-        val layout = computeBarGroupLayout(listOf(plain("a", 1f), plain("b", 2f)))
+        val layout = computeBarGroupLayout(listOf(plainBar("a", 1f), plainBar("b", 2f)))
 
         assertContentEquals(intArrayOf(0, 1), layout.categoryOf)
         assertEquals(2, layout.categoryCount)
@@ -117,10 +100,10 @@ class BarGroupingTest {
     @Test
     fun `categories of differing size are still numbered in order`() {
         val entries = listOf(
-            grouped("Q1", "rev", 45f),
-            grouped("Q1", "cost", 30f),
-            grouped("Q1", "tax", 5f),
-            grouped("Q2", "rev", 80f)
+            seriesBar("Q1", "rev", 45f),
+            seriesBar("Q1", "cost", 30f),
+            seriesBar("Q1", "tax", 5f),
+            seriesBar("Q2", "rev", 80f)
         )
 
         val layout = computeBarGroupLayout(entries)
@@ -170,14 +153,14 @@ class BarGroupingTest {
     @Test
     fun `series order follows first appearance and drops duplicates`() {
         assertEquals(listOf("rev", "cost"), seriesOrder(twoByTwo))
-        assertEquals(emptyList(), seriesOrder(listOf(plain("a", 1f))))
+        assertEquals(emptyList(), seriesOrder(listOf(plainBar("a", 1f))))
     }
 
     @Test
     fun `a negative stacked segment cannot pull the axis below a drawn bar`() {
         val entries = listOf(
-            grouped("Q1", "up", 100f),
-            grouped("Q1", "down", -50f)
+            seriesBar("Q1", "up", 100f),
+            seriesBar("Q1", "down", -50f)
         )
 
         // The stack totals 50, but a 100-tall segment is still drawn, so an axis

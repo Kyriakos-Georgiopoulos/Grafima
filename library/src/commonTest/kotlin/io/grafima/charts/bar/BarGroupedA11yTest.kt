@@ -23,15 +23,7 @@ import kotlin.test.assertTrue
 
 class BarGroupedA11yTest {
 
-    private val grouped = BarDataSet(
-        entries = listOf(
-            BarEntry("q1-rev", "Q1", 45f, seriesId = "rev", seriesLabel = "Revenue"),
-            BarEntry("q1-cost", "Q1", 30f, seriesId = "cost", seriesLabel = "Cost"),
-            BarEntry("q2-rev", "Q2", 80f, seriesId = "rev", seriesLabel = "Revenue"),
-            BarEntry("q2-cost", "Q2", 52f, seriesId = "cost", seriesLabel = "Cost")
-        ),
-        contentDescription = "quarterly figures"
-    )
+    private val grouped = BarDataSet(twoByTwoEntries, contentDescription = "quarterly figures")
 
     private val plain = BarDataSet(
         entries = listOf(BarEntry("jan", "Jan", 45f), BarEntry("feb", "Feb", 80f)),

@@ -303,15 +303,7 @@ class BarChartAnimationEngineTest {
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("b").value)
     }
 
-    private fun grouped(label: String, series: String, y: Float) =
-        BarEntry(id = "$label-$series", xLabel = label, y = y, seriesId = series)
-
-    private val twoStacks = listOf(
-        grouped("Q1", "rev", 45f),
-        grouped("Q1", "cost", 30f),
-        grouped("Q2", "rev", 80f),
-        grouped("Q2", "cost", 52f)
-    )
+    private val twoStacks = twoByTwoEntries
 
     @Test
     fun `a grouped category holds its whole slot until its last bar has gone`() = runEngineTest {
