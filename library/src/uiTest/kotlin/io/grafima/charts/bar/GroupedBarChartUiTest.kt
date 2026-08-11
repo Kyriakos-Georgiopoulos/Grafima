@@ -431,6 +431,45 @@ class GroupedBarChartUiTest {
     }
 
     @Test
+    fun stacking_a_dataset_with_no_series_changes_nothing_about_it() = runComposeUiTest {
+        val plain = BarDataSet(
+            entries = listOf(BarEntry("jan", "Jan", 45f), BarEntry("feb", "Feb", 80f)),
+            contentDescription = "Monthly"
+        )
+        var grouped: BarEntry? by mutableStateOf(null)
+        var stacked: BarEntry? by mutableStateOf(null)
+
+        setContent {
+            BarChart(
+                dataSet = plain.copy(mode = BarGroupMode.Grouped),
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectedEntry = grouped,
+                onBarSelected = { grouped = it }
+            )
+        }
+        // Just inside the label strip: the fat-finger tolerance every mode should give.
+        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
+        onChartNode().performTouchInput { up() }
+
+        setContent {
+            BarChart(
+                dataSet = plain.copy(mode = BarGroupMode.Stacked),
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectedEntry = stacked,
+                onBarSelected = { stacked = it }
+            )
+        }
+        onChartNode().performTouchInput { down(Offset(width * 0.3f, height * 0.906f)) }
+        onChartNode().performTouchInput { up() }
+
+        // `BarDataSet.mode` documents that it has no effect without a seriesId.
+        assertEquals(grouped?.id, stacked?.id, "mode changed hit testing on plain data")
+        assertNotNull(stacked, "the stacked tap found nothing")
+    }
+
+    @Test
     fun a_narrow_bar_without_series_still_draws_its_value() = runComposeUiTest {
         assumePixelCapture()
         // Enough bars that each is narrower than its own three-digit label.

@@ -308,8 +308,11 @@ internal fun DrawScope.drawVerticalBars(
                         )
                 if (fits) {
                     val valueY =
-                        if (stacked) yOffset + (targetHeight - valueLayout.size.height) / 2
-                        else yOffset - valueLayout.size.height - 6.dp.toPx()
+                        if (stacked && sharesSlot) {
+                            yOffset + (targetHeight - valueLayout.size.height) / 2
+                        } else {
+                            yOffset - valueLayout.size.height - 6.dp.toPx()
+                        }
                     drawText(
                         textLayoutResult = valueLayout,
                         topLeft = Offset(
@@ -461,7 +464,7 @@ internal fun DrawScope.drawHorizontalBars(
                         )
                 if (fits) {
                     val valueX = when {
-                        stacked -> xOff + (barLen - valueLayout.size.width) / 2
+                        stacked && sharesSlot -> xOff + (barLen - valueLayout.size.width) / 2
                         isRtl -> xOff - valueLayout.size.width - 6.dp.toPx()
                         else -> xOff + barLen + 6.dp.toPx()
                     }

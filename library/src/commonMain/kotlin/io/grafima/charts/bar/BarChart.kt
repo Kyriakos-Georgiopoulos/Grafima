@@ -378,8 +378,10 @@ fun BarChart(
 
                                 // No slop on the axis bars touch along, or the loop
                                 // would claim the touch for whichever it reached first.
-                                val xSlop = if (isStacked) 0f else hitSlopPx
-                                val ySlop = if (isStacked || end - first == 1) hitSlopPx else 0f
+                                val stackedInterior = isStacked && end - first > 1
+                                val xSlop = if (stackedInterior) 0f else hitSlopPx
+                                val ySlop =
+                                    if (stackedInterior || end - first == 1) hitSlopPx else 0f
                                 if (touchPos.y in
                                     (yOff - ySlop)..(yOff + barThickness + ySlop) &&
                                     touchPos.x in (xOff - xSlop)..(xOff + barLen + xSlop)
@@ -447,8 +449,10 @@ fun BarChart(
 
                             // No slop on the axis bars touch along, or the loop would
                             // claim the touch for whichever it reached first.
-                            val xSlop = if (isStacked || end - first == 1) hitSlopPx else 0f
-                            val ySlop = if (isStacked) 0f else hitSlopPx
+                            val stackedInterior = isStacked && end - first > 1
+                            val xSlop =
+                                if (stackedInterior || end - first == 1) hitSlopPx else 0f
+                            val ySlop = if (stackedInterior) 0f else hitSlopPx
                             val withinX = touchPos.x in (startX - xSlop)..(endX + xSlop)
                             val withinY = touchPos.y in (startY - ySlop)..(endY + ySlop)
                             if (withinX && withinY) {
