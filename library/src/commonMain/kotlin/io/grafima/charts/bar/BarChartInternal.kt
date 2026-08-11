@@ -274,18 +274,18 @@ internal fun buildBarChartDescription(
     a11yConfig: A11yConfig
 ): String = buildString {
     append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-    val series = seriesOrder(dataSet.entries)
-    if (series.isEmpty()) {
-        append(a11yConfig.barCountDescriptionBuilder(dataSet.entries.size))
-    } else {
-        append(
-            a11yConfig.groupedCountDescriptionBuilder(
-                dataSet.entries.size,
-                groupBarEntries(dataSet.entries).size,
-                series.size
-            )
-        )
-    }
+    append(a11yConfig.countDescriptionBuilder(summarizeBars(dataSet.entries)))
+}
+
+/** Counts the entries hold, without claiming a group size ragged data lacks. */
+internal fun summarizeBars(entries: List<BarEntry>): BarChartSummary {
+    val sizes = groupBarEntries(entries).map { it.entries.size }
+    return BarChartSummary(
+        bars = entries.size,
+        categories = sizes.size,
+        series = seriesOrder(entries).size,
+        uniformGroupSize = sizes.distinct().singleOrNull()
+    )
 }
 
 @Stable

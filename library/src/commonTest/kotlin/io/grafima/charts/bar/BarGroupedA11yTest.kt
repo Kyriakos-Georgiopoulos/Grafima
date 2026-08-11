@@ -19,6 +19,7 @@ package io.grafima.charts.bar
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class BarGroupedA11yTest {
 
@@ -94,16 +95,41 @@ class BarGroupedA11yTest {
     }
 
     @Test
-    fun `a custom count builder still wins for a grouped dataset`() {
+    fun `one custom count builder covers a dataset with series and without`() {
         val config = A11yConfig(
-            groupedCountDescriptionBuilder = { bars, categories, series ->
-                "$bars/$categories/$series"
-            }
+            countDescriptionBuilder = { "${it.bars}/${it.categories}/${it.series}" }
         )
 
+        // A single builder means adding a series to a localised chart cannot
+        // silently fall back to the library's own wording.
         assertEquals(
             "Bar Chart representing quarterly figures. 4/2/2",
             buildBarChartDescription(grouped, config)
+        )
+        assertEquals(
+            "Bar Chart representing monthly revenue. 2/2/0",
+            buildBarChartDescription(plain, config)
+        )
+    }
+
+    @Test
+    fun `ragged categories are not announced as a uniform group size`() {
+        val ragged = BarDataSet(
+            entries = listOf(
+                BarEntry("q1-rev", "Q1", 45f, seriesId = "rev"),
+                BarEntry("q1-cost", "Q1", 30f, seriesId = "cost"),
+                BarEntry("adhoc", "Ad hoc", 12f)
+            ),
+            contentDescription = "mixed"
+        )
+
+        val summary = summarizeBars(ragged.entries)
+        assertEquals(3, summary.bars)
+        assertEquals(2, summary.categories)
+        assertNull(summary.uniformGroupSize)
+        assertTrue(
+            buildBarChartDescription(ragged, A11yConfig()).contains("3 bars in 2 groups."),
+            "said: ${buildBarChartDescription(ragged, A11yConfig())}"
         )
     }
 }

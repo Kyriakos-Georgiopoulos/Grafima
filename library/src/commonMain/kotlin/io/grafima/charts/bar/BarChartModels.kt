@@ -207,12 +207,28 @@ data class AnimationConfig(
 )
 
 /**
+ * What a chart amounts to, for the opening line of its description.
+ *
+ * @property bars Total bars, series included.
+ * @property categories Positions along the axis.
+ * @property series Distinct measures. Zero when no entry carries one.
+ * @property uniformGroupSize Bars per category when every category holds the same
+ *   number, null when they differ. Ragged data has no single group size to report.
+ */
+@Immutable
+data class BarChartSummary(
+    val bars: Int,
+    val categories: Int,
+    val series: Int,
+    val uniformGroupSize: Int?
+)
+
+/**
  * Accessibility configuration with builders for TalkBack descriptions.
  *
- * @property barCountDescriptionBuilder Used when no entry carries a series.
- * @property groupedCountDescriptionBuilder Used instead once a dataset has series,
- *   because a bar count alone does not convey that the bars are grouped. Receives
- *   the number of bars, of categories, and of distinct series.
+ * @property countDescriptionBuilder Opens the chart's description with what it holds.
+ *   Receives a [BarChartSummary] rather than loose numbers, so one override covers a
+ *   dataset whether or not it carries series.
  */
 @Stable
 data class A11yConfig(
@@ -227,10 +243,14 @@ data class A11yConfig(
             }
         } ?: "No bar selected."
     },
-    val barCountDescriptionBuilder: (Int) -> String = { count ->
-        "$count bars. Use the actions menu to select one."
-    },
-    val groupedCountDescriptionBuilder: (Int, Int, Int) -> String = { bars, categories, series ->
-        "$bars bars in $categories groups of $series. Use the actions menu to select one."
+    val countDescriptionBuilder: (BarChartSummary) -> String = { summary ->
+        val held = when {
+            summary.series == 0 -> "${summary.bars} bars"
+            summary.uniformGroupSize != null ->
+                "${summary.bars} bars in ${summary.categories} groups of " +
+                    "${summary.uniformGroupSize}"
+            else -> "${summary.bars} bars in ${summary.categories} groups"
+        }
+        "$held. Use the actions menu to select one."
     }
 )

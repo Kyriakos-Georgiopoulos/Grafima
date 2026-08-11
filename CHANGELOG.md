@@ -28,10 +28,17 @@ behaviour do not.
 - The default `A11yConfig.selectedStateDescription` names the series when a bar has
   one, so the two bars of a group are told apart. Its signature is unchanged and a
   bar without a series is described exactly as before.
-- **Source compatible, binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`
-  and `A11yConfig` each gained a defaulted constructor parameter. Your code compiles
-  unchanged, but Kotlin regenerates a data class's constructor and `copy` for the new
-  arity rather than keeping the old one — the removed signatures are in the api diff.
+- `A11yConfig.barCountDescriptionBuilder` is replaced by `countDescriptionBuilder`,
+  which takes a `BarChartSummary` and covers a dataset whether or not it carries
+  series. The previous pair of builders switched on the data, so adding a series to
+  a chart that had localised its bar count silently reverted it to English. The
+  default wording is unchanged, and ragged categories now say "3 bars in 2 groups"
+  rather than claiming a group size they do not share.
+- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle` and `A11yConfig`
+  each gained a defaulted constructor parameter. Apart from the builder rename above
+  your code compiles unchanged, but Kotlin regenerates a data class's constructor and
+  `copy` for the new arity rather than keeping the old one — the removed signatures
+  are in the api diff.
   Anything compiled against 1.1.1 and run against this release without recompiling
   fails with `NoSuchMethodError`. Recompile dependents; publish no mixed set.
 
