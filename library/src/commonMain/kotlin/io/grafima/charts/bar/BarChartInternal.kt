@@ -22,6 +22,7 @@ import androidx.compose.runtime.Stable
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
@@ -281,6 +282,9 @@ internal class ChartAnimationEngine {
 
     private val exitTracker = ExitTracker<BarEntry> { it.id }
 
+    /** The coroutine sinking each departing bar, so a bar that comes back can stop it. */
+    private val exitJobs = mutableMapOf<String, Job>()
+
     /** Bars the dataset no longer contains but the chart is still drawing. */
     val exiting: List<Exiting<BarEntry>> get() = exitTracker.exiting
 
@@ -288,7 +292,12 @@ internal class ChartAnimationEngine {
         // An id that returns mid-exit rejoins the dataset and grows from where it got to.
         val (departed, returned) = exitTracker.sync(entries)
         departed.forEach { slotAnimatables[it.item.id] = Animatable(1f) }
-        returned.forEach { slotAnimatables.remove(it.item.id) }
+        // The exit is still running on animatables this id owns again. Left alone it
+        // finishes the collapse and calls forget, deleting a bar that is now live.
+        returned.forEach {
+            slotAnimatables.remove(it.item.id)
+            exitJobs.remove(it.item.id)?.cancel()
+        }
 
         val drawn = entries.mapTo(mutableSetOf()) { it.id } +
             exitTracker.exiting.mapTo(mutableSetOf()) { it.item.id }
@@ -312,6 +321,7 @@ internal class ChartAnimationEngine {
             val height = heightAnimatables[id] ?: return@forEach
             val slot = slotAnimatables[id] ?: return@forEach
             if (height.isRunning || slot.isRunning) return@forEach
+            if (exitJobs[id]?.isActive == true) return@forEach
 
             // A cancelled coroutine can leave it at rest but still listed.
             if (slot.value == 0f) {
@@ -319,7 +329,7 @@ internal class ChartAnimationEngine {
                 return@forEach
             }
 
-            scope.launch {
+            exitJobs[id] = scope.launch {
                 height.animateTo(0f, config.initialEntrySpec)
                 slot.animateTo(0f, config.morphSpec)
                 forget(bar)
@@ -329,6 +339,7 @@ internal class ChartAnimationEngine {
 
     private fun forget(bar: Exiting<BarEntry>) {
         val id = bar.item.id
+        exitJobs.remove(id)
         heightAnimatables.remove(id)
         selectionAlphaAnimatables.remove(id)
         slotAnimatables.remove(id)

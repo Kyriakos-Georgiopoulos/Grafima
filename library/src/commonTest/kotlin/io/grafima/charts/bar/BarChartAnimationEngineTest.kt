@@ -23,6 +23,7 @@ import io.grafima.charts.runEngineTest
 import kotlinx.coroutines.cancel
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -151,6 +152,35 @@ class BarChartAnimationEngineTest {
             assertEquals(emptyList(), engine.exiting.map { it.item.id })
             assertNull(engine.heightAnimatables["b"])
         }
+
+    @Test
+    fun `a bar re-added while its slot is collapsing survives`() = runEngineTest { harness ->
+        val engine = ChartAnimationEngine()
+        val config = snapConfig.copy(
+            initialEntrySpec = tween(durationMillis = 200, easing = LinearEasing),
+            morphSpec = tween(durationMillis = 400, easing = LinearEasing)
+        )
+        val data = entries("a" to 10f, "b" to 20f)
+        engine.syncAnimatables(data)
+        engine.launchEntryAnimations(data, config, harness.launchScope())
+        harness.advanceFrames(400)
+
+        engine.syncAnimatables(entries("a" to 10f))
+        engine.launchExitAnimations(config, harness.launchScope())
+        // Past the height sink, inside the slot collapse: the window where only the
+        // exit coroutine is still touching this bar.
+        harness.advanceFrames(250)
+
+        engine.syncAnimatables(data)
+        engine.launchEntryAnimations(data, config, harness.launchScope())
+        harness.advanceFrames(1000)
+
+        // Uncancelled, the old exit reaches forget and deletes the animatables of a
+        // bar the dataset holds again, so it draws at zero and never comes back.
+        assertNotNull(engine.heightAnimatables["b"], "b's height animatable was wiped")
+        assertEquals(20f, engine.heightAnimatables.getValue("b").value)
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
+    }
 
     @Test
     fun `an exit left at rest by a cancelled coroutine is finished on the next pass`() =
