@@ -294,6 +294,8 @@ fun BarChart(
             }
             .pointerInput(
                 yAxisWidthPx,
+                topSpacePx,
+                bottomSpacePx,
                 style.barSpacingFactor,
                 style.groupSpacingFactor,
                 isStacked,
@@ -335,6 +337,8 @@ fun BarChart(
 
                         val rendered = currentRenderEntries
                         val renderLayout = currentBarLayout
+                        val axisMax = currentMaxBarValue
+                        val selectable = currentSelectableIds
                         val (slotThickness, barGap) = barThicknessAndGap(
                             hChartHeight,
                             animationEngine.categorySlotCount(rendered, renderLayout),
@@ -370,11 +374,11 @@ fun BarChart(
 
                                 val animVal =
                                     animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-                                val barLen = (animVal / currentMaxBarValue) * hChartWidth
+                                val barLen = (animVal / axisMax) * hChartWidth
                                 val base = if (isStacked) stackBase else 0f
                                 if (isStacked) stackBase += barLen
 
-                                if (entry.id !in currentSelectableIds) continue
+                                if (entry.id !in selectable) continue
 
                                 val xOff =
                                     if (isRtl) hChartRight - base - barLen else hChartLeft + base
@@ -402,6 +406,8 @@ fun BarChart(
 
                     val rendered = currentRenderEntries
                     val renderLayout = currentBarLayout
+                    val axisMax = currentMaxBarValue
+                    val selectable = currentSelectableIds
                     val (slotWidth, barSpacing) = barThicknessAndGap(
                         chartWidth,
                         animationEngine.categorySlotCount(rendered, renderLayout),
@@ -435,11 +441,11 @@ fun BarChart(
                             val currentAnimatedValue =
                                 animationEngine.heightAnimatables[entry.id]?.value ?: 0f
                             val targetHeight =
-                                (currentAnimatedValue / currentMaxBarValue) * chartHeight
+                                (currentAnimatedValue / axisMax) * chartHeight
                             val base = if (isStacked) stackBase else 0f
                             if (isStacked) stackBase += targetHeight
 
-                            if (entry.id !in currentSelectableIds) continue
+                            if (entry.id !in selectable) continue
 
                             val startX = mirrorForRtl(ltrStartX, canvasWidth, barWidth, isRtl)
                             val endX = startX + barWidth
