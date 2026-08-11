@@ -209,8 +209,8 @@ data class AnimationConfig(
 /**
  * What a chart amounts to, for the opening line of its description.
  *
- * Only the library constructs it, so it can report more in a later release without
- * the `copy` and `componentN` of a data class freezing its shape.
+ * Not a data class, so it can report more in a later release without `copy` and
+ * `componentN` freezing its shape.
  *
  * @property bars Total bars, series included.
  * @property categories Positions along the axis.
@@ -219,7 +219,7 @@ data class AnimationConfig(
  *   number, null when they differ. Ragged data has no single group size to report.
  */
 @Immutable
-class BarChartSummary internal constructor(
+class BarChartSummary(
     val bars: Int,
     val categories: Int,
     val series: Int,
@@ -250,12 +250,13 @@ data class A11yConfig(
         } ?: "No bar selected."
     },
     val countDescriptionBuilder: (BarChartSummary) -> String = { summary ->
+        val groups = if (summary.categories == 1) "group" else "groups"
         val held = when {
             summary.series == 0 -> "${summary.bars} bars"
             summary.uniformGroupSize != null ->
-                "${summary.bars} bars in ${summary.categories} groups of " +
+                "${summary.bars} bars in ${summary.categories} $groups of " +
                     "${summary.uniformGroupSize}"
-            else -> "${summary.bars} bars in ${summary.categories} groups"
+            else -> "${summary.bars} bars in ${summary.categories} $groups"
         }
         "$held. Use the actions menu to select one."
     },

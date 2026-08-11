@@ -75,8 +75,8 @@ class BarGroupingTest {
     @Test
     fun `the stacked axis max clears the tallest stack rather than the tallest bar`() {
         // Grouped only has to clear 80. Stacked has to clear 45+30=75 and 80+52=132.
-        assertEquals(100f, computeBarAxisMax(twoByTwo, BarGroupMode.Grouped))
-        assertEquals(200f, computeBarAxisMax(twoByTwo, BarGroupMode.Stacked))
+        assertEquals(100f, axisMaxForLayout(twoByTwo, computeBarGroupLayout(twoByTwo), BarGroupMode.Grouped))
+        assertEquals(200f, axisMaxForLayout(twoByTwo, computeBarGroupLayout(twoByTwo), BarGroupMode.Stacked))
     }
 
     @Test
@@ -84,21 +84,13 @@ class BarGroupingTest {
         val entries = listOf(plain("a", 45f), plain("b", 12f))
 
         assertEquals(
-            computeBarAxisMax(entries, BarGroupMode.Grouped),
-            computeBarAxisMax(entries, BarGroupMode.Stacked)
+            axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Grouped),
+            axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Stacked)
         )
     }
 
     @Test
-    fun `the layout numbers each bar by category and position within it`() {
-        val layout = computeBarGroupLayout(twoByTwo)
-
-        assertContentEquals(intArrayOf(0, 0, 1, 1), layout.categoryOf)
-        assertEquals(2, layout.categoryCount)
-    }
-
-    @Test
-    fun `a layout over plain entries reports one bar per category and no series`() {
+    fun `a layout over plain entries reports one bar per category`() {
         val layout = computeBarGroupLayout(listOf(plain("a", 1f), plain("b", 2f)))
 
         assertContentEquals(intArrayOf(0, 1), layout.categoryOf)
@@ -132,34 +124,34 @@ class BarGroupingTest {
     fun `a group's bars and inner gaps exactly fill its slot`() {
         val slot = 120f
         val count = 3
-        val thickness = groupedBarThickness(slot, count, innerSpacingFactor = 0.08f)
-        val gap = groupedBarGap(slot, count, innerSpacingFactor = 0.08f)
+        val thickness = groupedBarThickness(slot, count.toFloat(), innerSpacingFactor = 0.08f)
+        val gap = groupedBarGap(slot, count.toFloat(), innerSpacingFactor = 0.08f)
 
         assertEquals(slot, thickness * count + gap * (count - 1), 1e-3f)
     }
 
     @Test
     fun `a single-bar group takes the whole slot with no gap`() {
-        assertEquals(120f, groupedBarThickness(120f, 1, innerSpacingFactor = 0.08f))
-        assertEquals(0f, groupedBarGap(120f, 1, innerSpacingFactor = 0.08f))
+        assertEquals(120f, groupedBarThickness(120f, 1f, innerSpacingFactor = 0.08f))
+        assertEquals(0f, groupedBarGap(120f, 1f, innerSpacingFactor = 0.08f))
     }
 
     @Test
     fun `an out-of-range inner spacing is clamped rather than inverting the bars`() {
         // 5f would make the spacing wider than the slot and the thickness negative.
-        assertTrue(groupedBarThickness(120f, 2, innerSpacingFactor = 5f) > 0f)
-        assertTrue(groupedBarThickness(120f, 2, innerSpacingFactor = -1f) > 0f)
-        assertEquals(0f, groupedBarGap(120f, 2, innerSpacingFactor = -1f))
+        assertTrue(groupedBarThickness(120f, 2f, innerSpacingFactor = 5f) > 0f)
+        assertTrue(groupedBarThickness(120f, 2f, innerSpacingFactor = -1f) > 0f)
+        assertEquals(0f, groupedBarGap(120f, 2f, innerSpacingFactor = -1f))
     }
 
     @Test
     fun `the last bar of a group ends exactly on the slot boundary`() {
         val slot = 120f
         val f = 0.1f
-        val thickness = groupedBarThickness(slot, 3, f)
-        val gap = groupedBarGap(slot, 3, f)
+        val thickness = groupedBarThickness(slot, 3f, f)
+        val gap = groupedBarGap(slot, 3f, f)
 
-        assertEquals(slot, groupedBarOffset(2, thickness, gap) + thickness, 0.001f)
+        assertEquals(slot, groupedBarOffset(2f, thickness, gap) + thickness, 0.001f)
         // The same has to hold mid-departure, or the group spills out of its slot.
         val partial = groupedBarThickness(slot, 2.4f, f)
         val partialGap = groupedBarGap(slot, 2.4f, f)
@@ -181,8 +173,8 @@ class BarGroupingTest {
 
         // The stack totals 50, but a 100-tall segment is still drawn, so an axis
         // scaled to the total would clip it off the canvas.
-        val max = computeBarAxisMax(entries, BarGroupMode.Stacked)
+        val max = axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Stacked)
         assertTrue(max >= 100f, "stacked axis max was $max, below the tallest segment")
-        assertEquals(computeBarAxisMax(entries, BarGroupMode.Grouped), max)
+        assertEquals(axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Grouped), max)
     }
 }

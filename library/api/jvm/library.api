@@ -95,6 +95,7 @@ public abstract interface class io/grafima/charts/bar/BarChartSelectionRenderer 
 
 public final class io/grafima/charts/bar/BarChartSummary {
 	public static final field $stable I
+	public fun <init> (IIILjava/lang/Integer;)V
 	public final fun getBars ()I
 	public final fun getCategories ()I
 	public final fun getSeries ()I

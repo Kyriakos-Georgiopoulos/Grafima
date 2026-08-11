@@ -113,6 +113,23 @@ class BarGroupedA11yTest {
     }
 
     @Test
+    fun `a single category is announced in the singular`() {
+        val one = BarDataSet(
+            entries = listOf(
+                BarEntry("q1-rev", "Q1", 45f, seriesId = "rev"),
+                BarEntry("q1-cost", "Q1", 30f, seriesId = "cost")
+            ),
+            contentDescription = "one quarter"
+        )
+
+        assertEquals(
+            "Bar Chart representing one quarter. 2 bars in 1 group of 2. " +
+                "Use the actions menu to select one.",
+            buildBarChartDescription(one, A11yConfig())
+        )
+    }
+
+    @Test
     fun `ragged categories are not announced as a uniform group size`() {
         val ragged = BarDataSet(
             entries = listOf(

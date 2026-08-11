@@ -234,6 +234,8 @@ final class io.grafima.charts.bar/AxisConfig { // io.grafima.charts.bar/AxisConf
 }
 
 final class io.grafima.charts.bar/BarChartSummary { // io.grafima.charts.bar/BarChartSummary|null[0]
+    constructor <init>(kotlin/Int, kotlin/Int, kotlin/Int, kotlin/Int?) // io.grafima.charts.bar/BarChartSummary.<init>|<init>(kotlin.Int;kotlin.Int;kotlin.Int;kotlin.Int?){}[0]
+
     final val bars // io.grafima.charts.bar/BarChartSummary.bars|{}bars[0]
         final fun <get-bars>(): kotlin/Int // io.grafima.charts.bar/BarChartSummary.bars.<get-bars>|<get-bars>(){}[0]
     final val categories // io.grafima.charts.bar/BarChartSummary.categories|{}categories[0]

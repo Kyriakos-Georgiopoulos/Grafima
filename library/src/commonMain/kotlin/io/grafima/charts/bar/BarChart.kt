@@ -332,11 +332,10 @@ fun BarChart(
                         val renderLayout = currentBarLayout
                         val axisMax = currentMaxBarValue
                         val selectable = currentSelectableIds
-                        val (slotThickness, barGap) = barThicknessAndGap(
-                            hChartHeight,
-                            animationEngine.categorySlotCount(rendered, renderLayout),
-                            style.barSpacingFactor
-                        )
+                        val slots = animationEngine.categorySlotCount(rendered, renderLayout)
+                        val slotThickness =
+                            barThickness(hChartHeight, slots, style.barSpacingFactor)
+                        val slotGap = barGap(hChartHeight, slots, style.barSpacingFactor)
 
                         var slotPosition = 0f
                         forEachBarCategory(rendered, renderLayout, animationEngine) {
@@ -350,7 +349,7 @@ fun BarChart(
                                 if (isStacked) 0f
                                 else groupedBarGap(slotThickness, members, style.groupSpacingFactor)
                             val slotY = barSlotOffset(
-                                slotPosition, horizontalTopPadPx, slotThickness, barGap
+                                slotPosition, horizontalTopPadPx, slotThickness, slotGap
                             )
                             slotPosition += occupancy
 
@@ -403,11 +402,9 @@ fun BarChart(
                     val renderLayout = currentBarLayout
                     val axisMax = currentMaxBarValue
                     val selectable = currentSelectableIds
-                    val (slotWidth, barSpacing) = barThicknessAndGap(
-                        chartWidth,
-                        animationEngine.categorySlotCount(rendered, renderLayout),
-                        style.barSpacingFactor
-                    )
+                    val slots = animationEngine.categorySlotCount(rendered, renderLayout)
+                    val slotWidth = barThickness(chartWidth, slots, style.barSpacingFactor)
+                    val barSpacing = barGap(chartWidth, slots, style.barSpacingFactor)
 
                     var slotPosition = 0f
                     forEachBarCategory(rendered, renderLayout, animationEngine) {
@@ -486,11 +483,10 @@ fun BarChart(
                 if (isRtl) size.width - horizontalCatLabelSpacePx else size.width - topSpacePx
             val chartBottom = size.height - bottomSpacePx
             val hChartWidth = chartRight - chartLeft
-            val (slotThickness, barGap) = barThicknessAndGap(
-                chartBottom - horizontalTopPadPx,
-                animationEngine.categorySlotCount(renderEntries, barLayout),
-                style.barSpacingFactor
-            )
+            val slots = animationEngine.categorySlotCount(renderEntries, barLayout)
+            val slotExtent = chartBottom - horizontalTopPadPx
+            val slotThickness = barThickness(slotExtent, slots, style.barSpacingFactor)
+            val slotGap = barGap(slotExtent, slots, style.barSpacingFactor)
 
             drawHorizontalGrid(
                 axisConfig = axisConfig,
@@ -518,7 +514,7 @@ fun BarChart(
                 selectedEntry = selectedEntry,
                 maxBarValue = maxBarValue,
                 slotThickness = slotThickness,
-                barGap = barGap,
+                barGap = slotGap,
                 chartLeft = chartLeft,
                 chartRight = chartRight,
                 chartWidth = hChartWidth,
@@ -545,11 +541,9 @@ fun BarChart(
 
         val chartWidth = size.width - yAxisWidthPx
         val chartHeight = size.height - bottomSpacePx - topSpacePx
-        val (slotWidth, barSpacing) = barThicknessAndGap(
-            chartWidth,
-            animationEngine.categorySlotCount(renderEntries, barLayout),
-            style.barSpacingFactor
-        )
+        val slots = animationEngine.categorySlotCount(renderEntries, barLayout)
+        val slotWidth = barThickness(chartWidth, slots, style.barSpacingFactor)
+        val barSpacing = barGap(chartWidth, slots, style.barSpacingFactor)
 
         drawVerticalGrid(
             axisConfig = axisConfig,

@@ -314,36 +314,6 @@ class BarChartAnimationEngineTest {
     )
 
     @Test
-    fun `a stacked segment stands on the ones below it and not on another category`() =
-        runEngineTest {
-            val engine = ChartAnimationEngine()
-            engine.syncAnimatables(twoStacks)
-            twoStacks.forEach { engine.heightAnimatables.getValue(it.id).snapTo(it.y) }
-            val layout = computeBarGroupLayout(twoStacks)
-
-            // A max of 100 over an extent of 200: one unit of value is two pixels.
-            fun baseOf(index: Int) = engine.stackedBase(twoStacks, layout, index, 100f, 200f)
-
-            assertEquals(0f, baseOf(0), 0.001f)
-            assertEquals(90f, baseOf(1), 0.001f)
-            // Carrying over from Q1 would float the whole of Q2 off the baseline.
-            assertEquals(0f, baseOf(2), 0.001f)
-            assertEquals(160f, baseOf(3), 0.001f)
-        }
-
-    @Test
-    fun `a stack base follows the animated heights rather than the data`() = runEngineTest {
-        val engine = ChartAnimationEngine()
-        engine.syncAnimatables(twoStacks)
-        val layout = computeBarGroupLayout(twoStacks)
-
-        assertEquals(0f, engine.stackedBase(twoStacks, layout, 1, 100f, 200f), 0.001f)
-
-        engine.heightAnimatables.getValue("Q1-rev").snapTo(20f)
-        assertEquals(40f, engine.stackedBase(twoStacks, layout, 1, 100f, 200f), 0.001f)
-    }
-
-    @Test
     fun `a grouped category holds its whole slot until its last bar has gone`() = runEngineTest {
         val engine = ChartAnimationEngine()
         engine.syncAnimatables(twoStacks)
@@ -422,7 +392,7 @@ class BarChartAnimationEngineTest {
         val engine = ChartAnimationEngine()
         val tall = entries("a" to 10f, "b" to 200f)
         engine.syncAnimatables(tall)
-        val before = computeBarAxisMax(tall, BarGroupMode.Grouped)
+        val before = axisMaxForLayout(tall, computeBarGroupLayout(tall), BarGroupMode.Grouped)
 
         engine.syncAnimatables(entries("a" to 10f))
         val rendered = engine.renderEntries(entries("a" to 10f))

@@ -46,11 +46,6 @@ internal fun seriesOrder(entries: List<BarEntry>): List<String> =
  * Y-axis maximum: 20% headroom over the tallest bar, rounded up to a tidy
  * step (5, 10, or 50 depending on magnitude) so axis labels stay round numbers.
  */
-internal fun computeBarAxisMax(
-    entries: List<BarEntry>,
-    mode: BarGroupMode = BarGroupMode.Grouped
-): Float = axisMaxForLayout(entries, computeBarGroupLayout(entries), mode)
-
 /**
  * The same maximum over a layout the caller already has, which is how the chart
  * itself asks: it groups its render list once and both the bars and the axis read
@@ -88,30 +83,16 @@ internal fun axisMaxForLayout(
  * Bar thickness and gap along the layout axis. Gaps flank every bar, so
  * [count] bars produce count+1 gaps: thickness*count + gap*(count+1) == extent.
  */
-internal fun barThicknessAndGap(
-    extent: Float,
-    count: Int,
-    spacingFactor: Float
-): Pair<Float, Float> = barThicknessAndGap(extent, count.toFloat(), spacingFactor)
-
-/**
- * The same split over a fractional [count], which is what a slot collapsing after
- * a removal produces: the survivors widen across the collapse instead of jumping
- * once it completes.
- */
-internal fun barThicknessAndGap(
-    extent: Float,
-    count: Float,
-    spacingFactor: Float
-): Pair<Float, Float> {
+internal fun barThickness(extent: Float, count: Float, spacingFactor: Float): Float {
     val slots = count.coerceAtLeast(0.01f)
-    val totalSpacing = extent * spacingFactor.coerceIn(0f, 0.9f)
-    return (extent - totalSpacing) / slots to totalSpacing / (slots + 1f)
+    return (extent - extent * spacingFactor.coerceIn(0f, 0.9f)) / slots
 }
 
-/** LTR offset of bar [index] along the layout axis, measured from [leadingInset]. */
-internal fun barSlotOffset(index: Int, leadingInset: Float, thickness: Float, gap: Float): Float =
-    barSlotOffset(index.toFloat(), leadingInset, thickness, gap)
+/** The gap flanking each of those bars. Returned separately to avoid a `Pair` per frame. */
+internal fun barGap(extent: Float, count: Float, spacingFactor: Float): Float {
+    val slots = count.coerceAtLeast(0.01f)
+    return extent * spacingFactor.coerceIn(0f, 0.9f) / (slots + 1f)
+}
 
 /** The same offset for a fractional slot [position] — the slots ahead of this bar. */
 internal fun barSlotOffset(
@@ -138,12 +119,6 @@ internal fun mirrorForRtl(
  * Returned as two scalars rather than a pair because the draw pass calls this once
  * per category per frame, and a `Pair` there is an allocation per frame.
  */
-internal fun groupedBarThickness(
-    slotThickness: Float,
-    seriesCount: Int,
-    innerSpacingFactor: Float
-): Float = groupedBarThickness(slotThickness, seriesCount.toFloat(), innerSpacingFactor)
-
 /**
  * The same split over a fractional [seriesCount], which is what a group holds while
  * one of its bars is leaving. The survivors widen across the departure rather than
@@ -168,12 +143,6 @@ private fun innerGapFraction(count: Float, innerSpacingFactor: Float): Float =
 /** Gap between two side-by-side bars of one category. Zero for a single-bar category. */
 internal fun groupedBarGap(
     slotThickness: Float,
-    seriesCount: Int,
-    innerSpacingFactor: Float
-): Float = groupedBarGap(slotThickness, seriesCount.toFloat(), innerSpacingFactor)
-
-internal fun groupedBarGap(
-    slotThickness: Float,
     seriesCount: Float,
     innerSpacingFactor: Float
 ): Float {
@@ -181,10 +150,6 @@ internal fun groupedBarGap(
     if (count <= 1f) return 0f
     return slotThickness * innerGapFraction(count, innerSpacingFactor) / (count - 1f)
 }
-
-/** LTR offset of the bar at series [position] within its category slot. */
-internal fun groupedBarOffset(position: Int, thickness: Float, gap: Float): Float =
-    groupedBarOffset(position.toFloat(), thickness, gap)
 
 /** The same offset over the fractional share of the group that precedes this bar. */
 internal fun groupedBarOffset(position: Float, thickness: Float, gap: Float): Float =
@@ -369,28 +334,6 @@ internal class ChartAnimationEngine {
             total += occupancy
         }
         return total
-    }
-
-    /**
-     * Pixels of stack already drawn below the bar at [index]. Summed from the
-     * animated heights rather than the data, so segments stay contiguous while they
-     * animate at different rates instead of tearing apart mid-flight.
-     */
-    fun stackedBase(
-        renderEntries: List<BarEntry>,
-        layout: BarGroupLayout,
-        index: Int,
-        maxBarValue: Float,
-        chartExtent: Float
-    ): Float {
-        var base = 0f
-        var i = index - 1
-        while (i >= 0 && layout.categoryOf[i] == layout.categoryOf[index]) {
-            val value = heightAnimatables[renderEntries[i].id]?.value ?: 0f
-            base += (value / maxBarValue) * chartExtent
-            i--
-        }
-        return base
     }
 
     fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
