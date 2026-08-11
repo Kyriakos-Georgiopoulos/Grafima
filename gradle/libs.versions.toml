@@ -9,7 +9,7 @@ composeBom = "2026.02.01"
 composeMultiplatform = "1.11.1"
 composeMultiplatformMaterial3 = "1.9.0"
 kotlinxCoroutines = "1.9.0"
-ktlintPlugin = "13.1.0"
+ktlintPlugin = "14.2.0"
 ktlint = "1.5.0"
 mavenPublish = "0.37.0"
 
