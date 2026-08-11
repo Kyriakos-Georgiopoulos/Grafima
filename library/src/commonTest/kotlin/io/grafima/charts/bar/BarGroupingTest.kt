@@ -19,7 +19,6 @@ package io.grafima.charts.bar
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BarGroupingTest {
@@ -96,7 +95,6 @@ class BarGroupingTest {
 
         assertContentEquals(intArrayOf(0, 0, 1, 1), layout.categoryOf)
         assertEquals(2, layout.categoryCount)
-        assertTrue(layout.hasSeries)
     }
 
     @Test
@@ -105,7 +103,6 @@ class BarGroupingTest {
 
         assertContentEquals(intArrayOf(0, 1), layout.categoryOf)
         assertEquals(2, layout.categoryCount)
-        assertFalse(layout.hasSeries)
     }
 
     @Test
@@ -114,7 +111,6 @@ class BarGroupingTest {
 
         assertEquals(0, layout.categoryCount)
         assertEquals(0, layout.categoryOf.size)
-        assertFalse(layout.hasSeries)
     }
 
     @Test

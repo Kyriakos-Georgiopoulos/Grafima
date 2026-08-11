@@ -218,6 +218,7 @@ internal fun DrawScope.drawVerticalBars(
         val ltrSlotX = barSlotOffset(position, yAxisWidthPx, slotWidth, barSpacing)
         position += categoryOccupancy
 
+        val sharesSlot = end - first > 1
         val barWidth =
             if (stacked) slotWidth
             else groupedBarThickness(slotWidth, members, style.groupSpacingFactor)
@@ -295,9 +296,10 @@ internal fun DrawScope.drawVerticalBars(
                 val valueLayout = valueTextCache.getOrPut(valueInt) {
                     textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
                 }
-                // A bar standing alone is as wide as it ever was, so it keeps the
-                // label it drew before grouping existed however narrow it gets.
-                val fits = !layout.hasSeries ||
+                // A bar with the slot to itself is as wide as it ever was, so it
+                // keeps the label it drew before grouping existed however narrow
+                // the chart gets. Only a bar sharing its slot has to fit.
+                val fits = !sharesSlot ||
                     (
                         valueLayout.size.width <= barWidth &&
                             (!stacked || valueLayout.size.height <= targetHeight)
@@ -369,6 +371,7 @@ internal fun DrawScope.drawHorizontalBars(
         val ltrSlotY = barSlotOffset(position, topPadPx, slotThickness, barGap)
         position += categoryOccupancy
 
+        val sharesSlot = end - first > 1
         val barThickness =
             if (stacked) slotThickness
             else groupedBarThickness(slotThickness, members, style.groupSpacingFactor)
@@ -447,7 +450,7 @@ internal fun DrawScope.drawHorizontalBars(
                 val valueLayout = valueTextCache.getOrPut(valueInt) {
                     textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
                 }
-                val fits = !layout.hasSeries ||
+                val fits = !sharesSlot ||
                     (
                         valueLayout.size.height <= barThickness &&
                             (!stacked || valueLayout.size.width <= barLen)

@@ -210,26 +210,22 @@ internal fun groupedBarOffset(position: Float, thickness: Float, gap: Float): Fl
  */
 internal class BarGroupLayout(
     val categoryOf: IntArray,
-    val categoryCount: Int,
-    val hasSeries: Boolean
+    val categoryCount: Int
 )
 
-/** Which category each drawn bar belongs to, and whether any series is present. */
+/** Which category each drawn bar belongs to. */
 internal fun computeBarGroupLayout(renderEntries: List<BarEntry>): BarGroupLayout {
     val count = renderEntries.size
     val categoryOf = IntArray(count)
     var category = -1
-    var hasSeries = false
 
     for (i in 0 until count) {
-        val entry = renderEntries[i]
-        if (entry.seriesId != null) hasSeries = true
         val previous = if (i > 0) renderEntries[i - 1] else null
-        if (!joinsCategory(previous, entry)) category++
+        if (!joinsCategory(previous, renderEntries[i])) category++
         categoryOf[i] = category
     }
 
-    return BarGroupLayout(categoryOf, category + 1, hasSeries)
+    return BarGroupLayout(categoryOf, category + 1)
 }
 
 /**
