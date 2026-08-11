@@ -212,9 +212,14 @@ fun BarChart(
 
     val selectionBounds = remember { SelectedBarBounds() }
 
-    // Hit testing runs against the dataset, which drops bars the draw pass is still
-    // animating out, so it needs its own layout rather than the render one.
-    val touchLayout = remember(entries) { computeBarGroupLayout(entries) }
+    // Hit testing walks what is drawn, exiting bars included, so a bar is grabbed
+    // where it appears rather than where it is heading. Only bars the dataset still
+    // holds can be selected, which is what keeps a departing one out of reach.
+    val selectableIds = remember(entries) { entries.mapTo(HashSet()) { it.id } }
+    val currentRenderEntries by rememberUpdatedState(renderEntries)
+    val currentBarLayout by rememberUpdatedState(barLayout)
+    val currentMaxBarValue by rememberUpdatedState(maxBarValue)
+    val currentSelectableIds by rememberUpdatedState(selectableIds)
     val isStacked = dataSet.mode == BarGroupMode.Stacked
 
     val isHorizontal = orientation == BarOrientation.Horizontal
@@ -288,9 +293,6 @@ fun BarChart(
                 }
             }
             .pointerInput(
-                entries,
-                // Moves without the dataset when an exiting bar rescales the axis.
-                maxBarValue,
                 yAxisWidthPx,
                 style.barSpacingFactor,
                 style.groupSpacingFactor,
@@ -331,13 +333,18 @@ fun BarChart(
                         val hChartWidth = hChartRight - hChartLeft
                         val hChartHeight = hChartBottom - horizontalTopPadPx
 
+                        val rendered = currentRenderEntries
+                        val renderLayout = currentBarLayout
                         val (slotThickness, barGap) = barThicknessAndGap(
-                            hChartHeight, touchLayout.categoryCount, style.barSpacingFactor
+                            hChartHeight,
+                            animationEngine.categorySlotCount(rendered, renderLayout),
+                            style.barSpacingFactor
                         )
 
                         var foundEntry: BarEntry? = null
-                        for (i in entries.indices) {
-                            val members = touchLayout.categorySize[i]
+                        var slotPosition = 0f
+                        forEachBarCategory(rendered, renderLayout, animationEngine) {
+                                first, end, members, occupancy, _ ->
                             val barThickness =
                                 if (isStacked) slotThickness
                                 else groupedBarThickness(
@@ -346,40 +353,47 @@ fun BarChart(
                             val innerGap =
                                 if (isStacked) 0f
                                 else groupedBarGap(slotThickness, members, style.groupSpacingFactor)
-
                             val slotY = barSlotOffset(
-                                touchLayout.categoryOf[i], horizontalTopPadPx, slotThickness, barGap
+                                slotPosition, horizontalTopPadPx, slotThickness, barGap
                             )
-                            val yOff =
-                                if (isStacked) slotY
-                                else slotY + groupedBarOffset(
-                                    touchLayout.positionInCategory[i], barThickness, innerGap
-                                )
+                            slotPosition += occupancy
 
-                            val animVal =
-                                animationEngine.heightAnimatables[entries[i].id]?.value ?: 0f
-                            val barLen = (animVal / maxBarValue) * hChartWidth
-                            val base =
-                                if (isStacked) {
-                                    animationEngine.stackedBase(
-                                        entries, touchLayout, i, maxBarValue, hChartWidth
+                            var memberPosition = 0f
+                            for (i in first until end) {
+                                val entry = rendered[i]
+                                val yOff =
+                                    if (isStacked) slotY
+                                    else slotY + groupedBarOffset(
+                                        memberPosition, barThickness, innerGap
                                     )
-                                } else {
-                                    0f
-                                }
-                            val xOff =
-                                if (isRtl) hChartRight - base - barLen else hChartLeft + base
+                                memberPosition += animationEngine.slotOccupancy(entry.id)
 
-                            // No slop on the axis bars touch along, or the loop
-                            // would claim the touch for whichever it reached first.
-                            val xSlop = if (isStacked) 0f else hitSlopPx
-                            val ySlop = if (isStacked || members == 1) hitSlopPx else 0f
-                            if (touchPos.y in
-                                (yOff - ySlop)..(yOff + barThickness + ySlop) &&
-                                touchPos.x in (xOff - xSlop)..(xOff + barLen + xSlop)
-                            ) {
-                                foundEntry = entries[i]
-                                break
+                                if (foundEntry != null || entry.id !in currentSelectableIds) continue
+
+                                val animVal =
+                                    animationEngine.heightAnimatables[entry.id]?.value ?: 0f
+                                val barLen = (animVal / currentMaxBarValue) * hChartWidth
+                                val base =
+                                    if (isStacked) {
+                                        animationEngine.stackedBase(
+                                            rendered, renderLayout, i, currentMaxBarValue, hChartWidth
+                                        )
+                                    } else {
+                                        0f
+                                    }
+                                val xOff =
+                                    if (isRtl) hChartRight - base - barLen else hChartLeft + base
+
+                                // No slop on the axis bars touch along, or the loop
+                                // would claim the touch for whichever it reached first.
+                                val xSlop = if (isStacked) 0f else hitSlopPx
+                                val ySlop = if (isStacked || end - first == 1) hitSlopPx else 0f
+                                if (touchPos.y in
+                                    (yOff - ySlop)..(yOff + barThickness + ySlop) &&
+                                    touchPos.x in (xOff - xSlop)..(xOff + barLen + xSlop)
+                                ) {
+                                    foundEntry = entry
+                                }
                             }
                         }
 
@@ -390,55 +404,67 @@ fun BarChart(
                     val chartWidth = canvasWidth - yAxisWidthPx
                     val chartHeight = canvasHeight - bottomSpacePx - topSpacePx
 
+                    val rendered = currentRenderEntries
+                    val renderLayout = currentBarLayout
                     val (slotWidth, barSpacing) = barThicknessAndGap(
-                        chartWidth, touchLayout.categoryCount, style.barSpacingFactor
+                        chartWidth,
+                        animationEngine.categorySlotCount(rendered, renderLayout),
+                        style.barSpacingFactor
                     )
 
                     var foundEntry: BarEntry? = null
-
-                    for (i in entries.indices) {
-                        val members = touchLayout.categorySize[i]
+                    var slotPosition = 0f
+                    forEachBarCategory(rendered, renderLayout, animationEngine) {
+                            first, end, members, occupancy, _ ->
                         val barWidth =
                             if (isStacked) slotWidth
                             else groupedBarThickness(slotWidth, members, style.groupSpacingFactor)
                         val innerGap =
                             if (isStacked) 0f
                             else groupedBarGap(slotWidth, members, style.groupSpacingFactor)
+                        val ltrSlotX =
+                            barSlotOffset(slotPosition, yAxisWidthPx, slotWidth, barSpacing)
+                        slotPosition += occupancy
 
-                        val ltrSlotX = barSlotOffset(
-                            touchLayout.categoryOf[i], yAxisWidthPx, slotWidth, barSpacing
-                        )
-                        val ltrStartX =
-                            if (isStacked) ltrSlotX
-                            else ltrSlotX + groupedBarOffset(
-                                touchLayout.positionInCategory[i], barWidth, innerGap
-                            )
-                        val startX = mirrorForRtl(ltrStartX, canvasWidth, barWidth, isRtl)
-                        val endX = startX + barWidth
-
-                        val currentAnimatedValue =
-                            animationEngine.heightAnimatables[entries[i].id]?.value ?: 0f
-                        val targetHeight = (currentAnimatedValue / maxBarValue) * chartHeight
-                        val base =
-                            if (isStacked) {
-                                animationEngine.stackedBase(
-                                    entries, touchLayout, i, maxBarValue, chartHeight
+                        var memberPosition = 0f
+                        for (i in first until end) {
+                            val entry = rendered[i]
+                            val ltrStartX =
+                                if (isStacked) ltrSlotX
+                                else ltrSlotX + groupedBarOffset(
+                                    memberPosition, barWidth, innerGap
                                 )
-                            } else {
-                                0f
-                            }
-                        val endY = canvasHeight - bottomSpacePx - base
-                        val startY = endY - targetHeight
+                            memberPosition += animationEngine.slotOccupancy(entry.id)
 
-                        // No slop on the axis bars touch along, or the loop would
-                        // claim the touch for whichever it reached first.
-                        val xSlop = if (isStacked || members == 1) hitSlopPx else 0f
-                        val ySlop = if (isStacked) 0f else hitSlopPx
-                        val withinX = touchPos.x in (startX - xSlop)..(endX + xSlop)
-                        val withinY = touchPos.y in (startY - ySlop)..(endY + ySlop)
-                        if (withinX && withinY) {
-                            foundEntry = entries[i]
-                            break
+                            if (foundEntry != null || entry.id !in currentSelectableIds) continue
+
+                            val startX = mirrorForRtl(ltrStartX, canvasWidth, barWidth, isRtl)
+                            val endX = startX + barWidth
+
+                            val currentAnimatedValue =
+                                animationEngine.heightAnimatables[entry.id]?.value ?: 0f
+                            val targetHeight =
+                                (currentAnimatedValue / currentMaxBarValue) * chartHeight
+                            val base =
+                                if (isStacked) {
+                                    animationEngine.stackedBase(
+                                        rendered, renderLayout, i, currentMaxBarValue, chartHeight
+                                    )
+                                } else {
+                                    0f
+                                }
+                            val endY = canvasHeight - bottomSpacePx - base
+                            val startY = endY - targetHeight
+
+                            // No slop on the axis bars touch along, or the loop would
+                            // claim the touch for whichever it reached first.
+                            val xSlop = if (isStacked || end - first == 1) hitSlopPx else 0f
+                            val ySlop = if (isStacked) 0f else hitSlopPx
+                            val withinX = touchPos.x in (startX - xSlop)..(endX + xSlop)
+                            val withinY = touchPos.y in (startY - ySlop)..(endY + ySlop)
+                            if (withinX && withinY) {
+                                foundEntry = entry
+                            }
                         }
                     }
 
