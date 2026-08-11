@@ -341,7 +341,6 @@ fun BarChart(
                             style.barSpacingFactor
                         )
 
-                        var foundEntry: BarEntry? = null
                         var slotPosition = 0f
                         forEachBarCategory(rendered, renderLayout, animationEngine) {
                                 first, end, members, occupancy, _ ->
@@ -368,7 +367,7 @@ fun BarChart(
                                     )
                                 memberPosition += animationEngine.slotOccupancy(entry.id)
 
-                                if (foundEntry != null || entry.id !in currentSelectableIds) continue
+                                if (entry.id !in currentSelectableIds) continue
 
                                 val animVal =
                                     animationEngine.heightAnimatables[entry.id]?.value ?: 0f
@@ -392,12 +391,13 @@ fun BarChart(
                                     (yOff - ySlop)..(yOff + barThickness + ySlop) &&
                                     touchPos.x in (xOff - xSlop)..(xOff + barLen + xSlop)
                                 ) {
-                                    foundEntry = entry
+                                    applySelection(entry, isInitialDown)
+                                    return
                                 }
                             }
                         }
 
-                        applySelection(foundEntry, isInitialDown)
+                        applySelection(null, isInitialDown)
                         return
                     }
 
@@ -412,7 +412,6 @@ fun BarChart(
                         style.barSpacingFactor
                     )
 
-                    var foundEntry: BarEntry? = null
                     var slotPosition = 0f
                     forEachBarCategory(rendered, renderLayout, animationEngine) {
                             first, end, members, occupancy, _ ->
@@ -436,7 +435,7 @@ fun BarChart(
                                 )
                             memberPosition += animationEngine.slotOccupancy(entry.id)
 
-                            if (foundEntry != null || entry.id !in currentSelectableIds) continue
+                            if (entry.id !in currentSelectableIds) continue
 
                             val startX = mirrorForRtl(ltrStartX, canvasWidth, barWidth, isRtl)
                             val endX = startX + barWidth
@@ -463,12 +462,13 @@ fun BarChart(
                             val withinX = touchPos.x in (startX - xSlop)..(endX + xSlop)
                             val withinY = touchPos.y in (startY - ySlop)..(endY + ySlop)
                             if (withinX && withinY) {
-                                foundEntry = entry
+                                applySelection(entry, isInitialDown)
+                                return
                             }
                         }
                     }
 
-                    applySelection(foundEntry, isInitialDown)
+                    applySelection(null, isInitialDown)
                 }
 
                 awaitEachGesture {
