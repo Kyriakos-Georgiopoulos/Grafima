@@ -1,0 +1,42 @@
+version: 2
+
+updates:
+  # The release workflow runs with the Maven Central credentials and the signing
+  # key in scope, so a third-party action it trusts can reach them. Tags are
+  # mutable — @v2 is whatever v2 points at today — so actions are pinned to a
+  # commit and Dependabot moves the pin.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: 'chore(ci)'
+
+  # Grouped, because these versions do not move independently and a PR per
+  # library would mostly be PRs that cannot merge on their own.
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      # Kotlin ships the Compose compiler, and Compose Multiplatform targets a
+      # particular Kotlin. AGP constrains both. They land together or not at all.
+      kotlin-toolchain:
+        patterns:
+          - 'org.jetbrains.kotlin*'
+          - 'com.android.*'
+          - 'org.jetbrains.compose*'
+      compose-and-androidx:
+        patterns:
+          - 'androidx.*'
+      build-tooling:
+        patterns:
+          - 'org.jlleitschuh.gradle.ktlint*'
+          - 'com.pinterest.ktlint*'
+          - 'com.vanniktech.maven.publish*'
+    commit-message:
+      prefix: 'chore(deps)'

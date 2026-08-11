@@ -162,6 +162,15 @@ the same PR as the change. Build, CI and refactor-only work doesn't need an entr
 If you changed the public API, say so under **Changed** or **Removed**. That
 entry and the `library/api/` diff should agree.
 
+## Dependencies
+
+Dependabot opens grouped update PRs monthly. Kotlin, AGP and Compose Multiplatform
+arrive as one PR because they only work in matching versions.
+
+Workflow actions are pinned to a commit rather than a tag, with the tag in a
+trailing comment. A tag is mutable, and the release workflow runs with the Maven
+Central credentials and the signing key in scope. Dependabot moves the pins.
+
 ## Releasing
 
 1. `release/x.y.z` off `develop`. Bump the version and move `[Unreleased]` to a
