@@ -23,11 +23,12 @@ import kotlin.test.assertTrue
 
 class BarGroupingTest {
 
-    private val twoByTwo = twoByTwoEntries
+    private fun axisMaxFor(entries: List<BarEntry>, mode: BarGroupMode): Float =
+        axisMaxForLayout(entries, computeBarGroupLayout(entries), mode)
 
     @Test
     fun `entries sharing a label and carrying a series land in one category`() {
-        val layout = computeBarGroupLayout(twoByTwo)
+        val layout = computeBarGroupLayout(twoByTwoEntries)
 
         assertEquals(2, layout.categoryCount)
         assertContentEquals(intArrayOf(0, 0, 1, 1), layout.categoryOf)
@@ -67,8 +68,8 @@ class BarGroupingTest {
     @Test
     fun `the stacked axis max clears the tallest stack rather than the tallest bar`() {
         // Grouped only has to clear 80. Stacked has to clear 45+30=75 and 80+52=132.
-        assertEquals(100f, axisMaxForLayout(twoByTwo, computeBarGroupLayout(twoByTwo), BarGroupMode.Grouped))
-        assertEquals(200f, axisMaxForLayout(twoByTwo, computeBarGroupLayout(twoByTwo), BarGroupMode.Stacked))
+        assertEquals(100f, axisMaxFor(twoByTwoEntries, BarGroupMode.Grouped))
+        assertEquals(200f, axisMaxFor(twoByTwoEntries, BarGroupMode.Stacked))
     }
 
     @Test
@@ -76,8 +77,8 @@ class BarGroupingTest {
         val entries = listOf(plainBar("a", 45f), plainBar("b", 12f))
 
         assertEquals(
-            axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Grouped),
-            axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Stacked)
+            axisMaxFor(entries, BarGroupMode.Grouped),
+            axisMaxFor(entries, BarGroupMode.Stacked)
         )
     }
 
@@ -152,7 +153,7 @@ class BarGroupingTest {
 
     @Test
     fun `series order follows first appearance and drops duplicates`() {
-        assertEquals(listOf("rev", "cost"), seriesOrder(twoByTwo))
+        assertEquals(listOf("rev", "cost"), seriesOrder(twoByTwoEntries))
         assertEquals(emptyList(), seriesOrder(listOf(plainBar("a", 1f))))
     }
 
@@ -165,8 +166,8 @@ class BarGroupingTest {
 
         // The stack totals 50, but a 100-tall segment is still drawn, so an axis
         // scaled to the total would clip it off the canvas.
-        val max = axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Stacked)
+        val max = axisMaxFor(entries, BarGroupMode.Stacked)
         assertTrue(max >= 100f, "stacked axis max was $max, below the tallest segment")
-        assertEquals(axisMaxForLayout(entries, computeBarGroupLayout(entries), BarGroupMode.Grouped), max)
+        assertEquals(axisMaxFor(entries, BarGroupMode.Grouped), max)
     }
 }

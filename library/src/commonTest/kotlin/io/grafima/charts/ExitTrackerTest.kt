@@ -134,11 +134,10 @@ class ExitTrackerTest {
     }
 
     @Test
-    fun `render clamps a leaving item's index to the current dataset size`() {
+    fun `every item leaving at once is replayed in the order it held`() {
         val tracker = ExitTracker<Item> { it.id }
         tracker.sync(items("a", "b", "c"))
-        // Every item departs at once; "c" held index 2 in a dataset that no
-        // longer has three slots to insert back into.
+        // Every item departs at once, so each is anchored on the one before it.
         tracker.sync(emptyList())
 
         assertEquals(listOf("a", "b", "c"), tracker.render(emptyList()).map { it.id })
@@ -159,5 +158,31 @@ class ExitTrackerTest {
             listOf("q0-a", "q0-b", "q1-a", "q1-b", "q2-a", "q2-b"),
             tracker.render(after)
         )
+    }
+
+    @Test
+    fun `a departing item keeps its place after its predecessor is forgotten`() {
+        val tracker = ExitTracker<String> { it }
+        tracker.sync(listOf("a", "b", "c", "d"))
+        // b and c leave together, so c is anchored on b.
+        tracker.sync(listOf("a", "d"))
+
+        // b's exit finishes first and it is dropped, leaving c anchored on an id
+        // that is now in no list at all.
+        tracker.forget(tracker.exiting.single { it.item == "b" })
+
+        assertEquals(listOf("a", "c", "d"), tracker.render(listOf("a", "d")))
+    }
+
+    @Test
+    fun `a departing item stays out of a run its neighbour grew into`() {
+        val tracker = ExitTracker<String> { it }
+        tracker.sync(listOf("a1", "a2", "b1", "b2"))
+        // The same update drops b1 and appends a3 to the run before it. Anchoring
+        // after a2 would file b1 inside a's run and split the group on screen.
+        val after = listOf("a1", "a2", "a3", "b2")
+        tracker.sync(after)
+
+        assertEquals(listOf("a1", "a2", "a3", "b1", "b2"), tracker.render(after))
     }
 }

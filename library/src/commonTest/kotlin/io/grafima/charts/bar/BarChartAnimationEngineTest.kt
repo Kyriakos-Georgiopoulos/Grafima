@@ -303,14 +303,12 @@ class BarChartAnimationEngineTest {
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("b").value)
     }
 
-    private val twoStacks = twoByTwoEntries
-
     @Test
     fun `a grouped category holds its whole slot until its last bar has gone`() = runEngineTest {
         val engine = ChartAnimationEngine()
-        engine.syncAnimatables(twoStacks)
+        engine.syncAnimatables(twoByTwoEntries)
 
-        val remaining = twoStacks.filterNot { it.id == "Q1-cost" }
+        val remaining = twoByTwoEntries.filterNot { it.id == "Q1-cost" }
         engine.syncAnimatables(remaining)
         val rendered = engine.renderEntries(remaining)
         val layout = computeBarGroupLayout(rendered)
@@ -324,9 +322,9 @@ class BarChartAnimationEngineTest {
     @Test
     fun `a category releases its slot once every bar in it has gone`() = runEngineTest {
         val engine = ChartAnimationEngine()
-        engine.syncAnimatables(twoStacks)
+        engine.syncAnimatables(twoByTwoEntries)
 
-        val remaining = twoStacks.filter { it.xLabel == "Q2" }
+        val remaining = twoByTwoEntries.filter { it.xLabel == "Q2" }
         engine.syncAnimatables(remaining)
         val rendered = engine.renderEntries(remaining)
         val layout = computeBarGroupLayout(rendered)
@@ -342,8 +340,8 @@ class BarChartAnimationEngineTest {
         runEngineTest { harness ->
             val engine = ChartAnimationEngine()
             val style = ChartStyle(unselectedAlpha = 0.25f)
-            engine.syncAnimatables(twoStacks)
-            val remaining = twoStacks.filterNot { it.id == "Q1-cost" }
+            engine.syncAnimatables(twoByTwoEntries)
+            val remaining = twoByTwoEntries.filterNot { it.id == "Q1-cost" }
             engine.syncAnimatables(remaining)
 
             engine.updateSelectionState(remaining[0], style, snapConfig, harness.launchScope())
@@ -357,8 +355,8 @@ class BarChartAnimationEngineTest {
     @Test
     fun `the category walk weights members by what each still holds`() = runEngineTest {
         val engine = ChartAnimationEngine()
-        engine.syncAnimatables(twoStacks)
-        val remaining = twoStacks.filterNot { it.id == "Q1-cost" }
+        engine.syncAnimatables(twoByTwoEntries)
+        val remaining = twoByTwoEntries.filterNot { it.id == "Q1-cost" }
         engine.syncAnimatables(remaining)
         engine.slotAnimatables.getValue("Q1-cost").snapTo(0.5f)
 
@@ -400,9 +398,9 @@ class BarChartAnimationEngineTest {
     @Test
     fun `slot counting is unaffected by grouping while nothing is leaving`() = runEngineTest {
         val engine = ChartAnimationEngine()
-        engine.syncAnimatables(twoStacks)
-        val layout = computeBarGroupLayout(twoStacks)
+        engine.syncAnimatables(twoByTwoEntries)
+        val layout = computeBarGroupLayout(twoByTwoEntries)
 
-        assertEquals(2f, engine.categorySlotCount(twoStacks, layout), 0.001f)
+        assertEquals(2f, engine.categorySlotCount(twoByTwoEntries, layout), 0.001f)
     }
 }

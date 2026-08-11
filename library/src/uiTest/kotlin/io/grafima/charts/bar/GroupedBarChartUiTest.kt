@@ -85,7 +85,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations
             )
         }
@@ -106,7 +106,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 a11yConfig = A11yConfig(
                     selectActionLabel = { "${it.spokenSeriesLabel} in ${it.xLabel}" }
@@ -127,7 +127,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations
             )
         }
@@ -141,7 +141,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
                 onBarSelected = { selected = it }
@@ -159,7 +159,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
                 onBarSelected = { selected = it }
@@ -181,7 +181,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
                 onBarSelected = { selected = it }
@@ -206,7 +206,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Stacked),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
                 onBarSelected = { selected = it }
@@ -234,7 +234,7 @@ class GroupedBarChartUiTest {
             CompositionLocalProvider(LocalLayoutDirection provides direction) {
                 BarChart(
                     dataSet = dataSet(BarGroupMode.Grouped),
-                    modifier = Modifier.size(300.dp),
+                    modifier = Modifier.size(chartSize),
                     animationConfig = snapAnimations,
                     selectedEntry = selected,
                     onBarSelected = { selected = it }
@@ -277,7 +277,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = tooltipProbeDataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectionRenderer = redTooltip,
                 // Dataset index 1, but category 0.
@@ -303,7 +303,7 @@ class GroupedBarChartUiTest {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 BarChart(
                     dataSet = tooltipProbeDataSet(BarGroupMode.Grouped),
-                    modifier = Modifier.size(300.dp),
+                    modifier = Modifier.size(chartSize),
                     animationConfig = snapAnimations,
                     selectionRenderer = redTooltip,
                     selectedEntry = entries[1]
@@ -331,7 +331,7 @@ class GroupedBarChartUiTest {
             CompositionLocalProvider(LocalLayoutDirection provides direction) {
                 BarChart(
                     dataSet = tooltipProbeDataSet(BarGroupMode.Grouped),
-                    modifier = Modifier.size(300.dp),
+                    modifier = Modifier.size(chartSize),
                     orientation = BarOrientation.Horizontal,
                     animationConfig = snapAnimations,
                     selectionRenderer = redTooltip,
@@ -365,7 +365,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = tooltipProbeDataSet(BarGroupMode.Stacked),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectionRenderer = redTooltip,
                 selectedEntry = selected
@@ -421,7 +421,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = tooltipProbeDataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 style = ChartStyle(labelTextStyle = TextStyle(color = Color.Red, fontSize = 12.sp)),
                 animationConfig = snapAnimations,
                 selectedEntry = selected
@@ -504,7 +504,7 @@ class GroupedBarChartUiTest {
             CompositionLocalProvider(LocalLayoutDirection provides direction) {
                 BarChart(
                     dataSet = plain,
-                    modifier = Modifier.size(300.dp),
+                    modifier = Modifier.size(chartSize),
                     animationConfig = snapAnimations,
                     selectedEntry = selected,
                     onBarSelected = { selected = it }
@@ -535,7 +535,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(mode),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
                 onBarSelected = { selected = it }
@@ -563,7 +563,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Grouped),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 orientation = BarOrientation.Horizontal,
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
@@ -589,7 +589,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = dataSet(BarGroupMode.Stacked),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 orientation = BarOrientation.Horizontal,
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
@@ -619,7 +619,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = plain.copy(mode = mode),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
                 onBarSelected = { selected = it }
@@ -658,7 +658,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = crowded,
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 style = ChartStyle(valueTextStyle = TextStyle(color = Color.Red, fontSize = 14.sp)),
                 animationConfig = snapAnimations
             )
@@ -691,7 +691,7 @@ class GroupedBarChartUiTest {
                     contentDescription = "Slivers",
                     mode = BarGroupMode.Stacked
                 ),
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 style = ChartStyle(valueTextStyle = TextStyle(color = Color.Red, fontSize = 14.sp)),
                 animationConfig = snapAnimations
             )
@@ -720,7 +720,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = crowded,
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 style = ChartStyle(valueTextStyle = TextStyle(color = Color.Red, fontSize = 14.sp)),
                 animationConfig = snapAnimations
             )
@@ -761,7 +761,7 @@ class GroupedBarChartUiTest {
         setContent {
             BarChart(
                 dataSet = plain,
-                modifier = Modifier.size(300.dp),
+                modifier = Modifier.size(chartSize),
                 animationConfig = snapAnimations,
                 selectedEntry = selected,
                 onBarSelected = { selected = it }

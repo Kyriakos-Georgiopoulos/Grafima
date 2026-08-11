@@ -21,6 +21,7 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
+import io.grafima.charts.needsAnimatingTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -225,14 +226,6 @@ internal fun summarizeBars(entries: List<BarEntry>): BarChartSummary {
         uniformGroupSize = sizes.distinct().singleOrNull()
     )
 }
-
-/**
- * Whether [target] still has to be animated to. `targetValue` alone is not enough:
- * a cancelled animation keeps the target it was aiming at, so a bar left part-way
- * by a dataset change would never be driven the rest of the way.
- */
-private fun Animatable<Float, AnimationVector1D>.needsAnimatingTo(target: Float): Boolean =
-    targetValue != target || (!isRunning && value != target)
 
 @Stable
 internal class ChartAnimationEngine {
