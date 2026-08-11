@@ -272,4 +272,86 @@ class BarChartAnimationEngineTest {
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("a").value)
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("b").value)
     }
+
+    private fun grouped(label: String, series: String, y: Float) =
+        BarEntry(id = "$label-$series", xLabel = label, y = y, seriesId = series)
+
+    private val twoStacks = listOf(
+        grouped("Q1", "rev", 45f),
+        grouped("Q1", "cost", 30f),
+        grouped("Q2", "rev", 80f),
+        grouped("Q2", "cost", 52f)
+    )
+
+    @Test
+    fun `a stacked segment stands on the ones below it and not on another category`() =
+        runEngineTest {
+            val engine = ChartAnimationEngine()
+            engine.syncAnimatables(twoStacks)
+            twoStacks.forEach { engine.heightAnimatables.getValue(it.id).snapTo(it.y) }
+            val layout = computeBarGroupLayout(twoStacks)
+
+            // A max of 100 over an extent of 200: one unit of value is two pixels.
+            fun baseOf(index: Int) = engine.stackedBase(twoStacks, layout, index, 100f, 200f)
+
+            assertEquals(0f, baseOf(0), 0.001f)
+            assertEquals(90f, baseOf(1), 0.001f)
+            // Carrying over from Q1 would float the whole of Q2 off the baseline.
+            assertEquals(0f, baseOf(2), 0.001f)
+            assertEquals(160f, baseOf(3), 0.001f)
+        }
+
+    @Test
+    fun `a stack base follows the animated heights rather than the data`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoStacks)
+        val layout = computeBarGroupLayout(twoStacks)
+
+        assertEquals(0f, engine.stackedBase(twoStacks, layout, 1, 100f, 200f), 0.001f)
+
+        engine.heightAnimatables.getValue("Q1-rev").snapTo(20f)
+        assertEquals(40f, engine.stackedBase(twoStacks, layout, 1, 100f, 200f), 0.001f)
+    }
+
+    @Test
+    fun `a grouped category holds its whole slot until its last bar has gone`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoStacks)
+
+        val remaining = twoStacks.filterNot { it.id == "Q1-cost" }
+        engine.syncAnimatables(remaining)
+        val rendered = engine.renderEntries(remaining)
+        val layout = computeBarGroupLayout(rendered)
+
+        engine.slotAnimatables.getValue("Q1-cost").snapTo(0f)
+
+        // Counting per bar would shrink Q1 while a bar still stands in it.
+        assertEquals(2f, engine.categorySlotCount(rendered, layout), 0.001f)
+        assertEquals(3f, engine.slotCount(rendered), 0.001f)
+    }
+
+    @Test
+    fun `a category releases its slot once every bar in it has gone`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoStacks)
+
+        val remaining = twoStacks.filter { it.xLabel == "Q2" }
+        engine.syncAnimatables(remaining)
+        val rendered = engine.renderEntries(remaining)
+        val layout = computeBarGroupLayout(rendered)
+
+        engine.slotAnimatables.getValue("Q1-rev").snapTo(0f)
+        engine.slotAnimatables.getValue("Q1-cost").snapTo(0f)
+
+        assertEquals(1f, engine.categorySlotCount(rendered, layout), 0.001f)
+    }
+
+    @Test
+    fun `slot counting is unaffected by grouping while nothing is leaving`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoStacks)
+        val layout = computeBarGroupLayout(twoStacks)
+
+        assertEquals(2f, engine.categorySlotCount(twoStacks, layout), 0.001f)
+    }
 }

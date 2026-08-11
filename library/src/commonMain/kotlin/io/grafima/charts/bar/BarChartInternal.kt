@@ -26,12 +26,54 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
+/** One position on the category axis, holding the bars drawn at it. */
+internal class BarCategory(val xLabel: String, val entries: List<BarEntry>)
+
+/**
+ * Whether [entry] continues the category that [previous] belongs to. Both the axis
+ * and the draw pass group by this, and must not diverge.
+ *
+ * Matching only the immediate predecessor keeps two runs that reuse a label apart.
+ */
+internal fun joinsCategory(previous: BarEntry?, entry: BarEntry): Boolean =
+    entry.seriesId != null &&
+        previous?.seriesId != null &&
+        previous.xLabel == entry.xLabel
+
+/** Splits entries into the categories drawn along the axis. */
+internal fun groupBarEntries(entries: List<BarEntry>): List<BarCategory> {
+    val grouped = mutableListOf<MutableList<BarEntry>>()
+    entries.forEach { entry ->
+        val open = grouped.lastOrNull()
+        if (joinsCategory(open?.last(), entry)) open?.add(entry)
+        else grouped.add(mutableListOf(entry))
+    }
+    return grouped.map { BarCategory(it.first().xLabel, it) }
+}
+
+/** Distinct series in list order. Empty when nothing carries one. */
+internal fun seriesOrder(entries: List<BarEntry>): List<String> =
+    entries.mapNotNull { it.seriesId }.distinct()
+
+/** The tallest thing the axis has to clear: a stack total, or a single bar. */
+internal fun categoryExtent(category: BarCategory, mode: BarGroupMode): Float =
+    when (mode) {
+        BarGroupMode.Stacked -> category.entries.fold(0f) { acc, entry -> acc + entry.y }
+        BarGroupMode.Grouped -> category.entries.maxOfOrNull { it.y } ?: 0f
+    }
+
 /**
  * Y-axis maximum: 20% headroom over the tallest bar, rounded up to a tidy
  * step (5, 10, or 50 depending on magnitude) so axis labels stay round numbers.
  */
-internal fun computeBarAxisMax(entries: List<BarEntry>): Float {
-    val rawMax = entries.maxOfOrNull { it.y }?.takeIf { it > 0f } ?: 1f
+internal fun computeBarAxisMax(
+    entries: List<BarEntry>,
+    mode: BarGroupMode = BarGroupMode.Grouped
+): Float = axisMaxForCategories(groupBarEntries(entries), mode)
+
+/** The same rounding over pre-grouped categories, so the chart groups only once. */
+internal fun axisMaxForCategories(categories: List<BarCategory>, mode: BarGroupMode): Float {
+    val rawMax = categories.maxOfOrNull { categoryExtent(it, mode) }?.takeIf { it > 0f } ?: 1f
     val maxWithHeadroom = rawMax * 1.2f
     val step = if (maxWithHeadroom > 100) 50f else if (maxWithHeadroom > 10) 10f else 5f
     return ceil(maxWithHeadroom / step) * step
@@ -83,6 +125,84 @@ internal fun mirrorForRtl(
 ): Float = if (isRtl) totalExtent - ltrOffset - thickness else ltrOffset
 
 /**
+ * Thickness of one bar when a category slot is split across [seriesCount] of them.
+ * Unlike [barThicknessAndGap] no gap flanks the group, because the slot's own gaps
+ * already separate it from its neighbours; the whole slot goes to the bars and the
+ * spacing between them.
+ *
+ * Returned as two scalars rather than a pair because the draw pass calls this once
+ * per category per frame, and a `Pair` there is an allocation per frame.
+ */
+internal fun groupedBarThickness(
+    slotThickness: Float,
+    seriesCount: Int,
+    innerSpacingFactor: Float
+): Float {
+    val count = seriesCount.coerceAtLeast(1)
+    if (count == 1) return slotThickness
+    return (slotThickness - slotThickness * innerSpacingFactor.coerceIn(0f, 0.9f)) / count
+}
+
+/** Gap between two side-by-side bars of one category. Zero for a single-bar category. */
+internal fun groupedBarGap(
+    slotThickness: Float,
+    seriesCount: Int,
+    innerSpacingFactor: Float
+): Float {
+    val count = seriesCount.coerceAtLeast(1)
+    if (count == 1) return 0f
+    return slotThickness * innerSpacingFactor.coerceIn(0f, 0.9f) / (count - 1)
+}
+
+/** LTR offset of the bar at series [position] within its category slot. */
+internal fun groupedBarOffset(position: Int, thickness: Float, gap: Float): Float =
+    position * (thickness + gap)
+
+/**
+ * Where each bar sits within its category. Built once per dataset from the drawn
+ * entries, exiting ones included, so the draw pass only does arithmetic. Every
+ * array is indexed by position in the render list.
+ */
+internal class BarGroupLayout(
+    val categoryOf: IntArray,
+    val positionInCategory: IntArray,
+    val categorySize: IntArray,
+    val categoryCount: Int,
+    val hasSeries: Boolean
+)
+
+/** The single-bar-per-category layout, which is what a dataset with no series gets. */
+internal fun computeBarGroupLayout(renderEntries: List<BarEntry>): BarGroupLayout {
+    val count = renderEntries.size
+    val categoryOf = IntArray(count)
+    val positionInCategory = IntArray(count)
+    val categorySize = IntArray(count)
+    var category = -1
+    var position = 0
+    var hasSeries = false
+
+    for (i in 0 until count) {
+        val entry = renderEntries[i]
+        if (entry.seriesId != null) hasSeries = true
+        val previous = if (i > 0) renderEntries[i - 1] else null
+        if (joinsCategory(previous, entry)) {
+            position++
+        } else {
+            category++
+            position = 0
+        }
+        categoryOf[i] = category
+        positionInCategory[i] = position
+    }
+
+    val sizes = IntArray(category + 1)
+    for (i in 0 until count) sizes[categoryOf[i]]++
+    for (i in 0 until count) categorySize[i] = sizes[categoryOf[i]]
+
+    return BarGroupLayout(categoryOf, positionInCategory, categorySize, category + 1, hasSeries)
+}
+
+/**
  * A summary, not a reading of the data: this node is a live region, so anything
  * here is repeated on every selection. Per-bar values live in the select actions
  * and in `stateDescription`.
@@ -92,7 +212,18 @@ internal fun buildBarChartDescription(
     a11yConfig: A11yConfig
 ): String = buildString {
     append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-    append(a11yConfig.barCountDescriptionBuilder(dataSet.entries.size))
+    val series = seriesOrder(dataSet.entries)
+    if (series.isEmpty()) {
+        append(a11yConfig.barCountDescriptionBuilder(dataSet.entries.size))
+    } else {
+        append(
+            a11yConfig.groupedCountDescriptionBuilder(
+                dataSet.entries.size,
+                groupBarEntries(dataSet.entries).size,
+                series.size
+            )
+        )
+    }
 }
 
 @Stable
@@ -175,6 +306,50 @@ internal class ChartAnimationEngine {
     fun slotCount(renderEntries: List<BarEntry>): Float =
         if (exitTracker.exiting.isEmpty()) renderEntries.size.toFloat()
         else renderEntries.fold(0f) { acc, entry -> acc + slotOccupancy(entry.id) }
+
+    /**
+     * The same count over categories rather than bars. A grouped category holds its
+     * slot until its last bar has gone, so it collapses on the survivor's occupancy
+     * rather than shrinking a step per bar removed.
+     */
+    fun categorySlotCount(renderEntries: List<BarEntry>, layout: BarGroupLayout): Float {
+        if (exitTracker.exiting.isEmpty()) return layout.categoryCount.toFloat()
+        var total = 0f
+        var index = 0
+        while (index < renderEntries.size) {
+            val category = layout.categoryOf[index]
+            var occupancy = 0f
+            while (index < renderEntries.size && layout.categoryOf[index] == category) {
+                val held = slotOccupancy(renderEntries[index].id)
+                if (held > occupancy) occupancy = held
+                index++
+            }
+            total += occupancy
+        }
+        return total
+    }
+
+    /**
+     * Pixels of stack already drawn below the bar at [index]. Summed from the
+     * animated heights rather than the data, so segments stay contiguous while they
+     * animate at different rates instead of tearing apart mid-flight.
+     */
+    fun stackedBase(
+        renderEntries: List<BarEntry>,
+        layout: BarGroupLayout,
+        index: Int,
+        maxBarValue: Float,
+        chartExtent: Float
+    ): Float {
+        var base = 0f
+        var i = index - 1
+        while (i >= 0 && layout.categoryOf[i] == layout.categoryOf[index]) {
+            val value = heightAnimatables[renderEntries[i].id]?.value ?: 0f
+            base += (value / maxBarValue) * chartExtent
+            i--
+        }
+        return base
+    }
 
     fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
         // Stagger by position among the bars appearing now, not by dataset index.

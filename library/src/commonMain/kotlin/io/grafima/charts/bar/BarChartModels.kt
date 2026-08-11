@@ -46,11 +46,29 @@ data class ColorStop(val position: Float, val color: Color)
 /**
  * A single bar in the chart.
  *
+ * Give [seriesId] a value to compare several measures over the same categories.
+ * Consecutive entries that carry a series and share an [xLabel] form one category,
+ * drawn side by side or stacked according to [BarDataSet.mode]:
+ *
+ * ```
+ * BarEntry("q1-rev",  "Q1", 45f, seriesId = "rev",  seriesLabel = "Revenue")
+ * BarEntry("q1-cost", "Q1", 30f, seriesId = "cost", seriesLabel = "Cost")
+ * BarEntry("q2-rev",  "Q2", 80f, seriesId = "rev",  seriesLabel = "Revenue")
+ * BarEntry("q2-cost", "Q2", 52f, seriesId = "cost", seriesLabel = "Cost")
+ * ```
+ *
+ * An entry with no [seriesId] is always a category of its own, so a dataset that
+ * sets none behaves exactly as it did before series existed.
+ *
  * @property id Unique identifier — drives animation continuity across data updates.
- * @property xLabel Text shown on the X axis below the bar.
+ * @property xLabel Text shown on the X axis below the bar. Doubles as the category
+ *   key once [seriesId] is set: neighbours sharing it are grouped.
  * @property y The bar's numeric value. Must be positive.
  * @property gradientColors Vertical gradient colors. Falls back to [BarDataSet.defaultGradientColors] when null.
  * @property colorStops Explicit gradient [ColorStop]s. Takes priority over [gradientColors].
+ * @property seriesId Which measure this bar belongs to. Null leaves the bar standalone.
+ * @property seriesLabel Human-readable name of the series, spoken by screen readers
+ *   and shown in the legend. Falls back to [seriesId] when null.
  */
 @Immutable
 data class BarEntry(
@@ -58,10 +76,26 @@ data class BarEntry(
     val xLabel: String,
     val y: Float,
     val gradientColors: List<Color>? = null,
-    val colorStops: List<ColorStop>? = null
+    val colorStops: List<ColorStop>? = null,
+    val seriesId: String? = null,
+    val seriesLabel: String? = null
 )
 
+/** The name a screen reader and the legend use for this bar's series. */
+val BarEntry.spokenSeriesLabel: String?
+    get() = seriesLabel?.takeIf { it.isNotBlank() } ?: seriesId?.takeIf { it.isNotBlank() }
+
 enum class BarOrientation { Vertical, Horizontal }
+
+/**
+ * How the bars of one category are arranged.
+ *
+ * [Grouped] sets them side by side, which compares series against each other.
+ * [Stacked] piles them into one bar, which compares each series against the
+ * category total. Stacking only reads correctly when the parts genuinely sum to
+ * something meaningful.
+ */
+enum class BarGroupMode { Grouped, Stacked }
 
 /**
  * Groups bar entries with shared defaults.
@@ -69,12 +103,15 @@ enum class BarOrientation { Vertical, Horizontal }
  * @property entries The bars to display, in order.
  * @property defaultGradientColors Gradient applied to bars that don't specify their own.
  * @property contentDescription Accessibility label describing the chart's purpose.
+ * @property mode Arrangement of bars within a category. Has no effect on a dataset
+ *   whose entries carry no [BarEntry.seriesId], since every bar is then its own category.
  */
 @Immutable
 data class BarDataSet(
     val entries: List<BarEntry>,
     val defaultGradientColors: List<Color> = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
-    val contentDescription: String = "Bar Chart"
+    val contentDescription: String = "Bar Chart",
+    val mode: BarGroupMode = BarGroupMode.Grouped
 )
 
 /**
@@ -82,6 +119,9 @@ data class BarDataSet(
  *
  * @property barCornerRadius Rounding applied to the top corners of each bar.
  * @property barSpacingFactor Fraction of chart width used for inter-bar spacing (0f..0.9f).
+ * @property groupSpacingFactor Fraction of a category's slot given to the gaps between
+ *   its side-by-side bars (0f..0.9f). Only applies to [BarGroupMode.Grouped] with more
+ *   than one series; 0f makes the bars of a group touch.
  * @property bottomLabelSpace Vertical space reserved below bars for X-axis labels.
  * @property topValueSpace Vertical space reserved above bars for floating value labels.
  * @property unselectedAlpha Opacity applied to non-selected bars when one is selected.
@@ -104,7 +144,8 @@ data class ChartStyle(
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold
     ),
-    val showFloatingValues: Boolean = true
+    val showFloatingValues: Boolean = true,
+    val groupSpacingFactor: Float = 0.08f
 )
 
 /**
@@ -167,14 +208,29 @@ data class AnimationConfig(
 
 /**
  * Accessibility configuration with builders for TalkBack descriptions.
+ *
+ * @property barCountDescriptionBuilder Used when no entry carries a series.
+ * @property groupedCountDescriptionBuilder Used instead once a dataset has series,
+ *   because a bar count alone does not convey that the bars are grouped. Receives
+ *   the number of bars, of categories, and of distinct series.
  */
 @Stable
 data class A11yConfig(
     val chartDescriptionBuilder: (BarDataSet) -> String = { "Bar Chart representing ${it.contentDescription}" },
     val selectedStateDescription: (BarEntry?) -> String = { entry ->
-        entry?.let { "Currently selected: ${it.xLabel}, ${it.y.toInt()}." } ?: "No bar selected."
+        entry?.let {
+            val series = it.spokenSeriesLabel
+            if (series == null) {
+                "Currently selected: ${it.xLabel}, ${it.y.toInt()}."
+            } else {
+                "Currently selected: ${it.xLabel}, $series, ${it.y.toInt()}."
+            }
+        } ?: "No bar selected."
     },
     val barCountDescriptionBuilder: (Int) -> String = { count ->
         "$count bars. Use the actions menu to select one."
+    },
+    val groupedCountDescriptionBuilder: (Int, Int, Int) -> String = { bars, categories, series ->
+        "$bars bars in $categories groups of $series. Use the actions menu to select one."
     }
 )

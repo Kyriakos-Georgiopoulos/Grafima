@@ -46,6 +46,49 @@ chart treats it as a new bar that grows from zero.
 BarEntry(id = "jan", xLabel = "Jan", y = 60f)
 ```
 
+## Groups and stacks
+
+Give entries a `seriesId` to compare several measures over the same categories.
+Neighbouring entries that share an `xLabel` become one category:
+
+```kotlin
+BarChart(
+    dataSet = BarDataSet(
+        entries = listOf(
+            BarEntry("q1-rev",  "Q1", 45f, seriesId = "rev",  seriesLabel = "Revenue"),
+            BarEntry("q1-cost", "Q1", 30f, seriesId = "cost", seriesLabel = "Cost"),
+            BarEntry("q2-rev",  "Q2", 80f, seriesId = "rev",  seriesLabel = "Revenue"),
+            BarEntry("q2-cost", "Q2", 52f, seriesId = "cost", seriesLabel = "Cost")
+        ),
+        mode = BarGroupMode.Grouped
+    )
+)
+```
+
+`BarGroupMode.Grouped` sets a category's bars side by side, which compares series
+against each other. `BarGroupMode.Stacked` piles them into one bar, which compares
+each series against the category total. Stack only when the parts genuinely sum to
+something: stacking unrelated measures produces a total that means nothing.
+
+Three rules are worth knowing:
+
+- **Only neighbours group.** A category ends as soon as the `xLabel` changes, so a
+  label reused further down the list opens a new category rather than reaching back.
+  Build the list category by category.
+- **An entry with no `seriesId` is always its own bar.** A dataset that sets none
+  behaves exactly as it did before groups existed.
+- **The axis clears the stack, not the segment.** In `Stacked` the y-axis is scaled
+  to the tallest total, so segments are never clipped.
+
+Colors are per entry, as they always were, so a series gets its color by giving
+every entry of that series the same `gradientColors`. Spacing within a group is
+`ChartStyle.groupSpacingFactor`; set it to `0f` to make the bars of a group touch.
+
+Each bar keeps its own selection and its own accessibility action, labelled with
+both the category and the series, so `Select Q1, Revenue` and `Select Q1, Cost`
+are distinct. Give every series a `seriesLabel`, or screen-reader users hear the
+raw `seriesId`.
+
 ## Orientation
 
 ```kotlin
@@ -131,7 +174,7 @@ selectionRenderer = TooltipSelectionRenderer(
 
 | Parameter | Purpose |
 |---|---|
-| `dataSet` | Bars and the chart's accessibility description |
+| `dataSet` | Bars, grouping mode, and the chart's accessibility description |
 | `orientation` | `Vertical` (default) or `Horizontal` |
 | `style` | Bar shape, spacing, text styles, floating values |
 | `axisConfig` | Y-axis labels, grid lines, step count |
