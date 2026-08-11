@@ -3,8 +3,8 @@ version: 2
 updates:
   # The release workflow runs with the Maven Central credentials and the signing
   # key in scope, so a third-party action it trusts can reach them. Tags are
-  # mutable — @v2 is whatever v2 points at today — so actions are pinned to a
-  # commit and Dependabot moves the pin.
+  # mutable: @v2 is whatever v2 points at today. Actions are pinned to a commit
+  # instead, and Dependabot moves the pin.
   - package-ecosystem: github-actions
     directory: /
     schedule:

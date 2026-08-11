@@ -3,7 +3,7 @@ name: Dependency submission
 # Dependabot has two halves. Version updates read gradle/libs.versions.toml
 # directly and need nothing from this workflow. Security alerts read the
 # dependency graph instead, and GitHub does not build one for Gradle the way it
-# does for Maven or npm — without a submitted graph, a CVE in a transitive
+# does for Maven or npm. Without a submitted graph, a CVE in a transitive
 # dependency is never reported. This submits it.
 on:
   push:
