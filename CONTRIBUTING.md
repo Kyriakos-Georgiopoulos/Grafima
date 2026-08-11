@@ -171,6 +171,15 @@ Workflow actions are pinned to a commit rather than a tag, with the tag in a
 trailing comment. A tag is mutable, and the release workflow runs with the Maven
 Central credentials and the signing key in scope. Dependabot moves the pins.
 
+Security alerts arrive off-schedule and open their own PRs. They read the
+dependency graph, which GitHub does not build for Gradle on its own, so
+`dependency-submission.yml` submits it on every push to `develop` that touches a
+build file.
+
+The Gradle wrapper is the one thing Dependabot does not update. Bump it by hand
+with `./gradlew wrapper --gradle-version x.y.z` and commit the four changed
+files. CI validates the wrapper jar's checksum on every run.
+
 ## Releasing
 
 1. `release/x.y.z` off `develop`. Bump the version and move `[Unreleased]` to a
