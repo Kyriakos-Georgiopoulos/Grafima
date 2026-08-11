@@ -71,8 +71,12 @@ private val AmethystGradient = listOf(Color(0xFF8A2387), Color(0xFFE94057), Colo
 private val BarGradients =
     listOf(SunsetGradient, OceanGradient, AmethystGradient, EmeraldGradient)
 
-private const val MinBars = 2
-private const val MaxBars = 12
+private const val MinCategories = 2
+private const val MaxCategories = 12
+
+/** Positions along the axis, which is what the add and remove buttons step. */
+private val BarDataSet.categoryLabels: List<String>
+    get() = entries.map { it.xLabel }.distinct()
 
 private fun BarDataSet.randomized(): BarDataSet = copy(
     entries = entries.map { entry ->
@@ -85,19 +89,45 @@ private fun BarDataSet.randomized(): BarDataSet = copy(
     }
 )
 
-private fun BarDataSet.plusEntry(): BarDataSet {
-    val label = MonthLabels.getOrElse(entries.size) { "M${entries.size + 1}" }
-    return copy(
-        entries = entries + BarEntry(
-            id = label.uppercase(),
-            xLabel = label,
-            y = Random.nextInt(20, 110).toFloat(),
-            gradientColors = BarGradients.random()
+/**
+ * Adds a whole position on the axis: one bar per series the dataset already shows,
+ * so a grouped chart gains a group and a plain one gains a bar. Appending a single
+ * series-less bar to a grouped chart would drop a lone stray next to the groups.
+ */
+private fun BarDataSet.plusCategory(): BarDataSet {
+    val template = entries.filter { it.seriesId != null }.distinctBy { it.seriesId }
+    if (template.isEmpty()) {
+        val label = MonthLabels.getOrElse(categoryLabels.size) { "M${categoryLabels.size + 1}" }
+        return copy(
+            entries = entries + BarEntry(
+                id = label.uppercase(),
+                xLabel = label,
+                y = Random.nextInt(20, 110).toFloat(),
+                gradientColors = BarGradients.random()
+            )
         )
+    }
+
+    val label = "Q${categoryLabels.size + 1}"
+    return copy(
+        entries = entries + template.map { series ->
+            BarEntry(
+                id = "$label-${series.seriesId}",
+                xLabel = label,
+                y = Random.nextInt(20, 110).toFloat(),
+                gradientColors = series.gradientColors,
+                seriesId = series.seriesId,
+                seriesLabel = series.seriesLabel
+            )
+        }
     )
 }
 
-private fun BarDataSet.minusEntry(): BarDataSet = copy(entries = entries.dropLast(1))
+/** Removes the last position on the axis, every series of it. */
+private fun BarDataSet.minusCategory(): BarDataSet {
+    val last = categoryLabels.lastOrNull() ?: return this
+    return copy(entries = entries.filterNot { it.xLabel == last })
+}
 
 private fun initialBarDataSet() = BarDataSet(
     entries = listOf(
@@ -243,18 +273,19 @@ internal fun BarChartDemoScreen(
         },
         controls = {
             DemoControls { buttonModifier ->
+                val unit = if (viewModel.grouping == DemoGrouping.Single) "Bar" else "Group"
                 DemoAddButton(
-                    text = "Add Bar",
-                    enabled = dataSet.entries.size < MaxBars,
-                    onClick = { viewModel.dataSet = dataSet.plusEntry() },
+                    text = "Add $unit",
+                    enabled = dataSet.categoryLabels.size < MaxCategories,
+                    onClick = { viewModel.dataSet = dataSet.plusCategory() },
                     modifier = buttonModifier
                 )
                 DemoRemoveButton(
-                    text = "Remove Bar",
-                    enabled = dataSet.entries.size > MinBars,
+                    text = "Remove $unit",
+                    enabled = dataSet.categoryLabels.size > MinCategories,
                     onClick = {
                         viewModel.selectedBarId = null
-                        viewModel.dataSet = dataSet.minusEntry()
+                        viewModel.dataSet = dataSet.minusCategory()
                     },
                     modifier = buttonModifier
                 )
