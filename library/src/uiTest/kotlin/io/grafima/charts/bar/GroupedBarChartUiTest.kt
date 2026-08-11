@@ -32,8 +32,10 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.grafima.charts.assumePixelCapture
 import io.grafima.charts.customActionLabels
 import io.grafima.charts.onChartNode
@@ -379,6 +381,41 @@ class GroupedBarChartUiTest {
             }
         }
         return if (count == 0) null else (sumX.toFloat() / count) to (sumY.toFloat() / count)
+    }
+
+    @Test
+    fun a_narrow_bar_without_series_still_draws_its_value() = runComposeUiTest {
+        assumePixelCapture()
+        // Enough bars that each is narrower than its own three-digit label.
+        val crowded = BarDataSet(
+            entries = (1..8).map { BarEntry("b$it", "B$it", 100f + it) },
+            defaultGradientColors = listOf(Color.Blue, Color.Blue),
+            contentDescription = "Crowded"
+        )
+        setContent {
+            BarChart(
+                dataSet = crowded,
+                modifier = Modifier.size(300.dp),
+                style = ChartStyle(valueTextStyle = TextStyle(color = Color.Red, fontSize = 14.sp)),
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        // 1.1.1 drew these unconditionally; a fit gate that also covered ungrouped
+        // charts silently removed every one of them.
+        assertTrue(onChartNode().captureToImage().countRed() > 0, "no value labels drawn")
+    }
+
+    private fun ImageBitmap.countRed(): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        return pixels.count { p ->
+            val r = (p shr 16) and 0xFF
+            val g = (p shr 8) and 0xFF
+            val b = p and 0xFF
+            r > 150 && g < 80 && b < 80
+        }
     }
 
     @Test

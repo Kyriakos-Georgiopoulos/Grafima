@@ -305,9 +305,13 @@ internal fun DrawScope.drawVerticalBars(
                 val valueLayout = valueTextCache.getOrPut(valueInt) {
                     textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
                 }
-                val fits =
-                    valueLayout.size.width <= barWidth &&
-                        (!stacked || valueLayout.size.height <= targetHeight)
+                // A bar standing alone is as wide as it ever was, so it keeps the
+                // label it drew before grouping existed however narrow it gets.
+                val fits = !layout.hasSeries ||
+                    (
+                        valueLayout.size.width <= barWidth &&
+                            (!stacked || valueLayout.size.height <= targetHeight)
+                        )
                 if (fits) {
                     val valueY =
                         if (stacked) yOffset + (targetHeight - valueLayout.size.height) / 2
@@ -463,9 +467,11 @@ internal fun DrawScope.drawHorizontalBars(
                 val valueLayout = valueTextCache.getOrPut(valueInt) {
                     textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
                 }
-                val fits =
-                    valueLayout.size.height <= barThickness &&
-                        (!stacked || valueLayout.size.width <= barLen)
+                val fits = !layout.hasSeries ||
+                    (
+                        valueLayout.size.height <= barThickness &&
+                            (!stacked || valueLayout.size.width <= barLen)
+                        )
                 if (fits) {
                     val valueX = when {
                         stacked -> xOff + (barLen - valueLayout.size.width) / 2
