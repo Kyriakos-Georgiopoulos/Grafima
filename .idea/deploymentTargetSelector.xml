@@ -12,10 +12,10 @@
       </SelectionState>
       <SelectionState runConfigName="androidApp">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-08-07T05:14:36.643617Z">
+        <DropdownSelection timestamp="2026-08-11T13:55:12.404746Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=/Users/kyriakos/.android/avd/grafima_atd30.avd" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=R5CN30WNTPB" />
             </handle>
           </Target>
         </DropdownSelection>

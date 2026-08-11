@@ -79,12 +79,17 @@ internal fun axisMaxForLayout(
     var index = 0
     while (index < entries.size) {
         val category = layout.categoryOf[index]
-        var extent = 0f
+        var total = 0f
+        var tallest = 0f
         while (index < entries.size && layout.categoryOf[index] == category) {
             val y = entries[index].y
-            if (stacked) extent += y else if (y > extent) extent = y
+            total += y
+            if (y > tallest) tallest = y
             index++
         }
+        // A stack total is a signed sum, so a negative segment can leave it below a
+        // positive sibling that is still drawn full height and clipped off-canvas.
+        val extent = if (stacked) maxOf(total, tallest) else tallest
         if (extent > rawMax) rawMax = extent
     }
     val maxWithHeadroom = (if (rawMax > 0f) rawMax else 1f) * 1.2f

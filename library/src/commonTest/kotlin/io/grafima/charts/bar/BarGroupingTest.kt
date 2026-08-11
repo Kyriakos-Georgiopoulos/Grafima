@@ -261,6 +261,20 @@ class BarGroupingTest {
     }
 
     @Test
+    fun `a negative stacked segment cannot pull the axis below a drawn bar`() {
+        val entries = listOf(
+            grouped("Q1", "up", 100f),
+            grouped("Q1", "down", -50f)
+        )
+
+        // The stack totals 50, but a 100-tall segment is still drawn, so an axis
+        // scaled to the total would clip it off the canvas.
+        val max = computeBarAxisMax(entries, BarGroupMode.Stacked)
+        assertTrue(max >= 100f, "stacked axis max was $max, below the tallest segment")
+        assertEquals(computeBarAxisMax(entries, BarGroupMode.Grouped), max)
+    }
+
+    @Test
     fun `a category takes its label from the bar that opens it`() {
         val categories = groupBarEntries(twoByTwo)
         assertEquals(listOf("Q1", "Q2"), categories.map { it.xLabel })
