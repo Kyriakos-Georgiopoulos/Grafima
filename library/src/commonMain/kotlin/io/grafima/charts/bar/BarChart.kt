@@ -25,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -127,6 +128,10 @@ fun BarChart(
 
     val haptic = LocalHapticFeedback.current
 
+    // Exits outlive the dataset that started them: hosted in LaunchedEffect(entries)
+    // they were cancelled and restarted at full duration by every later change.
+    val exitScope = rememberCoroutineScope()
+
     val currentSelectedEntry by rememberUpdatedState(selectedEntry)
     val currentOnBarSelected by rememberUpdatedState(onBarSelected)
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
@@ -139,7 +144,7 @@ fun BarChart(
         axisMaxForLayout(renderEntries, barLayout, dataSet.mode)
     }
 
-    val maxLabelResult = remember(maxBarValue, axisConfig.axisLabelTextStyle) {
+    val maxLabelResult = remember(textMeasurer, maxBarValue, axisConfig.axisLabelTextStyle) {
         textMeasurer.measure(
             text = maxBarValue.toInt().toString(),
             style = axisConfig.axisLabelTextStyle
@@ -156,7 +161,7 @@ fun BarChart(
         }
 
     val yAxisTextLayouts =
-        remember(maxBarValue, axisConfig.yAxisSteps, axisConfig.axisLabelTextStyle) {
+        remember(textMeasurer, maxBarValue, axisConfig.yAxisSteps, axisConfig.axisLabelTextStyle) {
             (0..axisConfig.yAxisSteps).associateWith { i ->
                 val stepValue = (maxBarValue / axisConfig.yAxisSteps) * i
                 textMeasurer.measure(
@@ -167,7 +172,7 @@ fun BarChart(
         }
 
     // The rest of a group shares the opener's xLabel and is never drawn.
-    val xLabelLayouts = remember(renderEntries, style.labelTextStyle) {
+    val xLabelLayouts = remember(textMeasurer, renderEntries, style.labelTextStyle) {
         val layouts = mutableMapOf<String, TextLayoutResult>()
         var previous: BarEntry? = null
         renderEntries.forEach { entry ->
@@ -182,7 +187,8 @@ fun BarChart(
         layouts
     }
 
-    val valueTextCache = remember(style.valueTextStyle) { mutableMapOf<Int, TextLayoutResult>() }
+    val valueTextCache =
+        remember(textMeasurer, style.valueTextStyle) { mutableMapOf<Int, TextLayoutResult>() }
     val selectionCache = remember(textMeasurer, selectionRenderer) {
         mutableMapOf<Int, TextLayoutResult>()
     }
@@ -247,7 +253,7 @@ fun BarChart(
         }
         valueTextCache.clear()
         animationEngine.launchEntryAnimations(entries, effectiveAnimationConfig, this)
-        animationEngine.launchExitAnimations(effectiveAnimationConfig, this)
+        animationEngine.launchExitAnimations(effectiveAnimationConfig, exitScope)
     }
 
     LaunchedEffect(entries, selectedEntry) {

@@ -256,7 +256,8 @@ data class A11yConfig(
     val countDescriptionBuilder: (BarChartSummary) -> String = { summary ->
         val groups = if (summary.categories == 1) "group" else "groups"
         val held = when {
-            summary.series == 0 -> "${summary.bars} bars"
+            // A series spread one bar per category is not grouped, whatever it is tagged.
+            summary.series == 0 || summary.uniformGroupSize == 1 -> "${summary.bars} bars"
             summary.uniformGroupSize != null ->
                 "${summary.bars} bars in ${summary.categories} $groups of " +
                     "${summary.uniformGroupSize}"

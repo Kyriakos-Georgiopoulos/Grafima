@@ -285,7 +285,6 @@ internal class ChartAnimationEngine {
             val id = bar.item.id
             val height = heightAnimatables[id] ?: return@forEach
             val slot = slotAnimatables[id] ?: return@forEach
-            if (height.isRunning || slot.isRunning) return@forEach
             if (exitJobs[id]?.isActive == true) return@forEach
 
             // A cancelled coroutine can leave it at rest but still listed.
