@@ -226,6 +226,7 @@ internal fun DrawScope.drawVerticalBars(
             else groupedBarGap(slotWidth, members, style.groupSpacingFactor)
 
         var targetStackBase = 0f
+        var animatedStackBase = 0f
         // How much of the group precedes this bar, counting a departing one
         // by what it still holds, so the survivors slide as it shrinks.
         var memberPosition = 0f
@@ -243,12 +244,7 @@ internal fun DrawScope.drawVerticalBars(
                 else ltrSlotX + groupedBarOffset(memberPosition, barWidth, innerGap)
             val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
 
-            val stackBase =
-                if (stacked) {
-                    animationEngine.stackedBase(renderEntries, layout, i, maxBarValue, chartHeight)
-                } else {
-                    0f
-                }
+            val stackBase = if (stacked) animatedStackBase else 0f
             val yOffset = baseline - stackBase - targetHeight
 
             if (entry.id == selectedEntry?.id) {
@@ -261,6 +257,7 @@ internal fun DrawScope.drawVerticalBars(
                 )
             }
             if (stacked) targetStackBase += (entry.y / maxBarValue) * chartHeight
+            if (stacked) animatedStackBase += targetHeight
             memberPosition += occupancy
 
             if (targetHeight > 0f) {
@@ -382,6 +379,7 @@ internal fun DrawScope.drawHorizontalBars(
             else groupedBarGap(slotThickness, members, style.groupSpacingFactor)
 
         var targetStackBase = 0f
+        var animatedStackBase = 0f
         // How much of the group precedes this bar, counting a departing one
         // by what it still holds, so the survivors slide as it shrinks.
         var memberPosition = 0f
@@ -397,12 +395,7 @@ internal fun DrawScope.drawHorizontalBars(
             val yOff =
                 if (stacked) ltrSlotY
                 else ltrSlotY + groupedBarOffset(memberPosition, barThickness, innerGap)
-            val base =
-                if (stacked) {
-                    animationEngine.stackedBase(renderEntries, layout, i, maxBarValue, chartWidth)
-                } else {
-                    0f
-                }
+            val base = if (stacked) animatedStackBase else 0f
             val xOff = if (isRtl) chartRight - base - barLen else chartLeft + base
 
             if (entry.id == selectedEntry?.id) {
@@ -416,6 +409,7 @@ internal fun DrawScope.drawHorizontalBars(
                 )
             }
             if (stacked) targetStackBase += (entry.y / maxBarValue) * chartWidth
+            if (stacked) animatedStackBase += barLen
             memberPosition += occupancy
 
             if (barLen > 0f) {
