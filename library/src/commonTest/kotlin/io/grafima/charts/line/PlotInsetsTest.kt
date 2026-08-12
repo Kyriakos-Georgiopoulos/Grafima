@@ -18,6 +18,7 @@ package io.grafima.charts.line
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PlotInsetsTest {
 
@@ -26,7 +27,8 @@ class PlotInsetsTest {
         xTitleHeight: Float = 0f,
         isRtl: Boolean = false,
         yLabelWidth: Float = 30f,
-        xLabelHeight: Float = 12f
+        xLabelHeight: Float = 12f,
+        dotClearance: Float = 0f
     ) = computePlotInsets(
         into = PlotInsets(),
         width = 400f,
@@ -36,7 +38,8 @@ class PlotInsetsTest {
         xLabelHeight = xLabelHeight,
         yTitleHeight = yTitleHeight,
         xTitleHeight = xTitleHeight,
-        isRtl = isRtl
+        isRtl = isRtl,
+        dotClearance = dotClearance
     )
 
     @Test
@@ -105,5 +108,32 @@ class PlotInsetsTest {
         val rtl = insets(yLabelWidth = 0f, xLabelHeight = 0f, isRtl = true)
         assertEquals(8f, rtl.left)
         assertEquals(392f, rtl.right)
+    }
+
+    @Test
+    fun `a dot clearance holds the plot off every edge`() {
+        val plain = insets()
+        val cleared = insets(dotClearance = 20f)
+        assertEquals(plain.left + 20f, cleared.left)
+        assertEquals(plain.top + 20f, cleared.top)
+        assertEquals(plain.right - 20f, cleared.right)
+        assertEquals(plain.bottom - 20f, cleared.bottom)
+    }
+
+    @Test
+    fun `a clearance wider than the chart crowds the plot rather than inverting it`() {
+        // A radius can exceed the chart it is drawn on; unclamped it drove right past
+        // left, which maps the axis backwards and draws the curve mirrored.
+        val huge = insets(dotClearance = 10_000f)
+        assertTrue(huge.right > huge.left, "left ${huge.left} right ${huge.right}")
+        assertTrue(huge.bottom > huge.top, "top ${huge.top} bottom ${huge.bottom}")
+    }
+
+    @Test
+    fun `a clearance mirrors with the label band in RTL`() {
+        val rtl = insets(dotClearance = 20f, isRtl = true)
+        val plain = insets(isRtl = true)
+        assertEquals(plain.left + 20f, rtl.left)
+        assertEquals(plain.right - 20f, rtl.right)
     }
 }

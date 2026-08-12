@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import io.grafima.charts.needsAnimatingTo
@@ -91,6 +93,9 @@ internal fun nearestPointIndex(
     }
     return nearest
 }
+
+/** [Dp.Unspecified] defers to the chart-wide value, as it does on the other charts. */
+internal fun Dp.orElse(fallback: Dp): Dp = if (isSpecified) this else fallback
 
 /**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly
@@ -212,15 +217,25 @@ internal fun computePlotInsets(
     xLabelHeight: Float,
     yTitleHeight: Float,
     xTitleHeight: Float,
-    isRtl: Boolean
+    isRtl: Boolean,
+    dotClearance: Float = 0f
 ): PlotInsets {
     // Twice, because a title needs clearing from its labels as well as from the edge.
     val yBand = yLabelWidth + if (yTitleHeight > 0f) yTitleHeight + gap * 2f else 0f
     val xBand = xLabelHeight + if (xTitleHeight > 0f) xTitleHeight + gap * 2f else 0f
-    into.left = gap + if (isRtl) 0f else yBand
-    into.top = gap
-    into.right = width - gap - if (isRtl) yBand else 0f
-    into.bottom = height - gap - xBand
+    // Dots are drawn outside the clip, so a point sitting on a bound needs its radius
+    // between the plot and whatever is next to it — the labels where there are labels,
+    // the composable's own edge where there are not. Capped at a third of the extent:
+    // a radius wider than the chart should crowd the plot, never invert it.
+    val clearance = dotClearance.coerceAtLeast(0f)
+    val sideRoom = ((width - yBand) / 3f).coerceAtLeast(0f)
+    val stackRoom = ((height - xBand) / 3f).coerceAtLeast(0f)
+    val side = clearance.coerceAtMost(sideRoom)
+    val stack = clearance.coerceAtMost(stackRoom)
+    into.left = gap + side + if (isRtl) 0f else yBand
+    into.top = gap + stack
+    into.right = width - gap - side - if (isRtl) yBand else 0f
+    into.bottom = height - gap - stack - xBand
     return into
 }
 

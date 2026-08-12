@@ -439,6 +439,17 @@ fun LineChart(
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
 
+    val widestDotPx = remember(renderSeries, style.showDots, style.dotRadius, density) {
+        if (!style.showDots) {
+            0f
+        } else {
+            val widest = renderSeries.maxOfOrNull { it.dotRadius.orElse(style.dotRadius) } ?: 0.dp
+            val px = with(density) { widest.toPx() }
+            if (px.isFinite()) px.coerceAtLeast(0f) else 0f
+        }
+    }
+    val currentWidestDotPx by rememberUpdatedState(widestDotPx)
+
     // ── Animation lifecycle ──
     SideEffect { animationEngine.syncAnimatables(series) }
     LaunchedEffect(series) {
@@ -502,7 +513,8 @@ fun LineChart(
                         xLabelHeight = 0f,
                         yTitleHeight = currentYTitleHeight,
                         xTitleHeight = 0f,
-                        isRtl = rtl
+                        isRtl = rtl,
+                        dotClearance = currentWidestDotPx
                     )
                     val cLeft = rect.left
                     val cRight = rect.right
@@ -543,6 +555,9 @@ fun LineChart(
         if (series.isEmpty()) return@Canvas
 
         val labelGapPx = style.labelGap.toPx()
+        // Axis labels stand off by the gap plus whatever a dot on the bound overhangs,
+        // or the largest dot paints across them.
+        val axisLabelGapPx = labelGapPx + widestDotPx
 
         val insets = computePlotInsets(
             into = plotInsets,
@@ -553,7 +568,8 @@ fun LineChart(
             xLabelHeight = if (axisConfig.showXLabels) maxXLabelHeight else 0f,
             yTitleHeight = yTitleLayout?.size?.height?.toFloat() ?: 0f,
             xTitleHeight = xTitleLayout?.size?.height?.toFloat() ?: 0f,
-            isRtl = isRtl
+            isRtl = isRtl,
+            dotClearance = widestDotPx
         )
         val chartLeft = insets.left
         val chartRight = insets.right
@@ -625,7 +641,11 @@ fun LineChart(
                     val layout = yLabelLayouts[i]
                     val y = mapY(v)
                     val lx =
-                        if (isRtl) chartRight + labelGapPx else chartLeft - labelGapPx - layout.size.width
+                        if (isRtl) {
+                            chartRight + axisLabelGapPx
+                        } else {
+                            chartLeft - axisLabelGapPx - layout.size.width
+                        }
                     drawText(
                         textLayoutResult = layout,
                         topLeft = Offset(x = lx, y = y - layout.size.height / 2f)
@@ -643,9 +663,16 @@ fun LineChart(
         val rightSlack = if (rightCuts) 0f else noClip
         val topSlack = if (topCuts) 0f else noClip
         val bottomSlack = if (bottomCuts) 0f else noClip
-        val dotRadiusPx = style.dotRadius.toPx()
+
         // Only a drawn dot needs clearing; an unused radius must not push labels off.
-        val markRadiusPx = if (style.showDots) dotRadiusPx else 0f
+        // A radius that is not a finite length is no radius at all: left as NaN it
+        // makes every inset, every mapped coordinate and every label position NaN.
+        fun markRadiusPx(s: LineSeries): Float {
+            if (!style.showDots) return 0f
+            val resolved = s.dotRadius.orElse(style.dotRadius).toPx()
+            return if (resolved.isFinite()) resolved.coerceAtLeast(0f) else 0f
+        }
+
         renderSeries.forEach { s ->
             val n = s.points.size
             if (n == 0) return@forEach
@@ -728,19 +755,27 @@ fun LineChart(
                     drawPath(path = linePath, color = s.color, style = strokeStyle)
                 }
             }
+        }
 
-            // Dots sit outside the clip so one on a bound keeps all of itself.
-            if (style.showDots) {
-                for (i in 0 until n) {
-                    val p = s.points[i]
-                    if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
-                    if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
-                    drawCircle(
-                        color = s.color,
-                        radius = dotRadiusPx,
-                        center = Offset(x = xs[i], y = ys[i])
-                    )
-                }
+        // Every dot after every fill, or a later series' wash sinks an earlier
+        // series' marker. Outside the clip too, so one on a bound keeps all of itself.
+        renderSeries.forEach { s ->
+            val seriesDotRadiusPx = markRadiusPx(s)
+            if (seriesDotRadiusPx <= 0f) return@forEach
+            val xs = xBuffers[s.id] ?: return@forEach
+            val ys = yBuffers[s.id] ?: return@forEach
+            // Buffers are sized to the series they were filled for; two series sharing
+            // an id leave only the last, so walk what the buffer actually holds.
+            val n = minOf(s.points.size, xs.size, ys.size)
+            for (i in 0 until n) {
+                val p = s.points[i]
+                if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
+                if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
+                drawCircle(
+                    color = s.color,
+                    radius = seriesDotRadiusPx,
+                    center = Offset(x = xs[i], y = ys[i])
+                )
             }
         }
 
@@ -843,6 +878,7 @@ fun LineChart(
                     valueLabelStyle.color.isSpecified -> valueLabelStyle.color
                     else -> ValueLabelTextStyle.color
                 }
+                val labelOffset = markRadiusPx(s) + valueGap + s.strokeWidth.toPx() / 2f
                 val n = min(s.points.size, layouts.size)
                 // Walked left to right on screen rather than through the data, so
                 // the label kept out of a colliding pair is the leftmost one
@@ -863,7 +899,7 @@ fun LineChart(
                     val ly = valueLabelTop(
                         pointY = ys[i],
                         labelHeight = layout.size.height.toFloat(),
-                        offset = markRadiusPx + valueGap + s.strokeWidth.toPx() / 2f,
+                        offset = labelOffset,
                         chartTop = chartTop,
                         chartBottom = chartBottom,
                         // From the data: animated positions are all flat at rest, so
@@ -903,7 +939,7 @@ fun LineChart(
                         textLayoutResult = layout,
                         topLeft = Offset(
                             x = mapX(p.x) - layout.size.width / 2f,
-                            y = chartBottom + labelGapPx
+                            y = chartBottom + axisLabelGapPx
                         )
                     )
                 }

@@ -605,9 +605,10 @@ public final class io/grafima/charts/line/LineLegendOrientation : java/lang/Enum
 
 public final class io/grafima/charts/line/LineSeries {
 	public static final field $stable I
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;FILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;FLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
+	public final fun component10-D9Ej5fM ()F
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/util/List;
 	public final fun component4-0d7_KjU ()J
@@ -616,11 +617,12 @@ public final class io/grafima/charts/line/LineSeries {
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Ljava/util/List;
 	public final fun component9 ()Lio/grafima/charts/DashPattern;
-	public final fun copy-cbhI11c (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;)Lio/grafima/charts/line/LineSeries;
-	public static synthetic fun copy-cbhI11c$default (Lio/grafima/charts/line/LineSeries;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;ILjava/lang/Object;)Lio/grafima/charts/line/LineSeries;
+	public final fun copy-oQI7FsQ (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;F)Lio/grafima/charts/line/LineSeries;
+	public static synthetic fun copy-oQI7FsQ$default (Lio/grafima/charts/line/LineSeries;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;FILjava/lang/Object;)Lio/grafima/charts/line/LineSeries;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getColor-0d7_KjU ()J
 	public final fun getDashPattern ()Lio/grafima/charts/DashPattern;
+	public final fun getDotRadius-D9Ej5fM ()F
 	public final fun getFillAlpha ()F
 	public final fun getFillGradientColors ()Ljava/util/List;
 	public final fun getId ()Ljava/lang/String;
