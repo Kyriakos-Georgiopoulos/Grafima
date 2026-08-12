@@ -96,19 +96,13 @@ private fun BarDataSet.randomized(): BarDataSet = copy(
  */
 private fun BarDataSet.plusCategory(): BarDataSet {
     val template = entries.filter { it.seriesId != null }.distinctBy { it.seriesId }
+    val label = "Q${categoryLabels.size + 1}"
     if (template.isEmpty()) {
-        val label = MonthLabels.getOrElse(categoryLabels.size) { "M${categoryLabels.size + 1}" }
         return copy(
-            entries = entries + BarEntry(
-                id = label.uppercase(),
-                xLabel = label,
-                y = Random.nextInt(20, 110).toFloat(),
-                gradientColors = BarGradients.random()
-            )
+            entries = entries + revenueBar(label, Random.nextInt(20, 110).toFloat(), false)
         )
     }
 
-    val label = "Q${categoryLabels.size + 1}"
     return copy(
         entries = entries + template.map { series ->
             BarEntry(
@@ -129,42 +123,42 @@ private fun BarDataSet.minusCategory(): BarDataSet {
     return copy(entries = entries.filterNot { it.xLabel == last })
 }
 
-private fun initialBarDataSet() = BarDataSet(
-    entries = listOf(
-        BarEntry(id = "JAN", xLabel = "Jan", y = 45f, gradientColors = OceanGradient),
-        BarEntry(id = "FEB", xLabel = "Feb", y = 80f, gradientColors = SunsetGradient),
-        BarEntry(id = "MAR", xLabel = "Mar", y = 55f, gradientColors = AmethystGradient),
-        BarEntry(id = "APR", xLabel = "Apr", y = 95f, gradientColors = SunsetGradient),
-        BarEntry(id = "MAY", xLabel = "May", y = 65f, gradientColors = EmeraldGradient)
-    ),
-    contentDescription = "Q1 and Q2 Revenue Trends"
-)
-
 private val RevenueGradient = OceanGradient
 private val CostGradient = SunsetGradient
 
+private val QuarterRevenue = listOf("Q1" to 45f, "Q2" to 80f, "Q3" to 55f, "Q4" to 95f)
+
+/**
+ * The revenue bar of a quarter. Its id does not depend on whether the dataset has
+ * series, so switching arrangement morphs these bars rather than replacing them.
+ */
+private fun revenueBar(quarter: String, y: Float, grouped: Boolean) = BarEntry(
+    id = "$quarter-rev",
+    xLabel = quarter,
+    y = y,
+    gradientColors = RevenueGradient,
+    seriesId = if (grouped) "rev" else null,
+    seriesLabel = if (grouped) "Revenue" else null
+)
+
+private fun costBar(quarter: String, revenue: Float) = BarEntry(
+    id = "$quarter-cost",
+    xLabel = quarter,
+    y = revenue * 0.62f,
+    gradientColors = CostGradient,
+    seriesId = "cost",
+    seriesLabel = "Cost"
+)
+
+private fun singleBarDataSet() = BarDataSet(
+    entries = QuarterRevenue.map { (quarter, revenue) -> revenueBar(quarter, revenue, false) },
+    contentDescription = "Revenue by quarter"
+)
+
 private fun groupedBarDataSet(mode: BarGroupMode) = BarDataSet(
-    entries = listOf("Q1" to 45f, "Q2" to 80f, "Q3" to 55f, "Q4" to 95f)
-        .flatMap { (quarter, revenue) ->
-            listOf(
-                BarEntry(
-                    id = "$quarter-rev",
-                    xLabel = quarter,
-                    y = revenue,
-                    gradientColors = RevenueGradient,
-                    seriesId = "rev",
-                    seriesLabel = "Revenue"
-                ),
-                BarEntry(
-                    id = "$quarter-cost",
-                    xLabel = quarter,
-                    y = revenue * 0.62f,
-                    gradientColors = CostGradient,
-                    seriesId = "cost",
-                    seriesLabel = "Cost"
-                )
-            )
-        },
+    entries = QuarterRevenue.flatMap { (quarter, revenue) ->
+        listOf(revenueBar(quarter, revenue, true), costBar(quarter, revenue))
+    },
     contentDescription = "Revenue against cost by quarter",
     mode = mode
 )
@@ -175,7 +169,7 @@ internal enum class DemoGrouping(val label: String) {
     Stacked("Stacked");
 
     fun dataSet(): BarDataSet = when (this) {
-        Single -> initialBarDataSet()
+        Single -> singleBarDataSet()
         Grouped -> groupedBarDataSet(BarGroupMode.Grouped)
         Stacked -> groupedBarDataSet(BarGroupMode.Stacked)
     }
@@ -241,7 +235,7 @@ internal fun BarChartDemoScreen(
             selectedStateDescription = { entry ->
                 entry?.let {
                     val measure = it.spokenSeriesLabel ?: "revenue"
-                    "${spokenMonth(it.xLabel)}, $measure: $${it.y.toInt()} thousand dollars."
+                    "${it.xLabel}, $measure: $${it.y.toInt()} thousand dollars."
                 } ?: "No bar selected. Use the actions menu to choose a bar."
             }
         )

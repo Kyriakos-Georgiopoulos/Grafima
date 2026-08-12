@@ -46,6 +46,13 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
 
     private var lastItems: List<T> = emptyList()
 
+    /**
+     * Set when a dataset is replaced outright rather than edited. The departing
+     * items then have no slot in the new axis, so they are dropped from the draw
+     * order instead of being threaded through a chart they share nothing with.
+     */
+    private var replaced: Boolean = false
+
     private val unchanged = ExitSync<T>(emptyList(), emptyList())
 
     /** Call once per composition, before touching per-item animatables. */
@@ -66,6 +73,12 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
                 )
             }
         val returned = exiting.filter { idOf(it.item) in currentIds }
+        // Everything the old dataset held is leaving and something else took its
+        // place. An empty dataset is not a replacement: the departing items are all
+        // that is left to draw, and they still animate out.
+        replaced = current.isNotEmpty() &&
+            lastItems.isNotEmpty() &&
+            lastItems.none { idOf(it) in currentIds }
 
         if (departed.isNotEmpty() || returned.isNotEmpty()) {
             exiting = exiting - returned.toSet() + departed
@@ -98,6 +111,8 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
     fun render(current: List<T>): List<T> {
         val leaving = leaving(current)
         if (leaving.isEmpty()) return current
+
+        if (replaced) return current
 
         val merged = current.toMutableList()
         leaving.sortedBy { it.index }.forEach { merged.add(insertionPoint(merged, it), it.item) }
