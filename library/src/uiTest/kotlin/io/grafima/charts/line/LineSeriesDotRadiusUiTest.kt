@@ -162,6 +162,51 @@ class LineSeriesDotRadiusUiTest {
     }
 
     @Test
+    fun a_marker_keeps_its_dot_when_a_later_series_fills_over_it() = runComposeUiTest {
+        assumePixelCapture()
+        // The marker is first, so drawing dots inside the per-series loop lets the
+        // opaque fill of the series after it bury them.
+        val markerThenWash = LineDataSet(
+            series = listOf(
+                LineSeries(
+                    id = "marker",
+                    label = "You are here",
+                    points = listOf(LineDataPoint(x = 1f, y = 5f, label = "B")),
+                    color = markerColor,
+                    dotRadius = styleRadius * 3f
+                ),
+                LineSeries(
+                    id = "wash",
+                    label = "Wash",
+                    points = listOf(
+                        LineDataPoint(x = -1f, y = 9f, label = "L"),
+                        LineDataPoint(x = 2f, y = 9f, label = "R")
+                    ),
+                    color = referenceColor,
+                    fillAlpha = 1f
+                )
+            ),
+            contentDescription = "A marker under a filled series"
+        )
+        setContent {
+            LineChart(
+                dataSet = markerThenWash,
+                modifier = Modifier.size(300.dp),
+                style = style(),
+                axisConfig = insideTheEdges,
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        // The wash sits at y=9 and fills opaquely down to the axis, so it covers
+        // y=5 whole. The dot survives only if dots are drawn after every fill.
+        val image = onChartNode().captureToImage()
+        assertTrue(image.widestRow(markerColor) > 0, "a later fill buried the marker")
+        assertTrue(image.countColor(referenceColor) > 0, "the wash never painted")
+    }
+
+    @Test
     fun a_value_label_clears_the_dot_its_own_series_asked_for() = runComposeUiTest {
         assumePixelCapture()
         // One series, so every label row on the capture belongs to this dot, and one

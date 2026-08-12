@@ -733,20 +733,25 @@ fun LineChart(
                     drawPath(path = linePath, color = s.color, style = strokeStyle)
                 }
             }
+        }
 
-            // Dots sit outside the clip so one on a bound keeps all of itself.
+        // Every dot after every fill, or a later series' wash sinks an earlier
+        // series' marker. Outside the clip too, so one on a bound keeps all of itself.
+        renderSeries.forEach { s ->
             val seriesDotRadiusPx = markRadiusPx(s)
-            if (seriesDotRadiusPx > 0f) {
-                for (i in 0 until n) {
-                    val p = s.points[i]
-                    if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
-                    if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
-                    drawCircle(
-                        color = s.color,
-                        radius = seriesDotRadiusPx,
-                        center = Offset(x = xs[i], y = ys[i])
-                    )
-                }
+            if (seriesDotRadiusPx <= 0f) return@forEach
+            val n = s.points.size
+            val xs = xBuffers[s.id] ?: return@forEach
+            val ys = yBuffers[s.id] ?: return@forEach
+            for (i in 0 until n) {
+                val p = s.points[i]
+                if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
+                if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
+                drawCircle(
+                    color = s.color,
+                    radius = seriesDotRadiusPx,
+                    center = Offset(x = xs[i], y = ys[i])
+                )
             }
         }
 
