@@ -15,16 +15,20 @@ public final class io/grafima/charts/ReduceMotionKt {
 public final class io/grafima/charts/bar/A11yConfig {
 	public static final field $stable I
 	public fun <init> ()V
-	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
-	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Lkotlin/jvm/functions/Function1;
 	public final fun component2 ()Lkotlin/jvm/functions/Function1;
 	public final fun component3 ()Lkotlin/jvm/functions/Function1;
-	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)Lio/grafima/charts/bar/A11yConfig;
-	public static synthetic fun copy$default (Lio/grafima/charts/bar/A11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/grafima/charts/bar/A11yConfig;
+	public final fun component4 ()Lkotlin/jvm/functions/Function1;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)Lio/grafima/charts/bar/A11yConfig;
+	public static synthetic fun copy$default (Lio/grafima/charts/bar/A11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/bar/A11yConfig;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getBarCountDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
 	public final fun getChartDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getClearSelectionLabel ()Ljava/lang/String;
+	public final fun getCountDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getSelectActionLabel ()Lkotlin/jvm/functions/Function1;
 	public final fun getSelectedStateDescription ()Lkotlin/jvm/functions/Function1;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -83,46 +87,73 @@ public final class io/grafima/charts/bar/BarChartKt {
 	public static final fun BarChart-v8p7Sac (Lio/grafima/charts/bar/BarDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/bar/BarOrientation;Lio/grafima/charts/bar/ChartStyle;Lio/grafima/charts/bar/AxisConfig;Lio/grafima/charts/bar/AnimationConfig;Lio/grafima/charts/bar/A11yConfig;Lio/grafima/charts/bar/BarChartSelectionRenderer;Lio/grafima/charts/bar/BarEntry;Landroidx/compose/ui/hapticfeedback/HapticFeedbackType;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;III)V
 }
 
+public final class io/grafima/charts/bar/BarChartModelsKt {
+	public static final fun getSpokenSeriesLabel (Lio/grafima/charts/bar/BarEntry;)Ljava/lang/String;
+}
+
 public abstract interface class io/grafima/charts/bar/BarChartSelectionRenderer {
 	public abstract fun drawSelection-wB6dw9o (Landroidx/compose/ui/graphics/drawscope/DrawScope;Lio/grafima/charts/bar/BarEntry;JJLio/grafima/charts/bar/BarOrientation;Landroidx/compose/ui/text/TextMeasurer;Ljava/util/Map;)V
 }
 
+public final class io/grafima/charts/bar/BarChartSummary {
+	public static final field $stable I
+	public fun <init> (IIILjava/lang/Integer;)V
+	public final fun getBars ()I
+	public final fun getCategories ()I
+	public final fun getSeries ()I
+	public final fun getUniformGroupSize ()Ljava/lang/Integer;
+}
+
 public final class io/grafima/charts/bar/BarDataSet {
 	public static final field $stable I
-	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;)V
-	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/util/List;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/lang/String;
-	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/lang/String;)Lio/grafima/charts/bar/BarDataSet;
-	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarDataSet;Ljava/util/List;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/bar/BarDataSet;
+	public final fun component4 ()Lio/grafima/charts/bar/BarGroupMode;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;)Lio/grafima/charts/bar/BarDataSet;
+	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarDataSet;Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;ILjava/lang/Object;)Lio/grafima/charts/bar/BarDataSet;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getContentDescription ()Ljava/lang/String;
 	public final fun getDefaultGradientColors ()Ljava/util/List;
 	public final fun getEntries ()Ljava/util/List;
+	public final fun getMode ()Lio/grafima/charts/bar/BarGroupMode;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
 
 public final class io/grafima/charts/bar/BarEntry {
 	public static final field $stable I
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()F
 	public final fun component4 ()Ljava/util/List;
 	public final fun component5 ()Ljava/util/List;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;)Lio/grafima/charts/bar/BarEntry;
-	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarEntry;Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/grafima/charts/bar/BarEntry;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;)Lio/grafima/charts/bar/BarEntry;
+	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarEntry;Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/bar/BarEntry;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getColorStops ()Ljava/util/List;
 	public final fun getGradientColors ()Ljava/util/List;
 	public final fun getId ()Ljava/lang/String;
+	public final fun getSeriesId ()Ljava/lang/String;
+	public final fun getSeriesLabel ()Ljava/lang/String;
 	public final fun getXLabel ()Ljava/lang/String;
 	public final fun getY ()F
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/grafima/charts/bar/BarGroupMode : java/lang/Enum {
+	public static final field Grouped Lio/grafima/charts/bar/BarGroupMode;
+	public static final field Stacked Lio/grafima/charts/bar/BarGroupMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/bar/BarGroupMode;
+	public static fun values ()[Lio/grafima/charts/bar/BarGroupMode;
 }
 
 public final class io/grafima/charts/bar/BarOrientation : java/lang/Enum {
@@ -135,8 +166,8 @@ public final class io/grafima/charts/bar/BarOrientation : java/lang/Enum {
 
 public final class io/grafima/charts/bar/ChartStyle {
 	public static final field $stable I
-	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZFILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZFLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-D9Ej5fM ()F
 	public final fun component2 ()F
 	public final fun component3-D9Ej5fM ()F
@@ -145,12 +176,14 @@ public final class io/grafima/charts/bar/ChartStyle {
 	public final fun component6 ()Landroidx/compose/ui/text/TextStyle;
 	public final fun component7 ()Landroidx/compose/ui/text/TextStyle;
 	public final fun component8 ()Z
-	public final fun copy-JP4gq1U (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;Z)Lio/grafima/charts/bar/ChartStyle;
-	public static synthetic fun copy-JP4gq1U$default (Lio/grafima/charts/bar/ChartStyle;FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZILjava/lang/Object;)Lio/grafima/charts/bar/ChartStyle;
+	public final fun component9 ()F
+	public final fun copy-noJGAy0 (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZF)Lio/grafima/charts/bar/ChartStyle;
+	public static synthetic fun copy-noJGAy0$default (Lio/grafima/charts/bar/ChartStyle;FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZFILjava/lang/Object;)Lio/grafima/charts/bar/ChartStyle;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getBarCornerRadius-D9Ej5fM ()F
 	public final fun getBarSpacingFactor ()F
 	public final fun getBottomLabelSpace-D9Ej5fM ()F
+	public final fun getGroupSpacingFactor ()F
 	public final fun getLabelTextStyle ()Landroidx/compose/ui/text/TextStyle;
 	public final fun getShowFloatingValues ()Z
 	public final fun getTopValueSpace-D9Ej5fM ()F

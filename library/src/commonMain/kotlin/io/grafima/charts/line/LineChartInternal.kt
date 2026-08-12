@@ -26,6 +26,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
+import io.grafima.charts.needsAnimatingTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -580,7 +581,7 @@ internal class LineChartAnimationEngine {
                         anim.snapTo(yBaseline)
                         delay(config.startDelayMs + si * config.seriesStaggerMs + pi * config.staggerMs)
                         anim.animateTo(point.y, config.entrySpec)
-                    } else if (anim.targetValue != point.y) {
+                    } else if (anim.needsAnimatingTo(point.y)) {
                         anim.animateTo(point.y, config.morphSpec)
                     }
                 }

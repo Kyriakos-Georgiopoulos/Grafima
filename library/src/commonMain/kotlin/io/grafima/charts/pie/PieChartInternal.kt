@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.Dp
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
+import io.grafima.charts.needsAnimatingTo
 import io.grafima.charts.toRadians
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -225,7 +226,7 @@ internal class PieChartAnimationEngine {
                     delay(config.startDelayMs + (position * config.staggerDelayMs))
                     valueAnim.animateTo(entry.value, config.initialEntrySpec)
                 }
-            } else if (valueAnim.targetValue != entry.value) {
+            } else if (valueAnim.needsAnimatingTo(entry.value)) {
                 scope.launch { valueAnim.animateTo(entry.value, config.morphSpec) }
             }
         }
@@ -257,10 +258,10 @@ internal class PieChartAnimationEngine {
             val targetAlpha =
                 if (selectedEntry != null && !isSelected) style.unselectedAlpha else 1f
 
-            if (scaleAnim.targetValue != targetScale) {
+            if (scaleAnim.needsAnimatingTo(targetScale)) {
                 scope.launch { scaleAnim.animateTo(targetScale, config.selectionSpec) }
             }
-            if (alphaAnim.targetValue != targetAlpha) {
+            if (alphaAnim.needsAnimatingTo(targetAlpha)) {
                 scope.launch { alphaAnim.animateTo(targetAlpha, config.selectionSpec) }
             }
         }

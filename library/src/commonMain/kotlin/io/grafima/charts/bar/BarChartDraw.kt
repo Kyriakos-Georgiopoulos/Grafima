@@ -32,6 +32,36 @@ import androidx.compose.ui.unit.dp
 import io.grafima.charts.DashStroke
 import io.grafima.charts.drawDashableLine
 
+/**
+ * Filled in by the bar pass and read by the selection pass, so the tooltip cannot
+ * disagree with where the bar was drawn. Mutated in place: the draw pass runs
+ * every frame.
+ */
+internal class SelectedBarBounds {
+    var found: Boolean = false
+        private set
+    var left: Float = 0f
+        private set
+    var top: Float = 0f
+        private set
+    var width: Float = 0f
+        private set
+    var height: Float = 0f
+        private set
+
+    fun clear() {
+        found = false
+    }
+
+    fun set(left: Float, top: Float, width: Float, height: Float) {
+        this.left = left
+        this.top = top
+        this.width = width
+        this.height = height
+        found = true
+    }
+}
+
 /** Horizontal grid lines with y-axis labels, plus the baseline. */
 internal fun DrawScope.drawVerticalGrid(
     axisConfig: AxisConfig,
@@ -162,81 +192,150 @@ internal fun DrawScope.drawVerticalBars(
     barPath: Path,
     selectedEntry: BarEntry?,
     maxBarValue: Float,
-    barWidth: Float,
+    slotWidth: Float,
     barSpacing: Float,
     yAxisWidthPx: Float,
     bottomSpacePx: Float,
     chartHeight: Float,
     cornerRadiusPx: Float,
-    isRtl: Boolean
+    isRtl: Boolean,
+    layout: BarGroupLayout,
+    mode: BarGroupMode,
+    selectionBounds: SelectedBarBounds
 ) {
+    val stacked = mode == BarGroupMode.Stacked
+    val baseline = size.height - bottomSpacePx
+    selectionBounds.clear()
+
     // Running total of the slots to the left, so a collapsing slot slides the
-    // bars after it across rather than teleporting them.
+    // bars after it across rather than teleporting them. One slot per category,
+    // so a group moves as a unit.
     var position = 0f
-    renderEntries.forEach { entry ->
-        val occupancy = animationEngine.slotOccupancy(entry.id)
-        val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-        val selectionAlpha =
-            (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
-        val targetHeight = (animatedValue / maxBarValue) * chartHeight
 
-        val ltrXOffset = barSlotOffset(position, yAxisWidthPx, barWidth, barSpacing)
-        position += occupancy
-        val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
-        val yOffset = size.height - bottomSpacePx - targetHeight
+    forEachBarCategory(renderEntries, layout, animationEngine) {
+            first, end, members, categoryOccupancy ->
 
-        if (targetHeight > 0f) {
-            val corner = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
-            barPath.rewind()
-            barPath.addRoundRect(
-                RoundRect(
+        val ltrSlotX = barSlotOffset(position, yAxisWidthPx, slotWidth, barSpacing)
+        position += categoryOccupancy
+
+        val sharesSlot = end - first > 1
+        val barWidth =
+            if (stacked) slotWidth
+            else groupedBarThickness(slotWidth, members, style.groupSpacingFactor)
+        val innerGap =
+            if (stacked) 0f
+            else groupedBarGap(slotWidth, members, style.groupSpacingFactor)
+
+        var animatedStackBase = 0f
+        var categoryAlpha = 0f
+        // How much of the group precedes this bar, counting a departing one
+        // by what it still holds, so the survivors slide as it shrinks.
+        var memberPosition = 0f
+
+        for (i in first until end) {
+            val entry = renderEntries[i]
+            val occupancy = animationEngine.slotOccupancy(entry.id)
+            val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
+            val entryAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+            if (entryAlpha > categoryAlpha) categoryAlpha = entryAlpha
+            val selectionAlpha = entryAlpha * occupancy
+            val targetHeight = (animatedValue / maxBarValue) * chartHeight
+
+            val ltrXOffset =
+                if (stacked) ltrSlotX
+                else ltrSlotX + groupedBarOffset(memberPosition, barWidth, innerGap)
+            val xOffset = mirrorForRtl(ltrXOffset, size.width, barWidth, isRtl)
+
+            val stackBase = if (stacked) animatedStackBase else 0f
+            val yOffset = baseline - stackBase - targetHeight
+
+            if (entry.id == selectedEntry?.id) {
+                val fullHeight = (entry.y / maxBarValue) * chartHeight
+                selectionBounds.set(
                     left = xOffset,
-                    top = yOffset,
-                    right = xOffset + barWidth,
-                    bottom = yOffset + targetHeight,
-                    topLeftCornerRadius = corner,
-                    topRightCornerRadius = corner,
-                    bottomLeftCornerRadius = CornerRadius.Zero,
-                    bottomRightCornerRadius = CornerRadius.Zero
-                )
-            )
-            val stops = colorStopArrays[entry.id]
-            val brush = if (stops != null) {
-                Brush.verticalGradient(*stops, startY = yOffset, endY = yOffset + targetHeight)
-            } else {
-                Brush.verticalGradient(
-                    colors = entry.gradientColors ?: dataSet.defaultGradientColors,
-                    startY = yOffset,
-                    endY = yOffset + targetHeight
+                    top = baseline - animatedStackBase - fullHeight,
+                    width = barWidth,
+                    height = fullHeight
                 )
             }
-            drawPath(path = barPath, brush = brush, alpha = selectionAlpha)
-        }
+            if (stacked) animatedStackBase += targetHeight
+            memberPosition += occupancy
 
-        // Floating values fade in with the bar and yield to the selection tooltip.
-        if (style.showFloatingValues && animatedValue > 1f && selectedEntry == null) {
-            val valueInt = animatedValue.toInt()
-            val valueLayout = valueTextCache.getOrPut(valueInt) {
-                textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
+            if (targetHeight > 0f) {
+                // Rounding every segment would leave gaps where they meet.
+                val roundsTop = !stacked || i == end - 1
+                val corner =
+                    if (roundsTop) CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
+                    else CornerRadius.Zero
+                barPath.rewind()
+                barPath.addRoundRect(
+                    RoundRect(
+                        left = xOffset,
+                        top = yOffset,
+                        right = xOffset + barWidth,
+                        bottom = yOffset + targetHeight,
+                        topLeftCornerRadius = corner,
+                        topRightCornerRadius = corner,
+                        bottomLeftCornerRadius = CornerRadius.Zero,
+                        bottomRightCornerRadius = CornerRadius.Zero
+                    )
+                )
+                val stops = colorStopArrays[entry.id]
+                val brush = if (stops != null) {
+                    Brush.verticalGradient(*stops, startY = yOffset, endY = yOffset + targetHeight)
+                } else {
+                    Brush.verticalGradient(
+                        colors = entry.gradientColors ?: dataSet.defaultGradientColors,
+                        startY = yOffset,
+                        endY = yOffset + targetHeight
+                    )
+                }
+                drawPath(path = barPath, brush = brush, alpha = selectionAlpha)
             }
-            drawText(
-                textLayoutResult = valueLayout,
-                topLeft = Offset(
-                    x = xOffset + (barWidth - valueLayout.size.width) / 2,
-                    y = yOffset - valueLayout.size.height - 6.dp.toPx()
-                ),
-                alpha = if (entry.y > 0f) (animatedValue / entry.y).coerceIn(0f, 1f) else 0f
-            )
+
+            if (style.showFloatingValues && animatedValue > 1f && selectedEntry == null) {
+                val valueInt = animatedValue.toInt()
+                val valueLayout = valueTextCache.getOrPut(valueInt) {
+                    textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
+                }
+                // A bar with the slot to itself is as wide as it ever was, so it
+                // keeps the label it drew before grouping existed however narrow
+                // the chart gets. Only a bar sharing its slot has to fit.
+                val fits = !sharesSlot ||
+                    (
+                        valueLayout.size.width <= barWidth &&
+                            (!stacked || valueLayout.size.height <= targetHeight)
+                        )
+                if (fits) {
+                    val valueY =
+                        if (stacked && sharesSlot) {
+                            yOffset + (targetHeight - valueLayout.size.height) / 2
+                        } else {
+                            yOffset - valueLayout.size.height - 6.dp.toPx()
+                        }
+                    drawText(
+                        textLayoutResult = valueLayout,
+                        topLeft = Offset(
+                            x = xOffset + (barWidth - valueLayout.size.width) / 2,
+                            y = valueY
+                        ),
+                        alpha = if (entry.y > 0f) (animatedValue / entry.y).coerceIn(0f, 1f) else 0f
+                    )
+                }
+            }
         }
 
-        xLabelLayouts[entry.id]?.let { layout ->
+        val labelEntry = renderEntries[first]
+        xLabelLayouts[labelEntry.id]?.let { labelLayout ->
+            val ltrLabelX = ltrSlotX + (slotWidth - labelLayout.size.width) / 2
             drawText(
-                textLayoutResult = layout,
+                textLayoutResult = labelLayout,
                 topLeft = Offset(
-                    x = xOffset + (barWidth - layout.size.width) / 2,
-                    y = size.height - bottomSpacePx + 12.dp.toPx()
+                    x = mirrorForRtl(ltrLabelX, size.width, labelLayout.size.width.toFloat(), isRtl),
+                    y = baseline + 12.dp.toPx()
                 ),
-                alpha = selectionAlpha
+                // The label belongs to the category, so any selected bar keeps it lit.
+                alpha = categoryAlpha * categoryOccupancy
             )
         }
     }
@@ -255,144 +354,174 @@ internal fun DrawScope.drawHorizontalBars(
     barPath: Path,
     selectedEntry: BarEntry?,
     maxBarValue: Float,
-    barThickness: Float,
+    slotThickness: Float,
     barGap: Float,
     chartLeft: Float,
     chartRight: Float,
     chartWidth: Float,
     topPadPx: Float,
     cornerRadiusPx: Float,
-    isRtl: Boolean
+    isRtl: Boolean,
+    layout: BarGroupLayout,
+    mode: BarGroupMode,
+    selectionBounds: SelectedBarBounds
 ) {
+    val stacked = mode == BarGroupMode.Stacked
+    selectionBounds.clear()
     var position = 0f
-    renderEntries.forEach { entry ->
-        val occupancy = animationEngine.slotOccupancy(entry.id)
-        val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
-        val selectionAlpha =
-            (animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f) * occupancy
-        val barLen = (animatedValue / maxBarValue) * chartWidth
 
-        val yOff = barSlotOffset(position, topPadPx, barThickness, barGap)
-        position += occupancy
-        val xOff = if (isRtl) chartRight - barLen else chartLeft
+    forEachBarCategory(renderEntries, layout, animationEngine) {
+            first, end, members, categoryOccupancy ->
 
-        if (barLen > 0f) {
-            // Only the growing end of the bar is rounded, so it stays flush
-            // with the zero line — which side that is flips in RTL.
-            val corner = CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
-            barPath.rewind()
-            barPath.addRoundRect(
-                RoundRect(
-                    left = xOff,
+        val ltrSlotY = barSlotOffset(position, topPadPx, slotThickness, barGap)
+        position += categoryOccupancy
+
+        val sharesSlot = end - first > 1
+        val barThickness =
+            if (stacked) slotThickness
+            else groupedBarThickness(slotThickness, members, style.groupSpacingFactor)
+        val innerGap =
+            if (stacked) 0f
+            else groupedBarGap(slotThickness, members, style.groupSpacingFactor)
+
+        var animatedStackBase = 0f
+        var categoryAlpha = 0f
+        // How much of the group precedes this bar, counting a departing one
+        // by what it still holds, so the survivors slide as it shrinks.
+        var memberPosition = 0f
+
+        for (i in first until end) {
+            val entry = renderEntries[i]
+            val occupancy = animationEngine.slotOccupancy(entry.id)
+            val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
+            val entryAlpha = animationEngine.selectionAlphaAnimatables[entry.id]?.value ?: 1f
+            if (entryAlpha > categoryAlpha) categoryAlpha = entryAlpha
+            val selectionAlpha = entryAlpha * occupancy
+            val barLen = (animatedValue / maxBarValue) * chartWidth
+
+            val yOff =
+                if (stacked) ltrSlotY
+                else ltrSlotY + groupedBarOffset(memberPosition, barThickness, innerGap)
+            val base = if (stacked) animatedStackBase else 0f
+            val xOff = if (isRtl) chartRight - base - barLen else chartLeft + base
+
+            if (entry.id == selectedEntry?.id) {
+                val fullLen = (entry.y / maxBarValue) * chartWidth
+                selectionBounds.set(
+                    left = if (isRtl) chartRight - animatedStackBase - fullLen
+                    else chartLeft + animatedStackBase,
                     top = yOff,
-                    right = xOff + barLen,
-                    bottom = yOff + barThickness,
-                    topLeftCornerRadius = if (isRtl) corner else CornerRadius.Zero,
-                    topRightCornerRadius = if (isRtl) CornerRadius.Zero else corner,
-                    bottomLeftCornerRadius = if (isRtl) corner else CornerRadius.Zero,
-                    bottomRightCornerRadius = if (isRtl) CornerRadius.Zero else corner
-                )
-            )
-            val stops = colorStopArrays[entry.id]
-            val brushStart = if (isRtl) xOff + barLen else xOff
-            val brushEnd = if (isRtl) xOff else xOff + barLen
-            val brush = if (stops != null) {
-                Brush.horizontalGradient(*stops, startX = brushStart, endX = brushEnd)
-            } else {
-                Brush.horizontalGradient(
-                    colors = entry.gradientColors ?: dataSet.defaultGradientColors,
-                    startX = brushStart,
-                    endX = brushEnd
+                    width = fullLen,
+                    height = barThickness
                 )
             }
-            drawPath(path = barPath, brush = brush, alpha = selectionAlpha)
+            if (stacked) animatedStackBase += barLen
+            memberPosition += occupancy
+
+            if (barLen > 0f) {
+                // Only the growing end is rounded, and which side that is flips in RTL.
+                val roundsEnd = !stacked || i == end - 1
+                val corner =
+                    if (roundsEnd) CornerRadius(x = cornerRadiusPx, y = cornerRadiusPx)
+                    else CornerRadius.Zero
+                barPath.rewind()
+                barPath.addRoundRect(
+                    RoundRect(
+                        left = xOff,
+                        top = yOff,
+                        right = xOff + barLen,
+                        bottom = yOff + barThickness,
+                        topLeftCornerRadius = if (isRtl) corner else CornerRadius.Zero,
+                        topRightCornerRadius = if (isRtl) CornerRadius.Zero else corner,
+                        bottomLeftCornerRadius = if (isRtl) corner else CornerRadius.Zero,
+                        bottomRightCornerRadius = if (isRtl) CornerRadius.Zero else corner
+                    )
+                )
+                val stops = colorStopArrays[entry.id]
+                val brushStart = if (isRtl) xOff + barLen else xOff
+                val brushEnd = if (isRtl) xOff else xOff + barLen
+                val brush = if (stops != null) {
+                    Brush.horizontalGradient(*stops, startX = brushStart, endX = brushEnd)
+                } else {
+                    Brush.horizontalGradient(
+                        colors = entry.gradientColors ?: dataSet.defaultGradientColors,
+                        startX = brushStart,
+                        endX = brushEnd
+                    )
+                }
+                drawPath(path = barPath, brush = brush, alpha = selectionAlpha)
+            }
+
+            if (style.showFloatingValues && animatedValue > 1f && selectedEntry == null) {
+                val valueInt = animatedValue.toInt()
+                val valueLayout = valueTextCache.getOrPut(valueInt) {
+                    textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
+                }
+                val fits = !sharesSlot ||
+                    (
+                        valueLayout.size.height <= barThickness &&
+                            (!stacked || valueLayout.size.width <= barLen)
+                        )
+                if (fits) {
+                    val valueX = when {
+                        stacked && sharesSlot -> xOff + (barLen - valueLayout.size.width) / 2
+                        isRtl -> xOff - valueLayout.size.width - 6.dp.toPx()
+                        else -> xOff + barLen + 6.dp.toPx()
+                    }
+                    drawText(
+                        textLayoutResult = valueLayout,
+                        topLeft = Offset(
+                            x = valueX,
+                            y = yOff + (barThickness - valueLayout.size.height) / 2
+                        ),
+                        alpha = if (entry.y > 0f) {
+                            (animatedValue / entry.y).coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        }
+                    )
+                }
+            }
         }
 
-        xLabelLayouts[entry.id]?.let { layout ->
+        val labelEntry = renderEntries[first]
+        xLabelLayouts[labelEntry.id]?.let { labelLayout ->
             drawText(
-                textLayoutResult = layout,
+                textLayoutResult = labelLayout,
                 topLeft = Offset(
                     x = if (isRtl) {
                         chartRight + 8.dp.toPx()
                     } else {
-                        chartLeft - layout.size.width - 8.dp.toPx()
+                        chartLeft - labelLayout.size.width - 8.dp.toPx()
                     },
-                    y = yOff + (barThickness - layout.size.height) / 2
+                    y = ltrSlotY + (slotThickness - labelLayout.size.height) / 2
                 ),
-                alpha = selectionAlpha
-            )
-        }
-
-        if (style.showFloatingValues && animatedValue > 1f && selectedEntry == null) {
-            val valueInt = animatedValue.toInt()
-            val valueLayout = valueTextCache.getOrPut(valueInt) {
-                textMeasurer.measure(text = valueInt.toString(), style = centeredValueTextStyle)
-            }
-            drawText(
-                textLayoutResult = valueLayout,
-                topLeft = Offset(
-                    x = if (isRtl) {
-                        xOff - valueLayout.size.width - 6.dp.toPx()
-                    } else {
-                        xOff + barLen + 6.dp.toPx()
-                    },
-                    y = yOff + (barThickness - valueLayout.size.height) / 2
-                ),
-                alpha = if (entry.y > 0f) (animatedValue / entry.y).coerceIn(0f, 1f) else 0f
+                // The label belongs to the category, so any selected bar keeps it lit.
+                alpha = categoryAlpha * categoryOccupancy
             )
         }
     }
 }
 
-/**
- * Anchored to the bar's target geometry rather than its animated one, and held
- * back until the bar is nearly grown so the tooltip doesn't race ahead of it.
- */
+/** Held back until the bar is nearly grown, so the tooltip doesn't race ahead of it. */
 internal fun DrawScope.drawBarSelection(
     entry: BarEntry,
     orientation: BarOrientation,
     selectionRenderer: BarChartSelectionRenderer,
     animationEngine: ChartAnimationEngine,
-    entryIndexMap: Map<String, Int>,
     textMeasurer: TextMeasurer,
     selectionCache: MutableMap<Int, TextLayoutResult>,
-    maxBarValue: Float,
-    barExtent: Float,
-    barGap: Float,
-    chartExtent: Float,
-    leadingInset: Float,
-    crossAxisOffset: Float,
-    chartRight: Float,
-    isRtl: Boolean
+    bounds: SelectedBarBounds
 ) {
+    if (!bounds.found) return
     val animatedValue = animationEngine.heightAnimatables[entry.id]?.value ?: 0f
     if (animatedValue <= entry.y * 0.9f) return
-    val index = entryIndexMap[entry.id] ?: return
-
-    val targetLength = (entry.y / maxBarValue) * chartExtent
-    val slot = barSlotOffset(index, leadingInset, barExtent, barGap)
-
-    val topLeft: Offset
-    val barSize: Size
-    if (orientation == BarOrientation.Horizontal) {
-        topLeft = Offset(
-            x = if (isRtl) chartRight - targetLength else crossAxisOffset,
-            y = slot
-        )
-        barSize = Size(width = targetLength, height = barExtent)
-    } else {
-        topLeft = Offset(
-            x = mirrorForRtl(slot, size.width, barExtent, isRtl),
-            y = crossAxisOffset - targetLength
-        )
-        barSize = Size(width = barExtent, height = targetLength)
-    }
 
     with(selectionRenderer) {
         drawSelection(
             entry = entry,
-            barTopLeft = topLeft,
-            barSize = barSize,
+            barTopLeft = Offset(x = bounds.left, y = bounds.top),
+            barSize = Size(width = bounds.width, height = bounds.height),
             orientation = orientation,
             textMeasurer = textMeasurer,
             tooltipCache = selectionCache
