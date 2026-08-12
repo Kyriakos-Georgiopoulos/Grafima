@@ -47,6 +47,8 @@ class LineCrosshairAlignmentUiTest {
 
     private val markerColor = Color.Green
 
+    // The marker sits at y=4, well clear of the curve's 10..15, so its dot's row
+    // says which point was read and not merely that something was drawn.
     private val curve = LineSeries(
         id = "curve",
         label = "Curve",
@@ -58,7 +60,7 @@ class LineCrosshairAlignmentUiTest {
         id = "marker",
         label = "You are here",
         color = markerColor,
-        points = listOf(LineDataPoint(x = 3f, y = 13f, label = "P3"))
+        points = listOf(LineDataPoint(x = 3f, y = 4f, label = "P3"))
     )
 
     private val dataSet = LineDataSet(
@@ -92,9 +94,16 @@ class LineCrosshairAlignmentUiTest {
         }
         waitForIdle()
 
+        val atOwnX = onChartNode().captureToImage()
         assertTrue(
-            onChartNode().captureToImage().countColor(markerColor) > 0,
+            atOwnX.countColor(markerColor) > 0,
             "the marker got no crosshair dot at the x it does cover"
+        )
+        // y=4 on a 10..15 curve is the lower half of the plot; reading the marker at
+        // the anchor's y would put its dot up among the curve's own points.
+        assertTrue(
+            atOwnX.meanRow(markerColor) > atOwnX.height / 2,
+            "the marker's dot was drawn at the anchor series' y, not its own"
         )
 
         // Index 0 is x=0, and the marker's point is at list position 0 too, so
@@ -158,6 +167,21 @@ class LineCrosshairAlignmentUiTest {
             onChartNode().stateDescription().contains("Curve at P4: 14"),
             "the anchor lost its own selection: ${onChartNode().stateDescription()}"
         )
+    }
+
+    /** Average row of [color], which is a dot's centre when only that dot uses it. */
+    private fun ImageBitmap.meanRow(color: Color): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val target = color.toArgb()
+        var sum = 0L
+        var count = 0
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                if (pixels[y * width + x] == target) { sum += y; count++ }
+            }
+        }
+        return if (count == 0) -1 else (sum / count).toInt()
     }
 
     private fun ImageBitmap.countColor(color: Color): Int {

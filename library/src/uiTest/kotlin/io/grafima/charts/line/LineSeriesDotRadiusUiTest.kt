@@ -97,9 +97,13 @@ class LineSeriesDotRadiusUiTest {
         val reference = image.widestRow(referenceColor)
         val marker = image.widestRow(markerColor)
         assertTrue(reference > 0, "the reference dot never painted")
-        // Read as a ratio: antialiasing shaves the same edge off both diameters.
-        val ratio = marker.toFloat() / reference
-        assertTrue(abs(ratio - 3f) < 0.3f, "marker was ${ratio}x the reference, expected 3x")
+        // The difference, not the ratio: antialiasing takes a constant bite out of
+        // each diameter, which cancels in a subtraction and skews a division.
+        val grown = with(density) { (styleRadius * 3f - styleRadius).toPx() } * 2f
+        assertTrue(
+            abs((marker - reference) - grown) <= 2f,
+            "marker grew ${marker - reference}px over the reference, expected ${grown}px"
+        )
     }
 
     @Test
@@ -271,6 +275,7 @@ class LineSeriesDotRadiusUiTest {
         // Offsetting by the style's 4dp while drawing a 16dp dot prints the label
         // over the top half of that dot.
         val image = onChartNode().captureToImage()
+        assertTrue(image.widestRow(markerColor) > 0, "the dot under test never painted")
         val labelBottom = image.lastRowMatching { it.isReddish() }
         val dotTop = image.firstRowMatching { it == markerColor.toArgb() }
         assertTrue(labelBottom in 0 until dotTop, "label ended at row $labelBottom, dot began at $dotTop")
