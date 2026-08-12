@@ -28,6 +28,11 @@ behaviour do not.
   on the pie and radar charts, and `0.dp` drops that series' dots while the rest of the
   chart keeps theirs. `showDots` still decides whether any dot is drawn at all.
 
+- `selectActionLabel` and `clearSelectionLabel` on `LineA11yConfig`, `PieA11yConfig`
+  and `RadarA11yConfig`, matching the pair the bar chart gained above. These were the
+  last chart strings a caller could not translate, so a localised app no longer reads
+  half its charts in the user's language and half in English.
+
 ### Changed
 
 - The default `A11yConfig.selectedStateDescription` names the series when a bar has
@@ -46,8 +51,10 @@ behaviour do not.
   widest resolved dot radius, so a point on an axis bound is neither clipped by the
   composable's edge nor drawn across the labels; a large `dotRadius` costs the plot
   that much room on every side.
-- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig` and
-  `LineSeries` each gained a defaulted constructor parameter. Apart from the builder rename above
+- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig`,
+  `LineSeries`, `LineA11yConfig`, `PieA11yConfig` and `RadarA11yConfig` each gained
+  defaulted constructor parameters, appended so existing positional calls and
+  destructuring keep their meaning. Apart from the builder rename above
   your code compiles unchanged, but Kotlin regenerates a data class's constructor and
   `copy` for the new arity rather than keeping the old one — the removed signatures
   are in the api diff.

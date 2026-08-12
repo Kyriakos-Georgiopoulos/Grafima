@@ -556,5 +556,11 @@ data class LineA11yConfig(
             1 -> "Reference line: ${named.first()}."
             else -> "Reference lines: ${named.joinToString(", ")}."
         }
-    }
+    },
+
+    /** Names each point's action in the actions menu. */
+    val selectActionLabel: (String) -> String = { spoken -> "Select $spoken" },
+
+    /** Names the action that clears the selection. */
+    val clearSelectionLabel: String = "Clear selection"
 )

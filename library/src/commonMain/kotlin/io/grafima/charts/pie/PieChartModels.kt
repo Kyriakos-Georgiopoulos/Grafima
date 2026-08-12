@@ -200,5 +200,11 @@ data class PieA11yConfig(
     },
     val sliceCountDescriptionBuilder: (Int) -> String = { count ->
         "$count slices. Use the actions menu to select one."
-    }
+    },
+
+    /** Names each slice's action in the actions menu. */
+    val selectActionLabel: (String) -> String = { spoken -> "Select $spoken" },
+
+    /** Names the action that clears the selection. */
+    val clearSelectionLabel: String = "Clear selection"
 )
