@@ -27,8 +27,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,13 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,8 +53,10 @@ import io.grafima.charts.bar.AnimationConfig
 import io.grafima.charts.bar.BarChart
 import io.grafima.charts.bar.BarDataSet
 import io.grafima.charts.bar.BarEntry
+import io.grafima.charts.bar.BarGroupMode
 import io.grafima.charts.bar.BarOrientation
 import io.grafima.charts.bar.TooltipSelectionRenderer
+import io.grafima.charts.bar.spokenSeriesLabel
 import io.grafima.sample.theme.LocalDemoColors
 import io.grafima.sample.theme.ProvideDemoLayout
 import io.grafima.sample.theme.themedBarAxis
@@ -74,31 +71,63 @@ private val AmethystGradient = listOf(Color(0xFF8A2387), Color(0xFFE94057), Colo
 private val BarGradients =
     listOf(SunsetGradient, OceanGradient, AmethystGradient, EmeraldGradient)
 
-private const val MinBars = 2
-private const val MaxBars = 12
+private const val MinCategories = 2
+private const val MaxCategories = 12
+
+/** Positions along the axis, which is what the add and remove buttons step. */
+private val BarDataSet.categoryLabels: List<String>
+    get() = entries.map { it.xLabel }.distinct()
 
 private fun BarDataSet.randomized(): BarDataSet = copy(
     entries = entries.map { entry ->
+        // A series is told apart by its colour, so only a loose bar takes a new one.
+        val standalone = entry.seriesId == null
         entry.copy(
             y = Random.nextInt(20, 110).toFloat(),
-            gradientColors = BarGradients.random()
+            gradientColors = if (standalone) BarGradients.random() else entry.gradientColors
         )
     }
 )
 
-private fun BarDataSet.plusEntry(): BarDataSet {
-    val label = MonthLabels.getOrElse(entries.size) { "M${entries.size + 1}" }
-    return copy(
-        entries = entries + BarEntry(
-            id = label.uppercase(),
-            xLabel = label,
-            y = Random.nextInt(20, 110).toFloat(),
-            gradientColors = BarGradients.random()
+/**
+ * Adds a whole position on the axis: one bar per series the dataset already shows,
+ * so a grouped chart gains a group and a plain one gains a bar. Appending a single
+ * series-less bar to a grouped chart would drop a lone stray next to the groups.
+ */
+private fun BarDataSet.plusCategory(): BarDataSet {
+    val template = entries.filter { it.seriesId != null }.distinctBy { it.seriesId }
+    if (template.isEmpty()) {
+        val label = MonthLabels.getOrElse(categoryLabels.size) { "M${categoryLabels.size + 1}" }
+        return copy(
+            entries = entries + BarEntry(
+                id = label.uppercase(),
+                xLabel = label,
+                y = Random.nextInt(20, 110).toFloat(),
+                gradientColors = BarGradients.random()
+            )
         )
+    }
+
+    val label = "Q${categoryLabels.size + 1}"
+    return copy(
+        entries = entries + template.map { series ->
+            BarEntry(
+                id = "$label-${series.seriesId}",
+                xLabel = label,
+                y = Random.nextInt(20, 110).toFloat(),
+                gradientColors = series.gradientColors,
+                seriesId = series.seriesId,
+                seriesLabel = series.seriesLabel
+            )
+        }
     )
 }
 
-private fun BarDataSet.minusEntry(): BarDataSet = copy(entries = entries.dropLast(1))
+/** Removes the last position on the axis, every series of it. */
+private fun BarDataSet.minusCategory(): BarDataSet {
+    val last = categoryLabels.lastOrNull() ?: return this
+    return copy(entries = entries.filterNot { it.xLabel == last })
+}
 
 private fun initialBarDataSet() = BarDataSet(
     entries = listOf(
@@ -111,10 +140,60 @@ private fun initialBarDataSet() = BarDataSet(
     contentDescription = "Q1 and Q2 Revenue Trends"
 )
 
+private val RevenueGradient = OceanGradient
+private val CostGradient = SunsetGradient
+
+private fun groupedBarDataSet(mode: BarGroupMode) = BarDataSet(
+    entries = listOf("Q1" to 45f, "Q2" to 80f, "Q3" to 55f, "Q4" to 95f)
+        .flatMap { (quarter, revenue) ->
+            listOf(
+                BarEntry(
+                    id = "$quarter-rev",
+                    xLabel = quarter,
+                    y = revenue,
+                    gradientColors = RevenueGradient,
+                    seriesId = "rev",
+                    seriesLabel = "Revenue"
+                ),
+                BarEntry(
+                    id = "$quarter-cost",
+                    xLabel = quarter,
+                    y = revenue * 0.62f,
+                    gradientColors = CostGradient,
+                    seriesId = "cost",
+                    seriesLabel = "Cost"
+                )
+            )
+        },
+    contentDescription = "Revenue against cost by quarter",
+    mode = mode
+)
+
+internal enum class DemoGrouping(val label: String) {
+    Single("Single"),
+    Grouped("Grouped"),
+    Stacked("Stacked");
+
+    fun dataSet(): BarDataSet = when (this) {
+        Single -> initialBarDataSet()
+        Grouped -> groupedBarDataSet(BarGroupMode.Grouped)
+        Stacked -> groupedBarDataSet(BarGroupMode.Stacked)
+    }
+}
+
 internal class BarChartViewModel : ViewModel() {
     var orientation by mutableStateOf(BarOrientation.Horizontal)
-    var dataSet by mutableStateOf(initialBarDataSet())
+    var grouping by mutableStateOf(DemoGrouping.Grouped)
+        private set
+    var dataSet by mutableStateOf(DemoGrouping.Grouped.dataSet())
     var selectedBarId by mutableStateOf<String?>(null)
+
+    fun selectGrouping(next: DemoGrouping) {
+        if (next == grouping) return
+        grouping = next
+        dataSet = next.dataSet()
+        selectedBarId = null
+    }
 }
 
 @Composable
@@ -158,75 +237,55 @@ internal fun BarChartDemoScreen(
     val a11yConfig = remember {
         A11yConfig(
             chartDescriptionBuilder = { "Financial Revenue Chart for ${it.contentDescription}" },
-            // Spoken alone on a selection change, so it names the value too.
+            // Without the series, both bars of a group read the same.
             selectedStateDescription = { entry ->
                 entry?.let {
-                    "${spokenMonth(it.xLabel)}: revenue $${it.y.toInt()} thousand dollars."
-                } ?: "No bar selected. Use the actions menu to choose a month."
+                    val measure = it.spokenSeriesLabel ?: "revenue"
+                    "${spokenMonth(it.xLabel)}, $measure: $${it.y.toInt()} thousand dollars."
+                } ?: "No bar selected. Use the actions menu to choose a bar."
             }
         )
     }
 
     DemoScreenScaffold(
         header = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
-                    .padding(4.dp)
-                    .selectableGroup(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                listOf(
-                    BarOrientation.Vertical to "Vertical",
-                    BarOrientation.Horizontal to "Horizontal"
-                ).forEach { (orient, label) ->
-                    val isSelected = orientation == orient
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                if (isSelected) colors.onSurface else Color.Transparent
-                            )
-                            .selectable(
-                                selected = isSelected,
-                                role = Role.Tab,
-                                onClick = {
-                                    viewModel.selectedBarId = null
-                                    viewModel.orientation = orient
-                                    viewModel.dataSet = dataSet.randomized()
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            label,
-                            fontSize = 14.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) colors.background else colors.onSurfaceMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                DemoSegmentedControl(
+                    groupName = "Orientation",
+                    options = listOf(
+                        BarOrientation.Vertical to "Vertical",
+                        BarOrientation.Horizontal to "Horizontal"
+                    ),
+                    selected = orientation,
+                    onSelect = { orient ->
+                        viewModel.selectedBarId = null
+                        viewModel.orientation = orient
+                        viewModel.dataSet = dataSet.randomized()
                     }
-                }
+                )
+                DemoSegmentedControl(
+                    groupName = "Grouping",
+                    options = DemoGrouping.entries.map { it to it.label },
+                    selected = viewModel.grouping,
+                    onSelect = viewModel::selectGrouping
+                )
             }
         },
         controls = {
             DemoControls { buttonModifier ->
+                val unit = if (viewModel.grouping == DemoGrouping.Single) "Bar" else "Group"
                 DemoAddButton(
-                    text = "Add Bar",
-                    enabled = dataSet.entries.size < MaxBars,
-                    onClick = { viewModel.dataSet = dataSet.plusEntry() },
+                    text = "Add $unit",
+                    enabled = dataSet.categoryLabels.size < MaxCategories,
+                    onClick = { viewModel.dataSet = dataSet.plusCategory() },
                     modifier = buttonModifier
                 )
                 DemoRemoveButton(
-                    text = "Remove Bar",
-                    enabled = dataSet.entries.size > MinBars,
+                    text = "Remove $unit",
+                    enabled = dataSet.categoryLabels.size > MinCategories,
                     onClick = {
                         viewModel.selectedBarId = null
-                        viewModel.dataSet = dataSet.minusEntry()
+                        viewModel.dataSet = dataSet.minusCategory()
                     },
                     modifier = buttonModifier
                 )
@@ -269,8 +328,11 @@ internal fun BarChartDemoScreen(
                             color = colors.onSurface
                         )
                         Text(
-                            text = selectedBarData?.let { "Viewing metrics for ${it.xLabel}" }
-                                ?: "Tap a bar to inspect metrics.",
+                            text = selectedBarData?.let { entry ->
+                                entry.spokenSeriesLabel
+                                    ?.let { "Viewing $it for ${entry.xLabel}" }
+                                    ?: "Viewing metrics for ${entry.xLabel}"
+                            } ?: "Tap a bar to inspect metrics.",
                             fontSize = 13.sp,
                             color = colors.onSurfaceMuted,
                             modifier = Modifier.padding(top = 4.dp)

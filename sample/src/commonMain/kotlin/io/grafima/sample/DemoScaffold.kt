@@ -16,6 +16,7 @@
 
 package io.grafima.sample
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -37,7 +40,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -109,6 +116,59 @@ fun DemoScreenScaffold(
             Spacer(Modifier.height(20.dp))
             // Matches the wide column, so multiple button groups are spaced either way.
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
+        }
+    }
+}
+
+/**
+ * A row of mutually exclusive options.
+ *
+ * [groupName] prefixes each option for a screen reader — "Grouping: Stacked" —
+ * since several of these share a screen and the labels alone name no owner.
+ */
+@Composable
+fun <T> DemoSegmentedControl(
+    groupName: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalDemoColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colors.surfaceMuted, RoundedCornerShape(12.dp))
+            .padding(4.dp)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        options.forEach { (value, label) ->
+            val isSelected = value == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 2.dp)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isSelected) colors.onSurface else Color.Transparent)
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.Tab,
+                        onClick = { onSelect(value) }
+                    )
+                    .semantics { contentDescription = "$groupName: $label" },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) colors.background else colors.onSurfaceMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

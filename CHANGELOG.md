@@ -11,6 +11,57 @@ behaviour do not.
 
 ## [Unreleased]
 
+### Added
+
+- Grouped and stacked bar charts. Give `BarEntry` a `seriesId` and neighbouring
+  entries that share an `xLabel` become one category, drawn side by side or piled
+  into a single bar according to `BarDataSet.mode`. Both orientations and RTL are
+  handled, each bar keeps its own selection and accessibility action, and the
+  y-axis clears the tallest stack rather than the tallest segment.
+- `BarEntry.seriesId` and `BarEntry.seriesLabel`, `BarGroupMode`, `BarDataSet.mode`,
+  `ChartStyle.groupSpacingFactor`, `BarChartSummary`, `A11yConfig.selectActionLabel`,
+  `A11yConfig.clearSelectionLabel` and the `BarEntry.spokenSeriesLabel` extension. Every one is defaulted, so a
+  dataset that sets no series behaves exactly as it did in 1.1.1.
+
+### Changed
+
+- The default `A11yConfig.selectedStateDescription` names the series when a bar has
+  one, so the two bars of a group are told apart. Its signature is unchanged and a
+  bar without a series is described exactly as before.
+- **Source breaking.** `A11yConfig.barCountDescriptionBuilder: (Int) -> String` is
+  removed and replaced by `countDescriptionBuilder: (BarChartSummary) -> String`, so
+  one override covers a dataset whether or not it carries series. A count alone
+  cannot describe grouping, and a second builder beside it would have left a chart
+  that localised only the first reverting to English the day it gained a series. The
+  default wording is unchanged for an ungrouped chart; ragged categories say
+  "3 bars in 2 groups" rather than claiming a group size they do not share.
+- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle` and `A11yConfig`
+  each gained a defaulted constructor parameter. Apart from the builder rename above
+  your code compiles unchanged, but Kotlin regenerates a data class's constructor and
+  `copy` for the new arity rather than keeping the old one — the removed signatures
+  are in the api diff.
+  Anything compiled against 1.1.1 and run against this release without recompiling
+  fails with `NoSuchMethodError`. Recompile dependents; publish no mixed set.
+
+### Fixed
+
+- Bar chart hit testing follows the bars while one is animating out. It measured
+  against the dataset while the draw pass measured against what was on screen, so
+  every tap landed on the wrong bar for the length of a removal.
+- A removed bar's exit animation is no longer restarted from full duration by an
+  unrelated data change, so a chart updating faster than the animation still lets
+  its departing bars finish and be released.
+- A bar removed while another is selected fades with the rest rather than staying
+  at full opacity while it animates out.
+- Bar chart touch handling followed `ChartStyle.bottomLabelSpace` and `topValueSpace`.
+  Both were read when hit testing but neither restarted the gesture detector, so
+  changing either left taps aimed at where the bars used to be.
+- The horizontal bar chart's selection tooltip is drawn on the end the bar grows
+  towards. In RTL it was placed past the bar's other end, landing on the axis over
+  the category labels. `TooltipSelectionRenderer` reads the layout direction from
+  the draw scope, so a custom `BarChartSelectionRenderer` can do the same without
+  a signature change.
+
 ## [1.1.1] - 2026-08-10
 
 ### Fixed
