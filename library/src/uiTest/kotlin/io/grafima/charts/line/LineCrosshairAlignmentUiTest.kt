@@ -31,6 +31,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.assumePixelCapture
 import io.grafima.charts.onChartNode
+import io.grafima.charts.performCustomAction
 import io.grafima.charts.stateDescription
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -141,6 +142,41 @@ class LineCrosshairAlignmentUiTest {
         assertTrue(
             onChartNode().stateDescription().contains("You are here"),
             "the marker went unannounced at its own x"
+        )
+    }
+
+    @Test
+    fun an_x_only_a_later_series_reaches_is_still_selectable() = runComposeUiTest {
+        // The marker sits at x=9, past the curve's 0..5, so anchoring selection on
+        // the first series alone left it with no action and no way to be announced.
+        val beyond = LineDataSet(
+            series = listOf(
+                curve,
+                marker.copy(points = listOf(LineDataPoint(x = 9f, y = 4f, label = "P9")))
+            ),
+            contentDescription = "A marker past the curve"
+        )
+        var selected by mutableStateOf<Int?>(null)
+        setContent {
+            LineChart(
+                dataSet = beyond,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                selectedPointIndex = selected,
+                onPointSelected = { selected = it }
+            )
+        }
+        waitForIdle()
+
+        onChartNode().performCustomAction("Select P9")
+        waitForIdle()
+        assertTrue(
+            onChartNode().stateDescription().contains("You are here"),
+            "selecting the marker's own x announced ${onChartNode().stateDescription()}"
+        )
+        assertFalse(
+            onChartNode().stateDescription().contains("Curve at"),
+            "the curve has no reading at x=9 but was announced anyway"
         )
     }
 

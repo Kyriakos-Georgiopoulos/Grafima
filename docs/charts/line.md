@@ -95,8 +95,8 @@ a point on the curve rather than a line of its own.
 
 Series need not cover the same x positions. The crosshair reads each series at the x
 it stopped on, so the marker above is named in the tooltip at its own x and nowhere
-else. The first series anchors the selection, so make it the one that runs the whole
-axis.
+else, and an x only the marker reaches is still selectable by touch and by TalkBack.
+`selectedPointIndex` counts the first series' positions first, then those.
 
 A series that leaves `dotRadius` at `Dp.Unspecified` takes the chart-wide value, the
 same way `outerRadius` works on the pie and radar charts. `0.dp` drops one series'

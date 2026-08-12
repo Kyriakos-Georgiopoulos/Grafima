@@ -56,6 +56,12 @@ behaviour do not.
   `LineA11yConfig.selectedPointDescriptionBuilder` follows the same rule, so a series
   with no point at the selected x is no longer announced; an override that indexes
   `points` by hand keeps its old behaviour and will disagree with what is drawn.
+- The line chart's `selectedPointIndex` now indexes the first series' x positions and
+  then any x only a later series reaches, appended. For a dataset whose series share
+  x positions — nearly all of them — this is the same index it always was. It changes
+  only for unaligned series, where those extra positions previously had no index at
+  all: touch could not reach them and TalkBack offered no action for them, so a
+  one-point marker beyond the first series' range was unselectable and unspoken.
 - **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig` and
   `LineSeries` each gained a defaulted constructor parameter. Apart from the builder rename above
   your code compiles unchanged, but Kotlin regenerates a data class's constructor and

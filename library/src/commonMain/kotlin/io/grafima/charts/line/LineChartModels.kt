@@ -123,8 +123,9 @@ val LineDataPoint.spokenLabel: String
  *   crosshair bisects them and finds nothing in a series that is neither. Series need
  *   not cover the same x positions: each is read at the x the crosshair stopped on,
  *   and one with no point there contributes no dot and no tooltip line rather than
- *   being read at the wrong x. The first series anchors the selection, so it should
- *   be the one that runs the whole axis.
+ *   being read at the wrong x. Selection steps through the first series' positions
+ *   in order, then any position only a later series reaches, so every drawn point is
+ *   selectable and announced.
  * @param color Primary color used for the line stroke, data dots, and the
  *   auto-generated area fill gradient. Ignored for stroke when
  *   [strokeGradientColors] has 2+ entries.
@@ -538,7 +539,7 @@ data class LineA11yConfig(
     },
     val selectedPointDescriptionBuilder: (Int, List<LineSeries>) -> String = { idx, series ->
         buildString {
-            val anchorX = series.firstOrNull()?.points?.getOrNull(idx)?.x
+            val anchorX = axisPositions(series).getOrNull(idx)
             if (anchorX != null) {
                 series.forEach { s ->
                     val at = s.points.indexAtX(anchorX)

@@ -80,19 +80,83 @@ internal fun nearestPointIndex(
     chartRight: Float,
     isRtl: Boolean,
     restrictToAxis: Boolean = true
+): Int = nearestIndexBy(
+    count = points.size,
+    xAt = { points[it].x },
+    touchX = touchX,
+    xMin = xMin,
+    xMax = xMax,
+    chartLeft = chartLeft,
+    chartRight = chartRight,
+    isRtl = isRtl,
+    restrictToAxis = restrictToAxis
+)
+
+/** [nearestPointIndex] over bare axis positions, which is what selection steps through. */
+internal fun nearestAxisIndex(
+    positions: List<Float>,
+    touchX: Float,
+    xMin: Float,
+    xMax: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean,
+    restrictToAxis: Boolean = true
+): Int = nearestIndexBy(
+    count = positions.size,
+    xAt = { positions[it] },
+    touchX = touchX,
+    xMin = xMin,
+    xMax = xMax,
+    chartLeft = chartLeft,
+    chartRight = chartRight,
+    isRtl = isRtl,
+    restrictToAxis = restrictToAxis
+)
+
+private inline fun nearestIndexBy(
+    count: Int,
+    xAt: (Int) -> Float,
+    touchX: Float,
+    xMin: Float,
+    xMax: Float,
+    chartLeft: Float,
+    chartRight: Float,
+    isRtl: Boolean,
+    restrictToAxis: Boolean
 ): Int {
     var nearest = -1
     var shortest = Float.MAX_VALUE
-    for (i in points.indices) {
-        if (restrictToAxis && !isWithinAxis(points[i].x, xMin, xMax)) continue
-        val distance =
-            abs(mapDataXToCanvas(points[i].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
+    for (i in 0 until count) {
+        val x = xAt(i)
+        if (restrictToAxis && !isWithinAxis(x, xMin, xMax)) continue
+        val distance = abs(mapDataXToCanvas(x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
         if (distance < shortest) {
             shortest = distance
             nearest = i
         }
     }
     return nearest
+}
+
+/**
+ * The x positions selection steps through: the first series' own, in its own order,
+ * then any position only a later series reaches, appended.
+ *
+ * Appended rather than merged so an index keeps the meaning it had when the first
+ * series was the only one consulted, and a point no other series covers becomes
+ * reachable instead of being unselectable and unannounced.
+ */
+internal fun axisPositions(series: List<LineSeries>): List<Float> {
+    val first = series.firstOrNull()?.points ?: return emptyList()
+    val positions = ArrayList<Float>(first.size)
+    first.forEach { positions.add(it.x) }
+    for (s in 1 until series.size) {
+        for (point in series[s].points) {
+            if (positions.none { sameAxisX(it, point.x) }) positions.add(point.x)
+        }
+    }
+    return positions
 }
 
 /** [Dp.Unspecified] defers to the chart-wide value, as it does on the other charts. */
@@ -132,7 +196,7 @@ internal fun List<LineDataPoint>.indexAtX(x: Float): Int {
  * allows a few ulps. Anything wider closes over real points: a tolerance
  * proportional to x is 4.7 hours of slack on an axis of epoch seconds.
  */
-private fun sameAxisX(a: Float, b: Float): Boolean {
+internal fun sameAxisX(a: Float, b: Float): Boolean {
     if (a == b) return true
     return abs(a - b) <= 4f * max(abs(a), abs(b)).ulp
 }
