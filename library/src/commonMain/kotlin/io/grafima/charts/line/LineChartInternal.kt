@@ -95,17 +95,27 @@ internal fun nearestPointIndex(
 
 /**
  * Index of the point standing at [x], or -1 when this series has none there.
- * Points are sorted by x, so this bisects.
+ *
+ * Points are sorted by x, so this bisects. Newest-first is the shape most feeds
+ * arrive in, so descending is read as readily as ascending.
  */
 internal fun List<LineDataPoint>.indexAtX(x: Float): Int {
+    if (isEmpty()) return -1
+    val ascending = first().x <= last().x
     var low = 0
     var high = size - 1
     while (low <= high) {
         val mid = (low + high) ushr 1
         val at = this[mid].x
         when {
-            sameAxisX(at, x) -> return mid
-            at < x -> low = mid + 1
+            // Back to the first of a repeated x, which is the one
+            // [nearestPointIndex] hands to onPointSelected.
+            sameAxisX(at, x) -> {
+                var first = mid
+                while (first > 0 && sameAxisX(this[first - 1].x, x)) first--
+                return first
+            }
+            (at < x) == ascending -> low = mid + 1
             else -> high = mid - 1
         }
     }

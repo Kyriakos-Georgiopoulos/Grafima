@@ -96,6 +96,23 @@ class IndexAtXTest {
     }
 
     @Test
+    fun a_repeated_x_resolves_to_the_first_of_them() {
+        // nearestPointIndex keeps the first on a tie, so a vertical step has to
+        // resolve the same way or the callback and the tooltip name different points.
+        assertEquals(1, points(0f, 1f, 1f, 1f, 2f, 3f).indexAtX(1f))
+        assertEquals(0, points(5f, 5f).indexAtX(5f))
+    }
+
+    @Test
+    fun a_newest_first_series_is_read_as_readily_as_an_oldest_first_one() {
+        val newestFirst = points(6f, 5f, 4f, 3f, 2f, 1f, 0f)
+        newestFirst.forEachIndexed { i, point ->
+            assertEquals(i, newestFirst.indexAtX(point.x), "x=${point.x}")
+        }
+        assertEquals(-1, newestFirst.indexAtX(7f))
+    }
+
+    @Test
     fun negative_positions_are_ordered_the_same_way() {
         val p = points(-10f, -2.5f, 0f, 2.5f)
         assertEquals(0, p.indexAtX(-10f))
