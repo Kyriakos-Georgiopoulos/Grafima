@@ -91,7 +91,7 @@ Behaviour shared by every chart is in [Concepts](docs/CONCEPTS.md).
 
 ## Requirements
 
-- Android minSdk 24
+- Android minSdk 21
 - iOS: `iosArm64` and `iosSimulatorArm64` (Apple silicon simulators; Compose
   Multiplatform publishes no `iosX64`)
 - Desktop: the `jvm` target, for Compose for Desktop hosts
