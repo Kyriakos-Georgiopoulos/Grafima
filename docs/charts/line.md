@@ -71,6 +71,32 @@ takes an `entryAlignment` for the edge the entries line up on.
 A screen reader reaches the legend as one item naming every series, rather than a
 stop each. `spacing` also sets half that gap between wrapped lines.
 
+## Dot size per series
+
+`LineChartStyle.showDots` decides whether dots are drawn; `LineChartStyle.dotRadius`
+sizes them for the whole chart. A series that sets its own `dotRadius` uses that
+instead, which is how a marker outweighs the curve it marks:
+
+```kotlin
+series = listOf(
+    LineSeries(id = "symptoms", label = "Typical", points = curve, color = Color.Gray),
+    LineSeries(
+        id = "you",
+        label = "You are here",
+        points = listOf(LineDataPoint(x = day, y = level)),
+        color = Color(0xFFF97316),
+        dotRadius = 7.dp
+    )
+)
+```
+
+A one-point series draws no stroke, so its dot is all there is: the marker reads as
+a point on the curve rather than a line of its own.
+
+`0.dp` drops one series' dots while the rest of the chart keeps theirs — a raw
+series shown as bare readings under a smoothed line, say. `showDots = false` still
+wins over both: a series radius sizes a dot, it does not ask for one.
+
 ## Dashed series
 
 A dash says a line is derived rather than measured — a moving average against the

@@ -137,6 +137,10 @@ val LineDataPoint.spokenLabel: String
  * @param dashPattern Dashes the stroke. Dashing marks a series as derived rather
  *   than measured, which is how a moving average is told apart from the readings
  *   it averages. Null draws solid. The area fill is never dashed.
+ * @param dotRadius Sizes this series' dots on their own, so a marker can outweigh
+ *   the curve it marks. Null takes [LineChartStyle.dotRadius]; `0.dp` leaves this
+ *   series without dots while the rest of the chart keeps theirs. Read only when
+ *   [LineChartStyle.showDots] is on.
  */
 @Immutable
 data class LineSeries(
@@ -148,7 +152,8 @@ data class LineSeries(
     val strokeWidth: Dp = 2.5.dp,
     val fillGradientColors: List<Color> = emptyList(),
     val strokeGradientColors: List<Color> = emptyList(),
-    val dashPattern: DashPattern? = null
+    val dashPattern: DashPattern? = null,
+    val dotRadius: Dp? = null
 )
 
 /** Which axis a [ReferenceLine] is fixed to. */
@@ -399,7 +404,8 @@ data class LineCrosshairConfig(
  * @param curveType Interpolation strategy. [LineCurveType.MonotoneCubic] is recommended
  *   for smooth, accurate curves.
  * @param showDots Render small dots at every data point (independent of crosshair).
- * @param dotRadius Radius of the always-visible data point dots.
+ * @param dotRadius Radius of the always-visible data point dots. A series that sets
+ *   [LineSeries.dotRadius] uses that instead.
  * @param minSize Minimum intrinsic chart size. Applied via [Modifier.defaultMinSize].
  * @param labelGap Gap in dp between axis labels and the chart drawing area.
  * @param valueLabels Prints each point's value beside it. Off by default.

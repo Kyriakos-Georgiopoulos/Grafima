@@ -643,9 +643,11 @@ fun LineChart(
         val rightSlack = if (rightCuts) 0f else noClip
         val topSlack = if (topCuts) 0f else noClip
         val bottomSlack = if (bottomCuts) 0f else noClip
-        val dotRadiusPx = style.dotRadius.toPx()
+
         // Only a drawn dot needs clearing; an unused radius must not push labels off.
-        val markRadiusPx = if (style.showDots) dotRadiusPx else 0f
+        fun markRadiusPx(s: LineSeries) =
+            if (style.showDots) (s.dotRadius ?: style.dotRadius).toPx() else 0f
+
         renderSeries.forEach { s ->
             val n = s.points.size
             if (n == 0) return@forEach
@@ -730,14 +732,15 @@ fun LineChart(
             }
 
             // Dots sit outside the clip so one on a bound keeps all of itself.
-            if (style.showDots) {
+            val seriesDotRadiusPx = markRadiusPx(s)
+            if (seriesDotRadiusPx > 0f) {
                 for (i in 0 until n) {
                     val p = s.points[i]
                     if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
                     if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
                     drawCircle(
                         color = s.color,
-                        radius = dotRadiusPx,
+                        radius = seriesDotRadiusPx,
                         center = Offset(x = xs[i], y = ys[i])
                     )
                 }
@@ -843,6 +846,7 @@ fun LineChart(
                     valueLabelStyle.color.isSpecified -> valueLabelStyle.color
                     else -> ValueLabelTextStyle.color
                 }
+                val labelOffset = markRadiusPx(s) + valueGap + s.strokeWidth.toPx() / 2f
                 val n = min(s.points.size, layouts.size)
                 // Walked left to right on screen rather than through the data, so
                 // the label kept out of a colliding pair is the leftmost one
@@ -863,7 +867,7 @@ fun LineChart(
                     val ly = valueLabelTop(
                         pointY = ys[i],
                         labelHeight = layout.size.height.toFloat(),
-                        offset = markRadiusPx + valueGap + s.strokeWidth.toPx() / 2f,
+                        offset = labelOffset,
                         chartTop = chartTop,
                         chartBottom = chartBottom,
                         // From the data: animated positions are all flat at rest, so

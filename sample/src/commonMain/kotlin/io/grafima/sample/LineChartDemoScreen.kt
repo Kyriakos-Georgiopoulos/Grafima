@@ -121,6 +121,8 @@ private fun LineDataSet.averageSeries(): LineSeries {
         color = Color(0xFF10B981),
         strokeWidth = 2.dp,
         dashPattern = DashPattern(dash = 10.dp, gap = 6.dp),
+        // Derived, so it has no readings to mark even when the rest show theirs.
+        dotRadius = 0.dp,
         points = reference.indices.map { i ->
             LineDataPoint(
                 x = reference[i].x,
@@ -164,6 +166,7 @@ private fun seededDataSet(): LineDataSet = LineDataSet(
             color = Color(0xFF6366F1),
             fillAlpha = 0.10f,
             strokeGradientColors = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
+            dotRadius = 6.dp,
             points = listOf(42f, 55f, 48f, 72f, 68f, 85f, 90f, 78f, 95f, 110f, 105f, 120f)
                 .mapIndexed { i, v -> LineDataPoint(
                     x = i.toFloat(),
@@ -195,6 +198,7 @@ internal class LineChartViewModel : ViewModel() {
     var curveType by mutableStateOf(LineCurveType.MonotoneCubic)
     var showValues by mutableStateOf(false)
     var showTrend by mutableStateOf(false)
+    var showDots by mutableStateOf(false)
     var dataSet by mutableStateOf(seededDataSet())
     var selectedIdx by mutableStateOf<Int?>(null)
 }
@@ -211,6 +215,7 @@ internal fun LineChartDemoScreen(
     val selectedIdx = viewModel.selectedIdx
     val showValues = viewModel.showValues
     val showTrend = viewModel.showTrend
+    val showDots = viewModel.showDots
 
     // Stripping the fill rewrites every series, so derive it once per change:
     // rebuilding inline hands the chart a new dataset on every recomposition and
@@ -223,16 +228,18 @@ internal fun LineChartDemoScreen(
         } else {
             dataSet.copy(series = dataSet.series.map { it.copy(fillAlpha = 0f) })
         }
-        if (!showTrend || shown.series.size < 2) {
+        val withTrend = if (!showTrend || shown.series.size < 2) {
             shown
         } else {
             shown.copy(series = shown.series + shown.averageSeries())
         }
+        withTrend
     }
 
-    val chartStyle = remember(curveType, showValues, colors) {
+    val chartStyle = remember(curveType, showValues, showDots, colors) {
         LineChartStyle(
             curveType = curveType,
+            showDots = showDots,
             valueLabels = LineValueLabelConfig(
                 enabled = showValues,
                 // Copied from the default rather than rebuilt, which keeps its weight.
@@ -341,6 +348,26 @@ internal fun LineChartDemoScreen(
                 ) {
                     Text(
                         if (showTrend) "Hide Average" else "Show Average",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            DemoControls { buttonModifier ->
+                Button(
+                    onClick = { viewModel.showDots = !showDots },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        contentColor = colors.onAccent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        if (showDots) "Hide Dots" else "Show Dots",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
