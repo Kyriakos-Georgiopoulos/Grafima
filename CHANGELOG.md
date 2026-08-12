@@ -29,6 +29,10 @@ behaviour do not.
   dots while the rest of the chart keeps theirs. `showDots` still decides whether any
   dot is drawn at all. Dots are drawn after every series' fill, so a marker keeps its
   weight wherever it sits in the list.
+- `selectActionLabel` and `clearSelectionLabel` on `LineA11yConfig`, `PieA11yConfig`
+  and `RadarA11yConfig`, matching the pair the bar chart gained above. These were the
+  last chart strings a caller could not translate, so a localised app no longer reads
+  half its charts in the user's language and half in English.
 
 ### Changed
 
@@ -62,8 +66,9 @@ behaviour do not.
   only for unaligned series, where those extra positions previously had no index at
   all: touch could not reach them and TalkBack offered no action for them, so a
   one-point marker beyond the first series' range was unselectable and unspoken.
-- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig` and
-  `LineSeries` each gained a defaulted constructor parameter. Apart from the builder rename above
+- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig`,
+  `LineSeries`, `LineA11yConfig`, `PieA11yConfig` and `RadarA11yConfig` each gained
+  defaulted constructor parameters. Apart from the builder rename above
   your code compiles unchanged, but Kotlin regenerates a data class's constructor and
   `copy` for the new arity rather than keeping the old one — the removed signatures
   are in the api diff.

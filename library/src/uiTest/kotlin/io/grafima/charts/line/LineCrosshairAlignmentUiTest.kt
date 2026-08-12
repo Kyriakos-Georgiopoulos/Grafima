@@ -30,6 +30,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.assumePixelCapture
+import io.grafima.charts.countColor
 import io.grafima.charts.onChartNode
 import io.grafima.charts.performCustomAction
 import io.grafima.charts.stateDescription
@@ -218,12 +219,5 @@ class LineCrosshairAlignmentUiTest {
             }
         }
         return if (count == 0) -1 else (sum / count).toInt()
-    }
-
-    private fun ImageBitmap.countColor(color: Color): Int {
-        val pixels = IntArray(width * height)
-        readPixels(pixels)
-        val target = color.toArgb()
-        return pixels.count { it == target }
     }
 }

@@ -29,7 +29,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.assumePixelCapture
+import io.grafima.charts.countColor
+import io.grafima.charts.isReddish
 import io.grafima.charts.onChartNode
+import io.grafima.charts.withPixels
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -332,11 +335,6 @@ class LineSeriesDotRadiusUiTest {
         (0 until height).maxOf { y -> (0 until width).count { x -> pixels[y * width + x] == target } }
     }
 
-    private fun ImageBitmap.countColor(color: Color): Int = withPixels { pixels ->
-        val target = color.toArgb()
-        pixels.count { it == target }
-    }
-
     private fun ImageBitmap.firstRowMatching(match: (Int) -> Boolean): Int = withPixels { pixels ->
         (0 until height).firstOrNull { y ->
             (0 until width).any { x -> match(pixels[y * width + x]) }
@@ -347,19 +345,5 @@ class LineSeriesDotRadiusUiTest {
         (0 until height).lastOrNull { y ->
             (0 until width).any { x -> match(pixels[y * width + x]) }
         } ?: -1
-    }
-
-    /** Text is resampled, so its glyphs rarely hold the exact colour asked for. */
-    private fun Int.isReddish(): Boolean {
-        val r = (this shr 16) and 0xFF
-        val g = (this shr 8) and 0xFF
-        val b = this and 0xFF
-        return r > 120 && g < 90 && b < 90
-    }
-
-    private fun <T> ImageBitmap.withPixels(read: (IntArray) -> T): T {
-        val pixels = IntArray(width * height)
-        readPixels(pixels)
-        return read(pixels)
     }
 }

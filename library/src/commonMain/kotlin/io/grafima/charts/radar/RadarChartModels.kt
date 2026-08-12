@@ -190,5 +190,11 @@ data class RadarA11yConfig(
     },
     val seriesCountDescriptionBuilder: (Int) -> String = { count ->
         "$count series. Use the actions menu to select one."
-    }
+    },
+
+    /** Names each axis's action in the actions menu. */
+    val selectActionLabel: (String) -> String = { spoken -> "Select $spoken" },
+
+    /** Names the action that clears the selection. */
+    val clearSelectionLabel: String = "Clear selection"
 )

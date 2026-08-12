@@ -518,6 +518,9 @@ data class LineAnimationConfig(
  *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
  *   null when unset. Override to translate the wording; return an empty string to
  *   leave the titles unspoken.
+ * @param selectActionLabel Names each point's action in the actions menu, given the
+ *   spoken form of the point it selects.
+ * @param clearSelectionLabel Names the action that clears the selection.
  * @param referenceLineDescriptionBuilder Announces the thresholds drawn across the
  *   plot, which a sighted reader gets from the lines themselves. Given only the
  *   lines that fall inside the axis range, and none at all for a chart with no
@@ -561,6 +564,8 @@ data class LineA11yConfig(
                 }
             }
         },
+    val selectActionLabel: (String) -> String = { spoken -> "Select $spoken" },
+    val clearSelectionLabel: String = "Clear selection",
     val referenceLineDescriptionBuilder: (List<ReferenceLine>) -> String = { lines ->
         val named = lines.mapNotNull { it.spokenLabel }
         when (named.size) {
