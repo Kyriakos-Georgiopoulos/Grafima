@@ -121,6 +121,37 @@ class PlotInsetsTest {
     }
 
     @Test
+    fun `a clearance leaves a plot even on a chart barely wider than its labels`() {
+        // The clearance is taken from both sides and the gap from both again, so a
+        // third of what is left is the most that can be given away.
+        val tiny = computePlotInsets(
+            into = PlotInsets(),
+            width = 60f,
+            height = 60f,
+            gap = 8f,
+            yLabelWidth = 30f,
+            xLabelHeight = 12f,
+            yTitleHeight = 0f,
+            xTitleHeight = 0f,
+            isRtl = false,
+            dotClearance = 10_000f
+        )
+        assertTrue(tiny.right > tiny.left, "left ${tiny.left} right ${tiny.right}")
+        assertTrue(tiny.bottom > tiny.top, "top ${tiny.top} bottom ${tiny.bottom}")
+    }
+
+    @Test
+    fun `the applied clearance is reported so labels can stand off by the same amount`() {
+        val roomy = insets(dotClearance = 20f)
+        assertEquals(20f, roomy.sideClearance)
+        assertEquals(20f, roomy.stackClearance)
+
+        val clamped = insets(dotClearance = 10_000f)
+        assertTrue(clamped.sideClearance < 10_000f, "side ${clamped.sideClearance} never clamped")
+        assertEquals(clamped.left, 8f + clamped.sideClearance + 30f)
+    }
+
+    @Test
     fun `a clearance wider than the chart crowds the plot rather than inverting it`() {
         // A radius can exceed the chart it is drawn on; unclamped it drove right past
         // left, which maps the axis backwards and draws the curve mirrored.

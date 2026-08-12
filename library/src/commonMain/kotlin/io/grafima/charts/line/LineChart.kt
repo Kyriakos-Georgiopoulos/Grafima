@@ -443,9 +443,14 @@ fun LineChart(
         if (!style.showDots) {
             0f
         } else {
-            val widest = renderSeries.maxOfOrNull { it.dotRadius.orElse(style.dotRadius) } ?: 0.dp
-            val px = with(density) { widest.toPx() }
-            if (px.isFinite()) px.coerceAtLeast(0f) else 0f
+            // Sanitise each series before comparing: Dp compares as IEEE floats, so an
+            // unspecified radius left in the max survives it and hides the real widest.
+            with(density) {
+                renderSeries.maxOfOrNull { s ->
+                    val px = s.dotRadius.orElse(style.dotRadius).toPx()
+                    if (px.isFinite()) px.coerceAtLeast(0f) else 0f
+                } ?: 0f
+            }
         }
     }
     val currentWidestDotPx by rememberUpdatedState(widestDotPx)
@@ -555,9 +560,6 @@ fun LineChart(
         if (series.isEmpty()) return@Canvas
 
         val labelGapPx = style.labelGap.toPx()
-        // Axis labels stand off by the gap plus whatever a dot on the bound overhangs,
-        // or the largest dot paints across them.
-        val axisLabelGapPx = labelGapPx + widestDotPx
 
         val insets = computePlotInsets(
             into = plotInsets,
@@ -571,6 +573,10 @@ fun LineChart(
             isRtl = isRtl,
             dotClearance = widestDotPx
         )
+        // Labels stand off by the clearance the plot was actually given, or they walk
+        // inward past it once the clamp engages and leave the composable entirely.
+        val yLabelGapPx = labelGapPx + insets.sideClearance
+        val xLabelGapPx = labelGapPx + insets.stackClearance
         val chartLeft = insets.left
         val chartRight = insets.right
         val chartBottom = insets.bottom
@@ -642,9 +648,9 @@ fun LineChart(
                     val y = mapY(v)
                     val lx =
                         if (isRtl) {
-                            chartRight + axisLabelGapPx
+                            chartRight + yLabelGapPx
                         } else {
-                            chartLeft - axisLabelGapPx - layout.size.width
+                            chartLeft - yLabelGapPx - layout.size.width
                         }
                     drawText(
                         textLayoutResult = layout,
@@ -939,7 +945,7 @@ fun LineChart(
                         textLayoutResult = layout,
                         topLeft = Offset(
                             x = mapX(p.x) - layout.size.width / 2f,
-                            y = chartBottom + axisLabelGapPx
+                            y = chartBottom + xLabelGapPx
                         )
                     )
                 }

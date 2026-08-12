@@ -284,6 +284,72 @@ class LineSeriesDotRadiusUiTest {
     }
 
     @Test
+    fun an_unspecified_radius_before_a_large_one_still_reserves_the_large_one() =
+        runComposeUiTest {
+            assumePixelCapture()
+            // Dp compares as IEEE floats, so an unspecified radius in the first slot
+            // used to survive the max and leave the second series' dot no clearance.
+            val unsetThenLarge = LineDataSet(
+                series = listOf(
+                    LineSeries(
+                        id = "unset",
+                        label = "Unset",
+                        points = listOf(LineDataPoint(x = 0.5f, y = 5f, label = "M")),
+                        color = referenceColor
+                    ),
+                    LineSeries(
+                        id = "large",
+                        label = "Large",
+                        points = listOf(LineDataPoint(x = 0f, y = 10f, label = "A")),
+                        color = markerColor,
+                        dotRadius = 14.dp
+                    )
+                ),
+                contentDescription = "An unset radius ahead of a large one"
+            )
+            setContent {
+                LineChart(
+                    dataSet = unsetThenLarge,
+                    modifier = Modifier.size(300.dp),
+                    style = LineChartStyle(showDots = true, dotRadius = Dp.Unspecified),
+                    axisConfig = LineAxisConfig(xMin = 0f, xMax = 1f, yMin = 0f, yMax = 10f),
+                    animationConfig = snapAnimations
+                )
+            }
+            waitForIdle()
+
+            // The large dot sits on the top-left corner of the plot; with no clearance
+            // reserved for it, its upper half is cut by the composable's edge.
+            val image = onChartNode().captureToImage()
+            val top = image.firstRowMatching { it == markerColor.toArgb() }
+            assertTrue(top in 1 until image.height, "the large dot was cut off at row $top")
+        }
+
+    @Test
+    fun the_y_labels_stay_on_the_canvas_when_the_clearance_is_clamped() = runComposeUiTest {
+        assumePixelCapture()
+        // A radius this large is clamped by the insets. Standing the labels off by the
+        // raw radius instead put them at a negative x, off the composable entirely.
+        setContent {
+            LineChart(
+                dataSet = dataSet(markerRadius = 40.dp),
+                modifier = Modifier.size(140.dp),
+                style = style(),
+                axisConfig = insideTheEdges,
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        val image = onChartNode().captureToImage()
+        val rows = 0 until image.height
+        assertTrue(
+            image.firstColumnMatching(rows) { it.isAxisLabelGrey() } < image.width,
+            "the axis labels were pushed off the canvas"
+        )
+    }
+
+    @Test
     fun a_dot_on_the_left_bound_does_not_paint_over_the_y_labels() = runComposeUiTest {
         assumePixelCapture()
         // Padding outside the label band is not enough: the labels move inward with
@@ -319,6 +385,9 @@ class LineSeriesDotRadiusUiTest {
         val image = onChartNode().captureToImage()
         val yLabelRows = 0 until (image.height * 3 / 4)
         val dotLeft = image.firstColumnMatching(yLabelRows) { it == markerColor.toArgb() }
+        // firstColumnMatching returns width on no match, so without this the assertion
+        // is satisfied by a regression that stops drawing dots at all.
+        assertTrue(dotLeft < image.width, "no dot painted to measure against the labels")
         val labelRight = image.lastColumnMatching(yLabelRows) { it.isAxisLabelGrey() }
         assertTrue(labelRight in 0 until dotLeft, "label ended at $labelRight, dot began at $dotLeft")
     }
@@ -334,7 +403,9 @@ class LineSeriesDotRadiusUiTest {
                 modifier = Modifier.size(300.dp),
                 style = LineChartStyle(
                     showDots = true,
-                    dotRadius = styleRadius,
+                    // Unspecified on both, or the series falls back to a real radius
+                    // and the NaN branch this names is never taken.
+                    dotRadius = Dp.Unspecified,
                     valueLabels = LineValueLabelConfig(
                         enabled = true,
                         textStyle = TextStyle(color = Color.Red)
@@ -373,7 +444,9 @@ class LineSeriesDotRadiusUiTest {
                 modifier = Modifier.size(300.dp),
                 style = LineChartStyle(
                     showDots = true,
-                    dotRadius = styleRadius,
+                    // Unspecified on both, or the series falls back to a real radius
+                    // and the NaN branch this names is never taken.
+                    dotRadius = Dp.Unspecified,
                     valueLabels = LineValueLabelConfig(
                         enabled = true,
                         textStyle = TextStyle(color = Color.Red)

@@ -22,7 +22,6 @@ behaviour do not.
   `ChartStyle.groupSpacingFactor`, `BarChartSummary`, `A11yConfig.selectActionLabel`,
   `A11yConfig.clearSelectionLabel` and the `BarEntry.spokenSeriesLabel` extension. Every one is defaulted, so a
   dataset that sets no series behaves exactly as it did in 1.1.1.
-
 - `LineSeries.dotRadius` sizes one series' dots on their own, so a marker can outweigh
   the curve it marks instead of drawing at the same weight as the readings around it.
   `Dp.Unspecified` keeps `LineChartStyle.dotRadius`, matching how `outerRadius` defers
@@ -57,6 +56,11 @@ behaviour do not.
 
 ### Fixed
 
+- A dataset replaced outright no longer draws the old items alongside the new ones.
+  Departing items were threaded back into an axis they shared no ids with, so
+  swapping a bar chart's months for quarters drew both sets on one axis and split
+  the groups between them. Emptying a dataset is still an exit animation: everything
+  leaving is all there is to draw. Affects the bar, pie, line and radar charts.
 - Bar chart hit testing follows the bars while one is animating out. It measured
   against the dataset while the draw pass measured against what was on screen, so
   every tap landed on the wrong bar for the length of a removal.

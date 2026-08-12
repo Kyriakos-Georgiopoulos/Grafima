@@ -195,7 +195,11 @@ internal data class PlotInsets(
     var top: Float = 0f,
     var right: Float = 0f,
     var bottom: Float = 0f
-)
+) {
+    /** How much of the asked-for dot clearance actually fitted, per direction. */
+    var sideClearance: Float = 0f
+    var stackClearance: Float = 0f
+}
 
 /**
  * Carves the plot rectangle out of the canvas, writing into [into].
@@ -225,13 +229,17 @@ internal fun computePlotInsets(
     val xBand = xLabelHeight + if (xTitleHeight > 0f) xTitleHeight + gap * 2f else 0f
     // Dots are drawn outside the clip, so a point sitting on a bound needs its radius
     // between the plot and whatever is next to it — the labels where there are labels,
-    // the composable's own edge where there are not. Capped at a third of the extent:
-    // a radius wider than the chart should crowd the plot, never invert it.
-    val clearance = dotClearance.coerceAtLeast(0f)
-    val sideRoom = ((width - yBand) / 3f).coerceAtLeast(0f)
-    val stackRoom = ((height - xBand) / 3f).coerceAtLeast(0f)
+    // the composable's own edge where there are not. The clearance is taken from both
+    // sides and the gap from both again, so a third of what is left over is the most
+    // that can be given away and still leave a plot: a radius wider than the chart
+    // crowds it, never inverts it.
+    val clearance = if (dotClearance.isFinite()) dotClearance.coerceAtLeast(0f) else 0f
+    val sideRoom = ((width - yBand - gap * 2f) / 3f).coerceAtLeast(0f)
+    val stackRoom = ((height - xBand - gap * 2f) / 3f).coerceAtLeast(0f)
     val side = clearance.coerceAtMost(sideRoom)
     val stack = clearance.coerceAtMost(stackRoom)
+    into.sideClearance = side
+    into.stackClearance = stack
     into.left = gap + side + if (isRtl) 0f else yBand
     into.top = gap + stack
     into.right = width - gap - side - if (isRtl) yBand else 0f
