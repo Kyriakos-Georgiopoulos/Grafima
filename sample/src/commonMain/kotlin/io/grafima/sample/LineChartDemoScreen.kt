@@ -134,6 +134,29 @@ private fun LineDataSet.averageSeries(): LineSeries {
     )
 }
 
+private const val MarkerMonth = 7
+
+/** One point on the first series, drawn heavier than the readings it sits among. */
+private fun LineDataSet.plusMarker(color: Color): LineDataSet {
+    val on = series.firstOrNull()?.points?.getOrNull(MarkerMonth) ?: return this
+    return copy(
+        series = series + LineSeries(
+            id = "marker",
+            label = "You are here",
+            color = color,
+            dotRadius = 9.dp,
+            points = listOf(
+                LineDataPoint(
+                    x = on.x,
+                    y = on.y,
+                    label = on.label,
+                    contentDescription = SpokenMonths[MarkerMonth]
+                )
+            )
+        )
+    )
+}
+
 private const val MinSeries = 1
 private const val MaxSeries = 4
 
@@ -222,7 +245,7 @@ internal fun LineChartDemoScreen(
     // it can never skip.
     // Derived here rather than held in the dataset: it is not data of its own, and
     // it has to follow every series being added, removed or re-rolled.
-    val visibleDataSet = remember(dataSet, showFill, showTrend) {
+    val visibleDataSet = remember(dataSet, showFill, showTrend, showDots, colors) {
         val shown = if (showFill) {
             dataSet
         } else {
@@ -233,7 +256,7 @@ internal fun LineChartDemoScreen(
         } else {
             shown.copy(series = shown.series + shown.averageSeries())
         }
-        withTrend
+        if (showDots) withTrend.plusMarker(colors.onSurface) else withTrend
     }
 
     val chartStyle = remember(curveType, showValues, showDots, colors) {

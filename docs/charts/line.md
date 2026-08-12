@@ -93,6 +93,11 @@ series = listOf(
 A one-point series draws no stroke, so its dot is all there is: the marker reads as
 a point on the curve rather than a line of its own.
 
+Series need not cover the same x positions. The crosshair reads each series at the x
+it stopped on, so the marker above is named in the tooltip at its own x and nowhere
+else. The first series anchors the selection, so make it the one that runs the whole
+axis.
+
 `0.dp` drops one series' dots while the rest of the chart keeps theirs — a raw
 series shown as bare readings under a smoothed line, say. `showDots = false` still
 wins over both: a series radius sizes a dot, it does not ask for one.

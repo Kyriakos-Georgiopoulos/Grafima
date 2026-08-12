@@ -50,6 +50,13 @@ behaviour do not.
 
 ### Fixed
 
+- The line chart's crosshair reads each series at the x it stopped on rather than at
+  the selected point's position in the list. A series that does not cover the whole
+  axis — a one-point "you are here" marker on a reference curve — was drawn at every
+  x the anchor series had a point at, so hovering January put the marker's dot and
+  its tooltip line there while the marker itself sat in August. A series with no
+  point at that x now contributes no dot and no tooltip line. `selectedPointIndex`
+  still indexes the first series and is unchanged.
 - A dataset replaced outright no longer draws the old items alongside the new ones.
   Departing items were threaded back into an axis they shared no ids with, so
   swapping a bar chart's months for quarters drew both sets on one axis and split

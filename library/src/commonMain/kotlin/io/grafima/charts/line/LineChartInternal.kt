@@ -93,6 +93,29 @@ internal fun nearestPointIndex(
 }
 
 /**
+ * Index of the point standing at [x], or -1 when this series has none there.
+ * Points are sorted by x, so this bisects.
+ */
+internal fun List<LineDataPoint>.indexAtX(x: Float): Int {
+    var low = 0
+    var high = size - 1
+    while (low <= high) {
+        val mid = (low + high) ushr 1
+        val at = this[mid].x
+        when {
+            sameAxisX(at, x) -> return mid
+            at < x -> low = mid + 1
+            else -> high = mid - 1
+        }
+    }
+    return -1
+}
+
+/** Shared x positions reach the two series down different arithmetic. */
+private fun sameAxisX(a: Float, b: Float): Boolean =
+    abs(a - b) <= 1e-5f * max(1f, max(abs(a), abs(b)))
+
+/**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly
  * spaced tick values that fully contain the data range.
  */

@@ -119,8 +119,11 @@ val LineDataPoint.spokenLabel: String
  * @param id Stable identifier for animation tracking. Changing the id is treated
  *   as a removal + insertion, not a morph. Must be unique within the dataset.
  * @param label Human-readable name shown in crosshair tooltips and accessibility.
- * @param points Data sorted by [LineDataPoint.x]. All series in a dataset should
- *   ideally share the same x positions for correct crosshair alignment.
+ * @param points Data sorted by [LineDataPoint.x]. Series need not cover the same x
+ *   positions: the crosshair reads each series at the x it stopped on, and one with
+ *   no point there contributes no dot and no tooltip line rather than being read at
+ *   the wrong x. The first series anchors the selection, so it should be the one
+ *   that runs the whole axis.
  * @param color Primary color used for the line stroke, data dots, and the
  *   auto-generated area fill gradient. Ignored for stroke when
  *   [strokeGradientColors] has 2+ entries.
@@ -531,10 +534,14 @@ data class LineA11yConfig(
     },
     val selectedPointDescriptionBuilder: (Int, List<LineSeries>) -> String = { idx, series ->
         buildString {
-            series.forEach { s ->
-                if (idx in s.points.indices) {
-                    val p = s.points[idx]
-                    append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")
+            val anchorX = series.firstOrNull()?.points?.getOrNull(idx)?.x
+            if (anchorX != null) {
+                series.forEach { s ->
+                    val at = s.points.indexAtX(anchorX)
+                    if (at >= 0) {
+                        val p = s.points[at]
+                        append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")
+                    }
                 }
             }
         }

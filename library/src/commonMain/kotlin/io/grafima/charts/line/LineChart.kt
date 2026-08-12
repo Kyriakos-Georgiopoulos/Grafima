@@ -439,6 +439,9 @@ fun LineChart(
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
 
+    // Shared so the dots and the tooltip cost one lookup per series, not two.
+    val crosshairHits = remember(series.size) { IntArray(series.size) }
+
     // ── Animation lifecycle ──
     SideEffect { animationEngine.syncAnimatables(series) }
     LaunchedEffect(series) {
@@ -974,7 +977,8 @@ fun LineChart(
             val fp = series.firstOrNull() ?: return@let
             if (idx !in fp.points.indices) return@let
             if (xIsPinned && !isWithinAxis(fp.points[idx].x, xMin, xMax)) return@let
-            val crossX = mapX(fp.points[idx].x)
+            val anchorX = fp.points[idx].x
+            val crossX = mapX(anchorX)
 
             drawLine(
                 color = crosshairConfig.lineColor,
@@ -985,11 +989,14 @@ fun LineChart(
 
             val dotR = crosshairConfig.dotRadius.toPx()
             val borderW = crosshairConfig.dotBorderWidth.toPx()
-            series.forEach { s ->
-                if (idx < s.points.size) {
-                    if (yIsPinned && !isWithinAxis(s.points[idx].y, yMin, yMax)) return@forEach
-                    val key = keyMatrix[s.id]?.getOrNull(idx) ?: return@forEach
-                    val animY = animationEngine.yAnimatables[key]?.value ?: s.points[idx].y
+            series.forEachIndexed { i, s -> crosshairHits[i] = s.points.indexAtX(anchorX) }
+
+            series.forEachIndexed { i, s ->
+                val at = crosshairHits[i]
+                if (at >= 0) {
+                    if (yIsPinned && !isWithinAxis(s.points[at].y, yMin, yMax)) return@forEachIndexed
+                    val key = keyMatrix[s.id]?.getOrNull(at) ?: return@forEachIndexed
+                    val animY = animationEngine.yAnimatables[key]?.value ?: s.points[at].y
                     val cy = mapY(animY)
                     drawCircle(
                         color = crosshairConfig.dotBorderColor,
@@ -1003,9 +1010,10 @@ fun LineChart(
             if (crosshairConfig.showTooltip) {
                 val tooltipText = buildString {
                     series.forEachIndexed { i, s ->
-                        if (idx < s.points.size) {
-                            if (i > 0) append("\n")
-                            append(crosshairConfig.tooltipFormatter(s, s.points[idx]))
+                        val at = crosshairHits[i]
+                        if (at >= 0) {
+                            if (isNotEmpty()) append("\n")
+                            append(crosshairConfig.tooltipFormatter(s, s.points[at]))
                         }
                     }
                 }
