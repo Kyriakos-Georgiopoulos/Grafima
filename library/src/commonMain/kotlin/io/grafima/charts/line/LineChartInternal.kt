@@ -70,8 +70,8 @@ internal fun mapDataXToCanvas(
  * candidate. Its marks are not drawn, so selecting it would move the crosshair
  * somewhere the reader can see nothing.
  */
-internal fun nearestPointIndex(
-    points: List<LineDataPoint>,
+internal fun nearestAxisIndex(
+    positions: List<Float>,
     touchX: Float,
     xMin: Float,
     xMax: Float,
@@ -82,16 +82,75 @@ internal fun nearestPointIndex(
 ): Int {
     var nearest = -1
     var shortest = Float.MAX_VALUE
-    for (i in points.indices) {
-        if (restrictToAxis && !isWithinAxis(points[i].x, xMin, xMax)) continue
-        val distance =
-            abs(mapDataXToCanvas(points[i].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
+    for (i in positions.indices) {
+        val x = positions[i]
+        if (restrictToAxis && !isWithinAxis(x, xMin, xMax)) continue
+        val distance = abs(mapDataXToCanvas(x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
         if (distance < shortest) {
             shortest = distance
             nearest = i
         }
     }
     return nearest
+}
+
+/**
+ * Index of the point standing at [x], or -1 when this series has none there.
+ *
+ * Points are sorted by x, so this bisects. Newest-first is the shape most feeds
+ * arrive in, so descending is read as readily as ascending.
+ */
+internal fun List<LineDataPoint>.indexAtX(x: Float): Int {
+    if (isEmpty()) return -1
+    val ascending = first().x <= last().x
+    var low = 0
+    var high = size - 1
+    while (low <= high) {
+        val mid = (low + high) ushr 1
+        val at = this[mid].x
+        when {
+            // Back to the first of a repeated x, which is the one selection reports.
+            sameAxisX(at, x) -> {
+                var first = mid
+                while (first > 0 && sameAxisX(this[first - 1].x, x)) first--
+                return first
+            }
+            (at < x) == ascending -> low = mid + 1
+            else -> high = mid - 1
+        }
+    }
+    return -1
+}
+
+/**
+ * Shared x positions reach the two series down different arithmetic, so this
+ * allows a few ulps.
+ */
+internal fun sameAxisX(a: Float, b: Float): Boolean {
+    if (a == b) return true
+    return abs(a - b) <= 4f * ulpOf(max(abs(a), abs(b)))
+}
+
+/** `Float.ulp` is JVM-only; common has it for Double alone. [value] must not be negative. */
+private fun ulpOf(value: Float): Float {
+    if (!value.isFinite()) return Float.NaN
+    return Float.fromBits(value.toRawBits() + 1) - value
+}
+
+/**
+ * The x positions selection steps through: the first series' own, in its own order,
+ * then any position only a later series reaches, appended.
+ */
+internal fun axisPositions(series: List<LineSeries>): List<Float> {
+    val first = series.firstOrNull()?.points ?: return emptyList()
+    val positions = ArrayList<Float>(first.size)
+    first.forEach { positions.add(it.x) }
+    for (s in 1 until series.size) {
+        for (point in series[s].points) {
+            if (positions.none { sameAxisX(it, point.x) }) positions.add(point.x)
+        }
+    }
+    return positions
 }
 
 /** [Dp.Unspecified] defers to the chart-wide value, as it does on the other charts. */

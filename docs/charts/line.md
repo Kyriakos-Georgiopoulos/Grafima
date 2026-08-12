@@ -96,6 +96,11 @@ dots while the rest of the chart keeps theirs — a derived line such as a movin
 average has no readings to mark. `showDots = false` still wins over both: a series
 radius sizes a dot, it does not ask for one.
 
+Series need not cover the same x positions. The crosshair reads each series at the x
+it stopped on, so a one-point marker is named in the tooltip at its own x and nowhere
+else, and an x only it reaches is still selectable by touch and by TalkBack.
+`selectedPointIndex` counts the first series' positions first, then those.
+
 Dots are drawn after every series' fill, so a marker keeps its weight wherever it
 sits in the list. The plot and the axis labels both stand off by the widest dot's
 radius, so a point on an axis bound is not clipped and does not paint over the

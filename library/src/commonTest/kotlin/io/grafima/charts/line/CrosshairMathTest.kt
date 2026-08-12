@@ -21,11 +21,7 @@ import kotlin.test.assertEquals
 
 class CrosshairMathTest {
 
-    private val points = listOf(
-        LineDataPoint(x = 0f, y = 10f),
-        LineDataPoint(x = 1f, y = 20f),
-        LineDataPoint(x = 2f, y = 15f)
-    )
+    private val points = listOf(0f, 1f, 2f)
 
     @Test
     fun `endpoints and midpoint map correctly in LTR`() {
@@ -52,56 +48,56 @@ class CrosshairMathTest {
         for ((index, canvasX) in listOf(0 to 100f, 1 to 200f, 2 to 300f)) {
             assertEquals(
                 index,
-                nearestPointIndex(points, canvasX, 0f, 2f, 100f, 300f, isRtl = false)
+                nearestAxisIndex(points, canvasX, 0f, 2f, 100f, 300f, isRtl = false)
             )
         }
     }
 
     @Test
     fun `touches between points choose the closer one`() {
-        assertEquals(0, nearestPointIndex(points, 140f, 0f, 2f, 100f, 300f, isRtl = false))
-        assertEquals(1, nearestPointIndex(points, 170f, 0f, 2f, 100f, 300f, isRtl = false))
+        assertEquals(0, nearestAxisIndex(points, 140f, 0f, 2f, 100f, 300f, isRtl = false))
+        assertEquals(1, nearestAxisIndex(points, 170f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     @Test
     fun `the nearest point respects RTL mirroring`() {
         // Touch near the right edge in RTL selects the FIRST data point.
-        assertEquals(0, nearestPointIndex(points, 290f, 0f, 2f, 100f, 300f, isRtl = true))
-        assertEquals(2, nearestPointIndex(points, 110f, 0f, 2f, 100f, 300f, isRtl = true))
+        assertEquals(0, nearestAxisIndex(points, 290f, 0f, 2f, 100f, 300f, isRtl = true))
+        assertEquals(2, nearestAxisIndex(points, 110f, 0f, 2f, 100f, 300f, isRtl = true))
     }
 
     @Test
     fun `out-of-bounds touches clamp to the edge points`() {
-        assertEquals(0, nearestPointIndex(points, -500f, 0f, 2f, 100f, 300f, isRtl = false))
-        assertEquals(2, nearestPointIndex(points, 9999f, 0f, 2f, 100f, 300f, isRtl = false))
+        assertEquals(0, nearestAxisIndex(points, -500f, 0f, 2f, 100f, 300f, isRtl = false))
+        assertEquals(2, nearestAxisIndex(points, 9999f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     @Test
     fun `an empty list has no nearest point`() {
-        assertEquals(-1, nearestPointIndex(emptyList(), 150f, 0f, 2f, 100f, 300f, isRtl = false))
+        assertEquals(-1, nearestAxisIndex(emptyList(), 150f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     @Test
     fun `a point outside the axis is never the nearest one`() {
         val straddling = listOf(
-            LineDataPoint(x = -5f, y = 1f),
-            LineDataPoint(x = 1f, y = 2f),
-            LineDataPoint(x = 2f, y = 3f)
+            -5f,
+            1f,
+            2f
         )
-        assertEquals(1, nearestPointIndex(straddling, 20f, 0f, 2f, 100f, 300f, isRtl = false))
+        assertEquals(1, nearestAxisIndex(straddling, 20f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     @Test
     fun `an axis with no point inside it has no nearest point`() {
-        val offAxis = listOf(LineDataPoint(x = 40f, y = 1f), LineDataPoint(x = 50f, y = 2f))
-        assertEquals(-1, nearestPointIndex(offAxis, 200f, 0f, 2f, 100f, 300f, isRtl = false))
+        val offAxis = listOf(40f, 50f)
+        assertEquals(-1, nearestAxisIndex(offAxis, 200f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     /** A pre-abstinence baseline at day -1: the axis has to start below zero. */
     private val baseline = listOf(
-        LineDataPoint(x = -1f, y = 5f),
-        LineDataPoint(x = 0f, y = 6f),
-        LineDataPoint(x = 1f, y = 7f)
+        -1f,
+        0f,
+        1f
     )
 
     @Test
@@ -124,12 +120,12 @@ class CrosshairMathTest {
 
     @Test
     fun `a touch at a point drawn position still snaps to it across a negative range`() {
-        baseline.forEachIndexed { index, point ->
-            val drawnX = mapDataXToCanvas(point.x, -1f, 25f, 100f, 300f, isRtl = false)
+        baseline.forEachIndexed { index, x ->
+            val drawnX = mapDataXToCanvas(x, -1f, 25f, 100f, 300f, isRtl = false)
             assertEquals(
                 index,
-                nearestPointIndex(baseline, drawnX, -1f, 25f, 100f, 300f, isRtl = false),
-                "point ${point.x} drawn at $drawnX did not snap back to index $index"
+                nearestAxisIndex(baseline, drawnX, -1f, 25f, 100f, 300f, isRtl = false),
+                "point $x drawn at $drawnX did not snap back to index $index"
             )
         }
     }
