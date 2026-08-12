@@ -72,7 +72,7 @@ class ActionLabelLocalisationTest {
                 modifier = Modifier.size(300.dp),
                 animationConfig = LineAnimationConfig(entrySpec = snap(), morphSpec = snap()),
                 a11yConfig = LineA11yConfig(
-                    selectActionLabel = { spoken -> "Επιλογή $spoken" },
+                    selectActionLabel = { point -> "Επιλογή ${point.label}" },
                     clearSelectionLabel = "Καθαρισμός"
                 ),
                 selectedPointIndex = 0
@@ -94,7 +94,7 @@ class ActionLabelLocalisationTest {
                 ),
                 modifier = Modifier.size(300.dp),
                 a11yConfig = PieA11yConfig(
-                    selectActionLabel = { spoken -> "Επιλογή $spoken" },
+                    selectActionLabel = { entry -> "Επιλογή ${entry.label}" },
                     clearSelectionLabel = "Καθαρισμός"
                 ),
                 selectedEntry = PieEntry(id = "a", label = "A", value = 1f)
@@ -121,7 +121,7 @@ class ActionLabelLocalisationTest {
                 ),
                 modifier = Modifier.size(300.dp),
                 a11yConfig = RadarA11yConfig(
-                    selectActionLabel = { spoken -> "Επιλογή $spoken" },
+                    selectActionLabel = { series -> "Επιλογή ${series.label}" },
                     clearSelectionLabel = "Καθαρισμός"
                 ),
                 selectedSeries = RadarSeries(

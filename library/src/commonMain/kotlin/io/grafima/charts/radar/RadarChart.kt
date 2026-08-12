@@ -262,7 +262,7 @@ fun RadarChart(
                 customActions = buildList {
                     series.forEach { s ->
                         add(
-                            CustomAccessibilityAction(label = a11yConfig.selectActionLabel(s.label)) {
+                            CustomAccessibilityAction(label = a11yConfig.selectActionLabel(s)) {
                                 onSeriesSelected(s)
                                 true
                             }

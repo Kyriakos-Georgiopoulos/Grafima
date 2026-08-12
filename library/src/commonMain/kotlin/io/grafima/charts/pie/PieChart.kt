@@ -261,7 +261,7 @@ fun PieChart(
                     customActions = buildList {
                         entries.forEach { entry ->
                             add(
-                                CustomAccessibilityAction(label = a11yConfig.selectActionLabel(entry.label)) {
+                                CustomAccessibilityAction(label = a11yConfig.selectActionLabel(entry)) {
                                     onSliceSelected(entry)
                                     true
                                 }

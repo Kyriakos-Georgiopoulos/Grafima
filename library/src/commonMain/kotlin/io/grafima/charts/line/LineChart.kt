@@ -479,7 +479,7 @@ fun LineChart(
                         points.forEachIndexed { index, point ->
                             if (xIsPinned && !isWithinAxis(point.x, xMin, xMax)) return@forEachIndexed
                             add(
-                                CustomAccessibilityAction(label = a11yConfig.selectActionLabel(point.spokenLabel)) {
+                                CustomAccessibilityAction(label = a11yConfig.selectActionLabel(point)) {
                                     onPointSelected(index)
                                     true
                                 }

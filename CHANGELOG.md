@@ -31,7 +31,9 @@ behaviour do not.
 - `selectActionLabel` and `clearSelectionLabel` on `LineA11yConfig`, `PieA11yConfig`
   and `RadarA11yConfig`, matching the pair the bar chart gained above. These were the
   last chart strings a caller could not translate, so a localised app no longer reads
-  half its charts in the user's language and half in English.
+  half its charts in the user's language and half in English. Each takes the object it
+  selects — `LineDataPoint`, `PieEntry`, `RadarSeries` — as the bar chart's takes a
+  `BarEntry`, so an override can reach the raw value rather than a pre-formatted label.
 
 ### Changed
 

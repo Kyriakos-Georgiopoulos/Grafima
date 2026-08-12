@@ -558,8 +558,11 @@ data class LineA11yConfig(
         }
     },
 
-    /** Names each point's action in the actions menu. */
-    val selectActionLabel: (String) -> String = { spoken -> "Select $spoken" },
+    /**
+     * Names each point's action in the actions menu. Given the point itself, so an
+     * override can reach its raw [LineDataPoint.x] for a locale's own numerals.
+     */
+    val selectActionLabel: (LineDataPoint) -> String = { point -> "Select ${point.spokenLabel}" },
 
     /** Names the action that clears the selection. */
     val clearSelectionLabel: String = "Clear selection"

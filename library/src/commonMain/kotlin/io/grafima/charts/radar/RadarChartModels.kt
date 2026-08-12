@@ -192,8 +192,11 @@ data class RadarA11yConfig(
         "$count series. Use the actions menu to select one."
     },
 
-    /** Names each axis's action in the actions menu. */
-    val selectActionLabel: (String) -> String = { spoken -> "Select $spoken" },
+    /**
+     * Names each series' action in the actions menu. The action selects a series, not
+     * an axis, and is given that series so an override can reach its values.
+     */
+    val selectActionLabel: (RadarSeries) -> String = { series -> "Select ${series.label}" },
 
     /** Names the action that clears the selection. */
     val clearSelectionLabel: String = "Clear selection"
