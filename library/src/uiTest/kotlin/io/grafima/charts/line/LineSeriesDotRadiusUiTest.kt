@@ -211,6 +211,51 @@ class LineSeriesDotRadiusUiTest {
     }
 
     @Test
+    fun a_large_dot_on_the_axis_bound_stays_whole_and_inside_the_chart() = runComposeUiTest {
+        assumePixelCapture()
+        // Both points sit on the pinned bounds, where the plot edge used to be, so
+        // half of each dot fell outside the composable and over the axis labels.
+        val onTheBounds = LineDataSet(
+            series = listOf(
+                LineSeries(
+                    id = "edges",
+                    label = "Edges",
+                    points = listOf(
+                        LineDataPoint(x = 0f, y = 0f, label = "A"),
+                        LineDataPoint(x = 1f, y = 10f, label = "B")
+                    ),
+                    color = markerColor,
+                    dotRadius = 14.dp
+                )
+            ),
+            contentDescription = "Points on the bounds"
+        )
+        setContent {
+            LineChart(
+                dataSet = onTheBounds,
+                modifier = Modifier.size(300.dp),
+                style = style(),
+                axisConfig = LineAxisConfig(xMin = 0f, xMax = 1f, yMin = 0f, yMax = 10f),
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        // The top dot is the one at risk: its centre sits on chartTop, so without
+        // clearance its upper half is cut by the composable's own edge.
+        val image = onChartNode().captureToImage()
+        val radius = with(density) { 14.dp.toPx() }
+        assertTrue(
+            image.firstRowMatching { it == markerColor.toArgb() } > 0,
+            "the topmost dot was cut off by the top edge"
+        )
+        assertTrue(
+            abs(image.widestRow(markerColor) - radius * 2f) <= 3f,
+            "a dot on the bound measured ${image.widestRow(markerColor)}px, expected ${radius * 2f}px"
+        )
+    }
+
+    @Test
     fun an_unspecified_radius_still_places_the_value_labels() = runComposeUiTest {
         assumePixelCapture()
         // Unspecified is Dp(NaN). Carried into the label offset it makes every

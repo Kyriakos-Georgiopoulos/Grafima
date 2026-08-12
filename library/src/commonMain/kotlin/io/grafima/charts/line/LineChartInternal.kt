@@ -257,15 +257,19 @@ internal fun computePlotInsets(
     xLabelHeight: Float,
     yTitleHeight: Float,
     xTitleHeight: Float,
-    isRtl: Boolean
+    isRtl: Boolean,
+    dotClearance: Float = 0f
 ): PlotInsets {
     // Twice, because a title needs clearing from its labels as well as from the edge.
     val yBand = yLabelWidth + if (yTitleHeight > 0f) yTitleHeight + gap * 2f else 0f
     val xBand = xLabelHeight + if (xTitleHeight > 0f) xTitleHeight + gap * 2f else 0f
-    into.left = gap + if (isRtl) 0f else yBand
-    into.top = gap
-    into.right = width - gap - if (isRtl) yBand else 0f
-    into.bottom = height - gap - xBand
+    // Dots are drawn outside the clip, so a point on a bound needs its radius kept
+    // clear of the edge or it paints over the labels and off the composable.
+    val edge = gap + dotClearance
+    into.left = edge + if (isRtl) 0f else yBand
+    into.top = edge
+    into.right = width - edge - if (isRtl) yBand else 0f
+    into.bottom = height - edge - xBand
     return into
 }
 

@@ -439,6 +439,16 @@ fun LineChart(
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
 
+    val widestDotPx = remember(renderSeries, style.showDots, style.dotRadius, density) {
+        if (!style.showDots) {
+            0f
+        } else {
+            val widest = renderSeries.maxOfOrNull { it.dotRadius.orElse(style.dotRadius) } ?: 0.dp
+            with(density) { widest.toPx() }.coerceAtLeast(0f)
+        }
+    }
+    val currentWidestDotPx by rememberUpdatedState(widestDotPx)
+
     // Shared so the dots and the tooltip cost one lookup per series, not two.
     val crosshairHits = remember(series.size) { IntArray(series.size) }
 
@@ -505,7 +515,8 @@ fun LineChart(
                         xLabelHeight = 0f,
                         yTitleHeight = currentYTitleHeight,
                         xTitleHeight = 0f,
-                        isRtl = rtl
+                        isRtl = rtl,
+                        dotClearance = currentWidestDotPx
                     )
                     val cLeft = rect.left
                     val cRight = rect.right
@@ -556,7 +567,8 @@ fun LineChart(
             xLabelHeight = if (axisConfig.showXLabels) maxXLabelHeight else 0f,
             yTitleHeight = yTitleLayout?.size?.height?.toFloat() ?: 0f,
             xTitleHeight = xTitleLayout?.size?.height?.toFloat() ?: 0f,
-            isRtl = isRtl
+            isRtl = isRtl,
+            dotClearance = widestDotPx
         )
         val chartLeft = insets.left
         val chartRight = insets.right
