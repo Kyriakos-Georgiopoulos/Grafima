@@ -98,9 +98,11 @@ it stopped on, so the marker above is named in the tooltip at its own x and nowh
 else. The first series anchors the selection, so make it the one that runs the whole
 axis.
 
-`0.dp` drops one series' dots while the rest of the chart keeps theirs — a raw
-series shown as bare readings under a smoothed line, say. `showDots = false` still
-wins over both: a series radius sizes a dot, it does not ask for one.
+A series that leaves `dotRadius` at `Dp.Unspecified` takes the chart-wide value, the
+same way `outerRadius` works on the pie and radar charts. `0.dp` drops one series'
+dots while the rest of the chart keeps theirs — a raw series shown as bare readings
+under a smoothed line, say. `showDots = false` still wins over both: a series radius
+sizes a dot, it does not ask for one.
 
 ## Dashed series
 

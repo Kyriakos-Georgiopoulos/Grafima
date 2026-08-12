@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import io.grafima.charts.needsAnimatingTo
@@ -92,6 +94,9 @@ internal fun nearestPointIndex(
     }
     return nearest
 }
+
+/** [Dp.Unspecified] defers to the chart-wide value, as it does on the other charts. */
+internal fun Dp.orElse(fallback: Dp): Dp = if (isSpecified) this else fallback
 
 /**
  * Index of the point standing at [x], or -1 when this series has none there.

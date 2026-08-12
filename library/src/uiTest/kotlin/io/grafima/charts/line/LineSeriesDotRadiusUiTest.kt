@@ -57,7 +57,7 @@ class LineSeriesDotRadiusUiTest {
         seriesStaggerMs = 0L
     )
 
-    private fun dataSet(markerRadius: Dp?) = LineDataSet(
+    private fun dataSet(markerRadius: Dp) = LineDataSet(
         series = listOf(
             LineSeries(
                 id = "reference",
@@ -107,7 +107,7 @@ class LineSeriesDotRadiusUiTest {
         assumePixelCapture()
         setContent {
             LineChart(
-                dataSet = dataSet(markerRadius = null),
+                dataSet = dataSet(markerRadius = Dp.Unspecified),
                 modifier = Modifier.size(300.dp),
                 style = style(),
                 axisConfig = insideTheEdges,
@@ -204,6 +204,33 @@ class LineSeriesDotRadiusUiTest {
         val image = onChartNode().captureToImage()
         assertTrue(image.widestRow(markerColor) > 0, "a later fill buried the marker")
         assertTrue(image.countColor(referenceColor) > 0, "the wash never painted")
+    }
+
+    @Test
+    fun an_unspecified_radius_still_places_the_value_labels() = runComposeUiTest {
+        assumePixelCapture()
+        // Unspecified is Dp(NaN). Carried into the label offset it makes every
+        // coordinate NaN, and the labels paint nowhere at all.
+        setContent {
+            LineChart(
+                dataSet = dataSet(markerRadius = Dp.Unspecified),
+                modifier = Modifier.size(300.dp),
+                style = LineChartStyle(
+                    showDots = true,
+                    dotRadius = styleRadius,
+                    valueLabels = LineValueLabelConfig(
+                        enabled = true,
+                        textStyle = TextStyle(color = Color.Red)
+                    )
+                ),
+                axisConfig = insideTheEdges,
+                animationConfig = snapAnimations
+            )
+        }
+        waitForIdle()
+
+        val labelRows = onChartNode().captureToImage().lastRowMatching { it.isReddish() }
+        assertTrue(labelRows >= 0, "no value label painted for an unspecified radius")
     }
 
     @Test

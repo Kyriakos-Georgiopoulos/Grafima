@@ -119,11 +119,12 @@ val LineDataPoint.spokenLabel: String
  * @param id Stable identifier for animation tracking. Changing the id is treated
  *   as a removal + insertion, not a morph. Must be unique within the dataset.
  * @param label Human-readable name shown in crosshair tooltips and accessibility.
- * @param points Data sorted by [LineDataPoint.x]. Series need not cover the same x
- *   positions: the crosshair reads each series at the x it stopped on, and one with
- *   no point there contributes no dot and no tooltip line rather than being read at
- *   the wrong x. The first series anchors the selection, so it should be the one
- *   that runs the whole axis.
+ * @param points Must be sorted by [LineDataPoint.x], ascending or descending; the
+ *   crosshair bisects them and finds nothing in a series that is neither. Series need
+ *   not cover the same x positions: each is read at the x the crosshair stopped on,
+ *   and one with no point there contributes no dot and no tooltip line rather than
+ *   being read at the wrong x. The first series anchors the selection, so it should
+ *   be the one that runs the whole axis.
  * @param color Primary color used for the line stroke, data dots, and the
  *   auto-generated area fill gradient. Ignored for stroke when
  *   [strokeGradientColors] has 2+ entries.
@@ -141,9 +142,9 @@ val LineDataPoint.spokenLabel: String
  *   than measured, which is how a moving average is told apart from the readings
  *   it averages. Null draws solid. The area fill is never dashed.
  * @param dotRadius Sizes this series' dots on their own, so a marker can outweigh
- *   the curve it marks. Null takes [LineChartStyle.dotRadius]; `0.dp` leaves this
- *   series without dots while the rest of the chart keeps theirs. Read only when
- *   [LineChartStyle.showDots] is on.
+ *   the curve it marks. [Dp.Unspecified] takes [LineChartStyle.dotRadius]; `0.dp`
+ *   leaves this series without dots while the rest of the chart keeps theirs. Read
+ *   only when [LineChartStyle.showDots] is on.
  */
 @Immutable
 data class LineSeries(
@@ -156,7 +157,7 @@ data class LineSeries(
     val fillGradientColors: List<Color> = emptyList(),
     val strokeGradientColors: List<Color> = emptyList(),
     val dashPattern: DashPattern? = null,
-    val dotRadius: Dp? = null
+    val dotRadius: Dp = Dp.Unspecified
 )
 
 /** Which axis a [ReferenceLine] is fixed to. */
@@ -507,8 +508,11 @@ data class LineAnimationConfig(
  *   full dataset. Called once per data change. Default announces series names,
  *   value ranges, and point counts.
  * @param selectedPointDescriptionBuilder Appended to the base description when
- *   the crosshair is active. Announces the value at the selected point for each
- *   series. TalkBack reads this on each crosshair move.
+ *   the crosshair is active. TalkBack reads this on each crosshair move. The default
+ *   announces every series that has a point at the selected x, resolved the same way
+ *   the dots and the tooltip are; one that does not is left unspoken. An override
+ *   indexing `points` by the given index instead will disagree with what is drawn
+ *   whenever the series do not share x positions.
  * @param axisTitleDescriptionBuilder Announces [LineAxisConfig.xAxisTitle] and
  *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
  *   null when unset. Override to translate the wording; return an empty string to

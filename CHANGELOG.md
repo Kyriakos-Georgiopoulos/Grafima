@@ -24,9 +24,11 @@ behaviour do not.
   dataset that sets no series behaves exactly as it did in 1.1.1.
 - `LineSeries.dotRadius` sizes one series' dots on their own, so a "you are here"
   marker can outweigh the curve it marks instead of drawing at the same weight as
-  the readings around it. Null keeps `LineChartStyle.dotRadius`, and `0.dp` drops
-  that series' dots while the rest of the chart keeps theirs. `showDots` still
-  decides whether any dot is drawn at all.
+  the readings around it. `Dp.Unspecified` keeps `LineChartStyle.dotRadius`, matching
+  how `outerRadius` defers on the pie and radar charts, and `0.dp` drops that series'
+  dots while the rest of the chart keeps theirs. `showDots` still decides whether any
+  dot is drawn at all. Dots are drawn after every series' fill, so a marker keeps its
+  weight wherever it sits in the list.
 
 ### Changed
 
@@ -40,6 +42,20 @@ behaviour do not.
   that localised only the first reverting to English the day it gained a series. The
   default wording is unchanged for an ungrouped chart; ragged categories say
   "3 bars in 2 groups" rather than claiming a group size they do not share.
+- **Behaviour breaking.** The line chart's crosshair reads each series at the x it
+  stopped on rather than at the selected point's position in the list. This carries
+  no api diff, so it is the one entry here you cannot catch by diffing `library/api/`.
+  A one-point "you are here" marker used to be drawn at every x the first series had
+  a point at, so hovering January put the marker's dot and tooltip line there while
+  the marker sat in August; it is now named at its own x and nowhere else. The cost
+  is that series which were index-aligned on *differing* x values — two periods laid
+  side by side, say — lose the second series' crosshair dot, tooltip line and spoken
+  value, because it has no reading at the x you stopped on. Give both series the same
+  x values, or make the second a `ReferenceLine`. `selectedPointIndex` still indexes
+  the first series and is unchanged. The default
+  `LineA11yConfig.selectedPointDescriptionBuilder` follows the same rule, so a series
+  with no point at the selected x is no longer announced; an override that indexes
+  `points` by hand keeps its old behaviour and will disagree with what is drawn.
 - **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig` and
   `LineSeries` each gained a defaulted constructor parameter. Apart from the builder rename above
   your code compiles unchanged, but Kotlin regenerates a data class's constructor and
@@ -50,13 +66,6 @@ behaviour do not.
 
 ### Fixed
 
-- The line chart's crosshair reads each series at the x it stopped on rather than at
-  the selected point's position in the list. A series that does not cover the whole
-  axis — a one-point "you are here" marker on a reference curve — was drawn at every
-  x the anchor series had a point at, so hovering January put the marker's dot and
-  its tooltip line there while the marker itself sat in August. A series with no
-  point at that x now contributes no dot and no tooltip line. `selectedPointIndex`
-  still indexes the first series and is unchanged.
 - A dataset replaced outright no longer draws the old items alongside the new ones.
   Departing items were threaded back into an axis they shared no ids with, so
   swapping a bar chart's months for quarters drew both sets on one axis and split

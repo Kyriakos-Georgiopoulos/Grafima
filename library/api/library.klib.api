@@ -799,14 +799,14 @@ final class io.grafima.charts.line/LineDataSet { // io.grafima.charts.line/LineD
 }
 
 final class io.grafima.charts.line/LineSeries { // io.grafima.charts.line/LineSeries|null[0]
-    constructor <init>(kotlin/String, kotlin/String, kotlin.collections/List<io.grafima.charts.line/LineDataPoint>, androidx.compose.ui.graphics/Color = ..., kotlin/Float = ..., androidx.compose.ui.unit/Dp = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., io.grafima.charts/DashPattern? = ..., androidx.compose.ui.unit/Dp? = ...) // io.grafima.charts.line/LineSeries.<init>|<init>(kotlin.String;kotlin.String;kotlin.collections.List<io.grafima.charts.line.LineDataPoint>;androidx.compose.ui.graphics.Color;kotlin.Float;androidx.compose.ui.unit.Dp;kotlin.collections.List<androidx.compose.ui.graphics.Color>;kotlin.collections.List<androidx.compose.ui.graphics.Color>;io.grafima.charts.DashPattern?;androidx.compose.ui.unit.Dp?){}[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin.collections/List<io.grafima.charts.line/LineDataPoint>, androidx.compose.ui.graphics/Color = ..., kotlin/Float = ..., androidx.compose.ui.unit/Dp = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., io.grafima.charts/DashPattern? = ..., androidx.compose.ui.unit/Dp = ...) // io.grafima.charts.line/LineSeries.<init>|<init>(kotlin.String;kotlin.String;kotlin.collections.List<io.grafima.charts.line.LineDataPoint>;androidx.compose.ui.graphics.Color;kotlin.Float;androidx.compose.ui.unit.Dp;kotlin.collections.List<androidx.compose.ui.graphics.Color>;kotlin.collections.List<androidx.compose.ui.graphics.Color>;io.grafima.charts.DashPattern?;androidx.compose.ui.unit.Dp){}[0]
 
     final val color // io.grafima.charts.line/LineSeries.color|{}color[0]
         final fun <get-color>(): androidx.compose.ui.graphics/Color // io.grafima.charts.line/LineSeries.color.<get-color>|<get-color>(){}[0]
     final val dashPattern // io.grafima.charts.line/LineSeries.dashPattern|{}dashPattern[0]
         final fun <get-dashPattern>(): io.grafima.charts/DashPattern? // io.grafima.charts.line/LineSeries.dashPattern.<get-dashPattern>|<get-dashPattern>(){}[0]
     final val dotRadius // io.grafima.charts.line/LineSeries.dotRadius|{}dotRadius[0]
-        final fun <get-dotRadius>(): androidx.compose.ui.unit/Dp? // io.grafima.charts.line/LineSeries.dotRadius.<get-dotRadius>|<get-dotRadius>(){}[0]
+        final fun <get-dotRadius>(): androidx.compose.ui.unit/Dp // io.grafima.charts.line/LineSeries.dotRadius.<get-dotRadius>|<get-dotRadius>(){}[0]
     final val fillAlpha // io.grafima.charts.line/LineSeries.fillAlpha|{}fillAlpha[0]
         final fun <get-fillAlpha>(): kotlin/Float // io.grafima.charts.line/LineSeries.fillAlpha.<get-fillAlpha>|<get-fillAlpha>(){}[0]
     final val fillGradientColors // io.grafima.charts.line/LineSeries.fillGradientColors|{}fillGradientColors[0]
@@ -823,7 +823,7 @@ final class io.grafima.charts.line/LineSeries { // io.grafima.charts.line/LineSe
         final fun <get-strokeWidth>(): androidx.compose.ui.unit/Dp // io.grafima.charts.line/LineSeries.strokeWidth.<get-strokeWidth>|<get-strokeWidth>(){}[0]
 
     final fun component1(): kotlin/String // io.grafima.charts.line/LineSeries.component1|component1(){}[0]
-    final fun component10(): androidx.compose.ui.unit/Dp? // io.grafima.charts.line/LineSeries.component10|component10(){}[0]
+    final fun component10(): androidx.compose.ui.unit/Dp // io.grafima.charts.line/LineSeries.component10|component10(){}[0]
     final fun component2(): kotlin/String // io.grafima.charts.line/LineSeries.component2|component2(){}[0]
     final fun component3(): kotlin.collections/List<io.grafima.charts.line/LineDataPoint> // io.grafima.charts.line/LineSeries.component3|component3(){}[0]
     final fun component4(): androidx.compose.ui.graphics/Color // io.grafima.charts.line/LineSeries.component4|component4(){}[0]
@@ -832,7 +832,7 @@ final class io.grafima.charts.line/LineSeries { // io.grafima.charts.line/LineSe
     final fun component7(): kotlin.collections/List<androidx.compose.ui.graphics/Color> // io.grafima.charts.line/LineSeries.component7|component7(){}[0]
     final fun component8(): kotlin.collections/List<androidx.compose.ui.graphics/Color> // io.grafima.charts.line/LineSeries.component8|component8(){}[0]
     final fun component9(): io.grafima.charts/DashPattern? // io.grafima.charts.line/LineSeries.component9|component9(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin.collections/List<io.grafima.charts.line/LineDataPoint> = ..., androidx.compose.ui.graphics/Color = ..., kotlin/Float = ..., androidx.compose.ui.unit/Dp = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., io.grafima.charts/DashPattern? = ..., androidx.compose.ui.unit/Dp? = ...): io.grafima.charts.line/LineSeries // io.grafima.charts.line/LineSeries.copy|copy(kotlin.String;kotlin.String;kotlin.collections.List<io.grafima.charts.line.LineDataPoint>;androidx.compose.ui.graphics.Color;kotlin.Float;androidx.compose.ui.unit.Dp;kotlin.collections.List<androidx.compose.ui.graphics.Color>;kotlin.collections.List<androidx.compose.ui.graphics.Color>;io.grafima.charts.DashPattern?;androidx.compose.ui.unit.Dp?){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin.collections/List<io.grafima.charts.line/LineDataPoint> = ..., androidx.compose.ui.graphics/Color = ..., kotlin/Float = ..., androidx.compose.ui.unit/Dp = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., kotlin.collections/List<androidx.compose.ui.graphics/Color> = ..., io.grafima.charts/DashPattern? = ..., androidx.compose.ui.unit/Dp = ...): io.grafima.charts.line/LineSeries // io.grafima.charts.line/LineSeries.copy|copy(kotlin.String;kotlin.String;kotlin.collections.List<io.grafima.charts.line.LineDataPoint>;androidx.compose.ui.graphics.Color;kotlin.Float;androidx.compose.ui.unit.Dp;kotlin.collections.List<androidx.compose.ui.graphics.Color>;kotlin.collections.List<androidx.compose.ui.graphics.Color>;io.grafima.charts.DashPattern?;androidx.compose.ui.unit.Dp){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.grafima.charts.line/LineSeries.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.grafima.charts.line/LineSeries.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.grafima.charts.line/LineSeries.toString|toString(){}[0]

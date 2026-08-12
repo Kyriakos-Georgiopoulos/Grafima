@@ -649,7 +649,7 @@ fun LineChart(
 
         // Only a drawn dot needs clearing; an unused radius must not push labels off.
         fun markRadiusPx(s: LineSeries) =
-            if (style.showDots) (s.dotRadius ?: style.dotRadius).toPx() else 0f
+            if (style.showDots) s.dotRadius.orElse(style.dotRadius).toPx().coerceAtLeast(0f) else 0f
 
         renderSeries.forEach { s ->
             val n = s.points.size
