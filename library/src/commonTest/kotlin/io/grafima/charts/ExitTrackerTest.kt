@@ -185,4 +185,25 @@ class ExitTrackerTest {
 
         assertEquals(listOf("a1", "a2", "a3", "b1", "b2"), tracker.render(after))
     }
+
+    @Test
+    fun `a dataset replaced outright does not draw the old one alongside it`() {
+        val tracker = ExitTracker<String> { it }
+        tracker.sync(listOf("jan", "feb", "mar"))
+        val replacement = listOf("q1", "q2")
+        tracker.sync(replacement)
+
+        // Threading the months through the quarters' axis puts two unrelated charts
+        // on one scale, and splits any group the replacement happens to contain.
+        assertEquals(replacement, tracker.render(replacement))
+    }
+
+    @Test
+    fun `emptying a dataset still animates its items out`() {
+        val tracker = ExitTracker<String> { it }
+        tracker.sync(listOf("a", "b"))
+        tracker.sync(emptyList())
+
+        assertEquals(listOf("a", "b"), tracker.render(emptyList()))
+    }
 }
