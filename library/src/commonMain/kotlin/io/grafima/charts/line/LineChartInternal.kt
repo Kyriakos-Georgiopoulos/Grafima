@@ -38,6 +38,7 @@ import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
+import kotlin.math.ulp
 
 /**
  * Maps a data-space X value to a canvas X coordinate, mirroring for RTL.
@@ -111,9 +112,15 @@ internal fun List<LineDataPoint>.indexAtX(x: Float): Int {
     return -1
 }
 
-/** Shared x positions reach the two series down different arithmetic. */
-private fun sameAxisX(a: Float, b: Float): Boolean =
-    abs(a - b) <= 1e-5f * max(1f, max(abs(a), abs(b)))
+/**
+ * Shared x positions reach the two series down different arithmetic, so this
+ * allows a few ulps. Anything wider closes over real points: a tolerance
+ * proportional to x is 4.7 hours of slack on an axis of epoch seconds.
+ */
+private fun sameAxisX(a: Float, b: Float): Boolean {
+    if (a == b) return true
+    return abs(a - b) <= 4f * max(abs(a), abs(b)).ulp
+}
 
 /**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly

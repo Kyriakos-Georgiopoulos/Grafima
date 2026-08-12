@@ -69,6 +69,33 @@ class IndexAtXTest {
     }
 
     @Test
+    fun hourly_epoch_seconds_resolve_to_themselves() {
+        // A tolerance proportional to x spanned 4.7 hours here, so a point matched
+        // a neighbour and the bisect returned whichever it landed on.
+        val start = 1786492800L
+        val day = (0 until 24).map { LineDataPoint(x = (start + it * 3600L).toFloat(), y = 1f) }
+        day.forEachIndexed { i, point ->
+            assertEquals(i, day.indexAtX(point.x), "hour $i")
+        }
+    }
+
+    @Test
+    fun points_spaced_below_one_resolve_to_themselves() {
+        // The old tolerance had a floor of 1.0, which swallowed every point here.
+        val fine = (0 until 20).map { LineDataPoint(x = it * 1e-6f, y = 1f) }
+        fine.forEachIndexed { i, point ->
+            assertEquals(i, fine.indexAtX(point.x), "point $i")
+        }
+    }
+
+    @Test
+    fun a_neighbour_one_step_away_is_never_mistaken_for_a_match() {
+        val start = 1786492800L
+        val day = (0 until 24).map { LineDataPoint(x = (start + it * 3600L).toFloat(), y = 1f) }
+        assertEquals(-1, day.indexAtX((start + 1800L).toFloat()), "half past the hour matched")
+    }
+
+    @Test
     fun negative_positions_are_ordered_the_same_way() {
         val p = points(-10f, -2.5f, 0f, 2.5f)
         assertEquals(0, p.indexAtX(-10f))
