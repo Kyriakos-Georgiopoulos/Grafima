@@ -22,6 +22,11 @@ behaviour do not.
   `ChartStyle.groupSpacingFactor`, `BarChartSummary`, `A11yConfig.selectActionLabel`,
   `A11yConfig.clearSelectionLabel` and the `BarEntry.spokenSeriesLabel` extension. Every one is defaulted, so a
   dataset that sets no series behaves exactly as it did in 1.1.1.
+- `LineSeries.dotRadius` sizes one series' dots on their own, so a marker can outweigh
+  the curve it marks instead of drawing at the same weight as the readings around it.
+  `Dp.Unspecified` keeps `LineChartStyle.dotRadius`, matching how `outerRadius` defers
+  on the pie and radar charts, and `0.dp` drops that series' dots while the rest of the
+  chart keeps theirs. `showDots` still decides whether any dot is drawn at all.
 
 ### Changed
 
@@ -35,8 +40,14 @@ behaviour do not.
   that localised only the first reverting to English the day it gained a series. The
   default wording is unchanged for an ungrouped chart; ragged categories say
   "3 bars in 2 groups" rather than claiming a group size they do not share.
-- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle` and `A11yConfig`
-  each gained a defaulted constructor parameter. Apart from the builder rename above
+- Line chart dots are drawn after every series' area fill rather than inside each
+  series' own pass, so an earlier series' dots are no longer painted over by a later
+  series' fill. The plot rectangle and the axis labels now both stand off by the
+  widest resolved dot radius, so a point on an axis bound is neither clipped by the
+  composable's edge nor drawn across the labels; a large `dotRadius` costs the plot
+  that much room on every side.
+- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig` and
+  `LineSeries` each gained a defaulted constructor parameter. Apart from the builder rename above
   your code compiles unchanged, but Kotlin regenerates a data class's constructor and
   `copy` for the new arity rather than keeping the old one — the removed signatures
   are in the api diff.
@@ -45,6 +56,11 @@ behaviour do not.
 
 ### Fixed
 
+- A dataset replaced outright no longer draws the old items alongside the new ones.
+  Departing items were threaded back into an axis they shared no ids with, so
+  swapping a bar chart's months for quarters drew both sets on one axis and split
+  the groups between them. Emptying a dataset is still an exit animation: everything
+  leaving is all there is to draw. Affects the bar, pie, line and radar charts.
 - Bar chart hit testing follows the bars while one is animating out. It measured
   against the dataset while the draw pass measured against what was on screen, so
   every tap landed on the wrong bar for the length of a removal.
