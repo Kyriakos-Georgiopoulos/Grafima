@@ -39,17 +39,18 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.grafima.charts.LegendOrientation
 import io.grafima.charts.dashIntervalsOf
 import kotlin.math.min
 
 /** [LineLegend]'s default label style. Guarded by `ColorContrastTest`. */
 internal val LegendLabelTextStyle = TextStyle(fontSize = 12.sp, color = AxisLabelGrey)
 
-/** Whether [LineLegend] lays its entries out in a row or a column. */
-enum class LineLegendOrientation {
-    Horizontal,
-    Vertical
-}
+@Deprecated(
+    "Renamed to LegendOrientation, which the bar chart's legend shares.",
+    ReplaceWith("LegendOrientation", "io.grafima.charts.LegendOrientation")
+)
+typealias LineLegendOrientation = LegendOrientation
 
 /**
  * A key mapping each series' colour to its [LineSeries.label].
@@ -76,7 +77,7 @@ enum class LineLegendOrientation {
  * stop each. The colour mapping itself is visual only — the chart's own
  * description is what carries the series to a listener.
  *
- * [Horizontal][LineLegendOrientation.Horizontal] wraps onto further lines when the
+ * [Horizontal][LegendOrientation.Horizontal] wraps onto further lines when the
  * entries do not fit.
  *
  * @param dataSet The same dataset the chart is drawing.
@@ -85,13 +86,13 @@ enum class LineLegendOrientation {
  * @param swatchWidth Length of the colour sample beside each label.
  * @param spacing Gap between entries, and half that between wrapped lines.
  * @param entryAlignment Which edge the entries line up on when
- *   [Vertical][LineLegendOrientation.Vertical]. Ignored when horizontal.
+ *   [Vertical][LegendOrientation.Vertical]. Ignored when horizontal.
  */
 @Composable
 fun LineLegend(
     dataSet: LineDataSet,
     modifier: Modifier = Modifier,
-    orientation: LineLegendOrientation = LineLegendOrientation.Horizontal,
+    orientation: LegendOrientation = LegendOrientation.Horizontal,
     textStyle: TextStyle = LegendLabelTextStyle,
     swatchWidth: Dp = 18.dp,
     spacing: Dp = 12.dp,
@@ -161,7 +162,7 @@ fun LineLegend(
     }
 
     when (orientation) {
-        LineLegendOrientation.Horizontal -> FlowRow(
+        LegendOrientation.Horizontal -> FlowRow(
             modifier = grouped,
             horizontalArrangement = Arrangement.spacedBy(spacing),
             verticalArrangement = Arrangement.spacedBy(spacing / 2),
@@ -169,7 +170,7 @@ fun LineLegend(
             content = { entries() }
         )
 
-        LineLegendOrientation.Vertical -> Column(
+        LegendOrientation.Vertical -> Column(
             modifier = grouped,
             verticalArrangement = Arrangement.spacedBy(spacing),
             horizontalAlignment = entryAlignment,

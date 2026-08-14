@@ -8,6 +8,14 @@ public final class io/grafima/charts/DashPattern {
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class io/grafima/charts/LegendOrientation : java/lang/Enum {
+	public static final field Horizontal Lio/grafima/charts/LegendOrientation;
+	public static final field Vertical Lio/grafima/charts/LegendOrientation;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/LegendOrientation;
+	public static fun values ()[Lio/grafima/charts/LegendOrientation;
+}
+
 public final class io/grafima/charts/ReduceMotionKt {
 	public static final fun getLocalReduceMotion ()Landroidx/compose/runtime/ProvidableCompositionLocal;
 }
@@ -154,6 +162,10 @@ public final class io/grafima/charts/bar/BarGroupMode : java/lang/Enum {
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/bar/BarGroupMode;
 	public static fun values ()[Lio/grafima/charts/bar/BarGroupMode;
+}
+
+public final class io/grafima/charts/bar/BarLegendKt {
+	public static final fun BarLegend-3GLzNTs (Lio/grafima/charts/bar/BarDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/LegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Landroidx/compose/runtime/Composer;II)V
 }
 
 public final class io/grafima/charts/bar/BarOrientation : java/lang/Enum {
@@ -596,15 +608,7 @@ public final class io/grafima/charts/line/LineDataSet {
 }
 
 public final class io/grafima/charts/line/LineLegendKt {
-	public static final fun LineLegend-3GLzNTs (Lio/grafima/charts/line/LineDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/line/LineLegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Landroidx/compose/runtime/Composer;II)V
-}
-
-public final class io/grafima/charts/line/LineLegendOrientation : java/lang/Enum {
-	public static final field Horizontal Lio/grafima/charts/line/LineLegendOrientation;
-	public static final field Vertical Lio/grafima/charts/line/LineLegendOrientation;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/line/LineLegendOrientation;
-	public static fun values ()[Lio/grafima/charts/line/LineLegendOrientation;
+	public static final fun LineLegend-3GLzNTs (Lio/grafima/charts/line/LineDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/LegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Landroidx/compose/runtime/Composer;II)V
 }
 
 public final class io/grafima/charts/line/LineSeries {

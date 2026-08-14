@@ -35,6 +35,15 @@ behaviour do not.
   selects — `LineDataPoint`, `PieEntry`, `RadarSeries` — as the bar chart's takes a
   `BarEntry`, so an override can reach the raw value rather than a pre-formatted label.
 
+- `BarLegend`, a key mapping each series' colours to its `seriesLabel`. A grouped or
+  stacked chart tells its series apart by colour alone, and the chart names them only
+  once a bar is selected — at rest, or in a screenshot, a sighted reader had nothing
+  to read the colours against. Placed by the caller, so the plot keeps its full
+  height. A dataset with no `seriesId` draws no key at all, since the axis already
+  names those bars, so one call can sit above a chart that switches between single,
+  grouped and stacked.
+- `LegendOrientation`, shared by `BarLegend` and `LineLegend`.
+
 ### Changed
 
 - The default `A11yConfig.selectedStateDescription` names the series when a bar has
@@ -65,6 +74,8 @@ behaviour do not.
   default `LineA11yConfig.selectedPointDescriptionBuilder` follows the same rule, so a
   series with no point at the selected x is no longer announced; an override that
   indexes `points` by hand keeps its old behaviour and will disagree with what is drawn.
+- `LineLegendOrientation` is now a deprecated typealias of `LegendOrientation`, so
+  the two legends name one concept. Existing source compiles unchanged.
 - **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig`,
   `LineSeries`, `LineA11yConfig`, `PieA11yConfig` and `RadarA11yConfig` each gained
   defaulted constructor parameters, appended so existing positional calls and

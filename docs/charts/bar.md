@@ -110,6 +110,48 @@ through to `defaultGradientColors`. A bar setting `colorStops` overrides both.
 Screen-reader users do not need it: the chart's description counts the bars and the
 groups, and every action names its own series.
 
+## Legend
+
+A grouped or stacked chart draws two or more bars per category and tells them apart
+by colour alone. The chart names the series in its tooltip and to a screen reader,
+but only once a bar is selected — at rest, or in a screenshot, a sighted reader has
+nothing to read the colours against.
+
+```kotlin
+Column {
+    BarLegend(dataSet = data)
+    BarChart(dataSet = data, modifier = Modifier.fillMaxWidth().height(300.dp))
+}
+```
+
+It is a separate composable rather than part of the drawing, so you place it above,
+beside or below and the plot keeps its full height.
+
+```kotlin
+BarLegend(
+    dataSet = data,
+    orientation = LegendOrientation.Vertical,
+    textStyle = MaterialTheme.typography.labelMedium
+)
+```
+
+Each series is listed once, in the order it first appears, with a swatch taking that
+series' colours from its first bar. A series that sets no colours of its own takes
+`BarDataSet.defaultGradientColors`, so give your series their own or the key cannot
+tell them apart.
+
+A dataset whose entries carry no `seriesId` draws nothing at all — those bars are
+named by the axis already, and a key repeating those names says nothing new. That
+means the same `BarLegend` call can sit above a chart that switches between single,
+grouped and stacked without needing to be conditional.
+
+`Horizontal` wraps onto further lines when the entries do not fit. `Vertical` takes
+an `entryAlignment` for the edge the entries line up on.
+
+A screen reader reaches the legend as one item naming every series, rather than a
+stop each. The colour mapping is visual only — the chart's own description is what
+carries the series to a listener.
+
 ## Orientation
 
 ```kotlin
@@ -199,6 +241,7 @@ selectionRenderer = TooltipSelectionRenderer(
 | `orientation` | `Vertical` (default) or `Horizontal` |
 | `style` | Bar shape, spacing, text styles, floating values |
 | `axisConfig` | Y-axis labels, grid lines, step count |
+| `BarLegend` | A key mapping each series' colours to its label |
 | `animationConfig` | Entry, morph, and selection timing |
 | `a11yConfig` | Screen-reader text builders |
 | `selectionRenderer` | Draws the selection indicator |
