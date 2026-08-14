@@ -77,7 +77,7 @@ swap"*.
   `underscore_separated` names instead — those tests are dexed for Android
   instrumentation, and D8 rejects spaces in class names below DEX version 040
   (Kotlin derives lambda class names from the enclosing function, and the
-  library targets minSdk 24).
+  library targets minSdk 21).
 - **No wall-clock time.** Animation tests run on virtual time via
   `runTest` + a hand-pumped `BroadcastFrameClock` (see `AnimationTestHarness`).
 - **Accessibility defaults are pinned as exact strings** — for screen-reader
