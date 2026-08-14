@@ -53,6 +53,18 @@ behaviour do not.
   widest resolved dot radius, so a point on an axis bound is neither clipped by the
   composable's edge nor drawn across the labels; a large `dotRadius` costs the plot
   that much room on every side.
+- **Behaviour breaking.** The line chart's crosshair reads each series at the x it
+  stopped on rather than at the selected point's position in the list, and
+  `selectedPointIndex` steps through every x any series reaches, ascending, rather
+  than the first series' points alone. A one-point "you are here" marker used to be drawn at every x the
+  first series had a point at; it is now named at its own x and nowhere else, and an x
+  only it reaches is selectable and announced. Series index-aligned on *differing* x
+  values lose the second series' crosshair dot, tooltip line and spoken value: give
+  both the same x values, or make the second a `ReferenceLine`. This carries no api
+  diff, so it is the one entry here you cannot catch by diffing `library/api/`. The
+  default `LineA11yConfig.selectedPointDescriptionBuilder` follows the same rule, so a
+  series with no point at the selected x is no longer announced; an override that
+  indexes `points` by hand keeps its old behaviour and will disagree with what is drawn.
 - **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig`,
   `LineSeries`, `LineA11yConfig`, `PieA11yConfig` and `RadarA11yConfig` each gained
   defaulted constructor parameters, appended so existing positional calls and

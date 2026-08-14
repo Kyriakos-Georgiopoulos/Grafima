@@ -54,6 +54,10 @@ internal fun SemanticsNodeInteraction.customActionLabels(): List<String> =
 internal fun SemanticsNodeInteraction.contentDescription(): String =
     fetchSemanticsNode().config[SemanticsProperties.ContentDescription].joinToString(" ")
 
+/** What a screen reader adds for the node's current selection, or "" when unset. */
+internal fun SemanticsNodeInteraction.stateDescription(): String =
+    fetchSemanticsNode().config.getOrElse(SemanticsProperties.StateDescription) { "" }
+
 /**
  * Invokes a chart's custom accessibility action by its visible label via the
  * official test API, failing with the list of available labels when absent.

@@ -119,8 +119,12 @@ val LineDataPoint.spokenLabel: String
  * @param id Stable identifier for animation tracking. Changing the id is treated
  *   as a removal + insertion, not a morph. Must be unique within the dataset.
  * @param label Human-readable name shown in crosshair tooltips and accessibility.
- * @param points Data sorted by [LineDataPoint.x]. All series in a dataset should
- *   ideally share the same x positions for correct crosshair alignment.
+ * @param points Order is yours; the chart places each point by its
+ *   [LineDataPoint.x]. Series need not cover the same x positions: each is read at
+ *   the x the crosshair stopped on, and one with no point there contributes no dot
+ *   and no tooltip line rather than being read at the wrong x. Selection steps
+ *   through every x any series reaches, in ascending order, so every drawn point is
+ *   selectable and announced.
  * @param color Primary color used for the line stroke, data dots, and the
  *   auto-generated area fill gradient. Ignored for stroke when
  *   [strokeGradientColors] has 2+ entries.
@@ -504,8 +508,11 @@ data class LineAnimationConfig(
  *   full dataset. Called once per data change. Default announces series names,
  *   value ranges, and point counts.
  * @param selectedPointDescriptionBuilder Appended to the base description when
- *   the crosshair is active. Announces the value at the selected point for each
- *   series. TalkBack reads this on each crosshair move.
+ *   the crosshair is active. TalkBack reads this on each crosshair move. The default
+ *   announces every series that has a point at the selected x, resolved the same way
+ *   the dots and the tooltip are; one that does not is left unspoken. An override
+ *   indexing `points` by the given index instead will disagree with what is drawn
+ *   whenever the series do not share x positions.
  * @param axisTitleDescriptionBuilder Announces [LineAxisConfig.xAxisTitle] and
  *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
  *   null when unset. Override to translate the wording; return an empty string to
@@ -531,10 +538,14 @@ data class LineA11yConfig(
     },
     val selectedPointDescriptionBuilder: (Int, List<LineSeries>) -> String = { idx, series ->
         buildString {
-            series.forEach { s ->
-                if (idx in s.points.indices) {
-                    val p = s.points[idx]
-                    append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")
+            val axis = buildAxisIndex(series)
+            if (idx in axis.positions.indices) {
+                series.forEach { s ->
+                    val at = axis.pointIndex(s.id, idx)
+                    if (at >= 0) {
+                        val p = s.points[at]
+                        append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")
+                    }
                 }
             }
         }

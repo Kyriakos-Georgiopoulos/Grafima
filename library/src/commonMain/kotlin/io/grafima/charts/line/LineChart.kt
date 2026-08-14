@@ -113,8 +113,10 @@ import kotlin.math.min
  * @param crosshairConfig Crosshair interaction and tooltip appearance.
  * @param animationConfig Timing for entry wave, morph spring, and stagger delays.
  * @param a11yConfig Accessibility description builders for TalkBack.
- * @param selectedPointIndex Currently highlighted x-axis data point index, or null.
- *   Hoist this in the parent to control crosshair externally.
+ * @param selectedPointIndex Currently highlighted x-axis position, or null. Indexes
+ *   every x any series reaches, ascending — the same as indexing the first series'
+ *   points whenever the series share x positions and that series is sorted. Hoist
+ *   this in the parent to control the crosshair externally.
  * @param selectionHaptic Haptic effect performed each time the crosshair snaps to a new
  *   data point during a drag. Pass null to disable.
  * @param onPointSelected Called during touch/drag (with the nearest point index)
@@ -439,6 +441,9 @@ fun LineChart(
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
 
+    val axis = remember(series) { buildAxisIndex(series) }
+    val currentAxisX by rememberUpdatedState(axis.positions)
+
     val widestDotPx = remember(renderSeries, style.showDots, style.dotRadius, density) {
         if (!style.showDots) {
             0f
@@ -472,12 +477,14 @@ fun LineChart(
                 contentDescription = baseDescription
                 stateDescription = selectedDescription
                 customActions = buildList {
-                    val points = series.firstOrNull()?.points.orEmpty()
-                    if (points.isNotEmpty()) {
+                    if (axis.positions.isNotEmpty()) {
                         // Named, not next/previous: stepping leaves the listener
                         // counting along the axis to work out where they landed.
-                        points.forEachIndexed { index, point ->
-                            if (xIsPinned && !isWithinAxis(point.x, xMin, xMax)) return@forEachIndexed
+                        axis.positions.forEachIndexed { index, x ->
+                            if (xIsPinned && !isWithinAxis(x, xMin, xMax)) return@forEachIndexed
+                            val point = series.firstNotNullOfOrNull { s ->
+                                s.points.getOrNull(axis.pointIndex(s.id, index))
+                            } ?: return@forEachIndexed
                             add(
                                 CustomAccessibilityAction(label = a11yConfig.selectActionLabel(point)) {
                                     onPointSelected(index)
@@ -500,9 +507,8 @@ fun LineChart(
             .pointerInput(Unit) {
                 if (!crosshairConfig.enabled) return@pointerInput
                 awaitEachGesture {
-                    val activeSeries = currentSeries
-                    val fp = activeSeries.firstOrNull()?.points ?: return@awaitEachGesture
-                    if (fp.isEmpty()) return@awaitEachGesture
+                    val positions = currentAxisX
+                    if (positions.isEmpty()) return@awaitEachGesture
 
                     val den = currentDensity
                     val gap = with(den) { style.labelGap.toPx() }
@@ -528,7 +534,7 @@ fun LineChart(
 
                     val restrict = currentXIsPinned
                     fun nearest(touchX: Float): Int =
-                        nearestPointIndex(fp, touchX, axMin, axMax, cLeft, cRight, rtl, restrict)
+                        nearestAxisIndex(positions, touchX, axMin, axMax, cLeft, cRight, rtl, restrict)
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var lastHapticIndex = nearest(down.position.x)
@@ -1009,10 +1015,9 @@ fun LineChart(
 
         // ── 6. Crosshair + tooltip ──
         selectedPointIndex?.let { idx ->
-            val fp = series.firstOrNull() ?: return@let
-            if (idx !in fp.points.indices) return@let
-            if (xIsPinned && !isWithinAxis(fp.points[idx].x, xMin, xMax)) return@let
-            val crossX = mapX(fp.points[idx].x)
+            val anchorX = axis.positions.getOrNull(idx) ?: return@let
+            if (xIsPinned && !isWithinAxis(anchorX, xMin, xMax)) return@let
+            val crossX = mapX(anchorX)
 
             drawLine(
                 color = crosshairConfig.lineColor,
@@ -1023,11 +1028,12 @@ fun LineChart(
 
             val dotR = crosshairConfig.dotRadius.toPx()
             val borderW = crosshairConfig.dotBorderWidth.toPx()
-            series.forEach { s ->
-                if (idx < s.points.size) {
-                    if (yIsPinned && !isWithinAxis(s.points[idx].y, yMin, yMax)) return@forEach
-                    val key = keyMatrix[s.id]?.getOrNull(idx) ?: return@forEach
-                    val animY = animationEngine.yAnimatables[key]?.value ?: s.points[idx].y
+            series.forEachIndexed { i, s ->
+                val at = axis.pointIndex(s.id, idx)
+                if (at >= 0) {
+                    if (yIsPinned && !isWithinAxis(s.points[at].y, yMin, yMax)) return@forEachIndexed
+                    val key = keyMatrix[s.id]?.getOrNull(at) ?: return@forEachIndexed
+                    val animY = animationEngine.yAnimatables[key]?.value ?: s.points[at].y
                     val cy = mapY(animY)
                     drawCircle(
                         color = crosshairConfig.dotBorderColor,
@@ -1040,10 +1046,11 @@ fun LineChart(
 
             if (crosshairConfig.showTooltip) {
                 val tooltipText = buildString {
-                    series.forEachIndexed { i, s ->
-                        if (idx < s.points.size) {
-                            if (i > 0) append("\n")
-                            append(crosshairConfig.tooltipFormatter(s, s.points[idx]))
+                    series.forEach { s ->
+                        val at = axis.pointIndex(s.id, idx)
+                        if (at >= 0) {
+                            if (isNotEmpty()) append("\n")
+                            append(crosshairConfig.tooltipFormatter(s, s.points[at]))
                         }
                     }
                 }

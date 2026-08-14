@@ -38,6 +38,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -70,8 +71,8 @@ internal fun mapDataXToCanvas(
  * candidate. Its marks are not drawn, so selecting it would move the crosshair
  * somewhere the reader can see nothing.
  */
-internal fun nearestPointIndex(
-    points: List<LineDataPoint>,
+internal fun nearestAxisIndex(
+    positions: FloatArray,
     touchX: Float,
     xMin: Float,
     xMax: Float,
@@ -82,10 +83,10 @@ internal fun nearestPointIndex(
 ): Int {
     var nearest = -1
     var shortest = Float.MAX_VALUE
-    for (i in points.indices) {
-        if (restrictToAxis && !isWithinAxis(points[i].x, xMin, xMax)) continue
-        val distance =
-            abs(mapDataXToCanvas(points[i].x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
+    for (i in positions.indices) {
+        val x = positions[i]
+        if (restrictToAxis && !isWithinAxis(x, xMin, xMax)) continue
+        val distance = abs(mapDataXToCanvas(x, xMin, xMax, chartLeft, chartRight, isRtl) - touchX)
         if (distance < shortest) {
             shortest = distance
             nearest = i
@@ -96,6 +97,96 @@ internal fun nearestPointIndex(
 
 /** [Dp.Unspecified] defers to the chart-wide value, as it does on the other charts. */
 internal fun Dp.orElse(fallback: Dp): Dp = if (isSpecified) this else fallback
+
+/**
+ * Where every series stands on a shared x axis, resolved once for a dataset.
+ *
+ * Built instead of matching floats at lookup time: a tolerance that works for one
+ * dataset is wrong for the next, since drift between two spellings of the same
+ * reading and the real gap between two readings are the same size at some
+ * magnitudes. Here the bound comes from the data itself, and every lookup after
+ * that is an array read.
+ */
+internal class AxisIndex(
+    /** Every x any series reaches, ascending, near-equal values merged. */
+    val positions: FloatArray,
+    private val perSeries: Map<String, IntArray>
+) {
+    /** This series' point at [position], or -1 where it has no reading. */
+    fun pointIndex(seriesId: String, position: Int): Int {
+        val slots = perSeries[seriesId] ?: return -1
+        return if (position in slots.indices) slots[position] else -1
+    }
+
+    companion object {
+        val Empty = AxisIndex(FloatArray(0), emptyMap())
+    }
+}
+
+internal fun buildAxisIndex(series: List<LineSeries>): AxisIndex {
+    val all = ArrayList<Float>()
+    series.forEach { s -> s.points.forEach { if (it.x.isFinite()) all.add(it.x) } }
+    if (all.isEmpty()) return AxisIndex.Empty
+    all.sort()
+
+    val tolerance = axisTolerance(all)
+    val positions = ArrayList<Float>()
+    all.forEach { x ->
+        if (positions.isEmpty() || x - positions.last() > tolerance) positions.add(x)
+    }
+    val axis = positions.toFloatArray()
+
+    val perSeries = LinkedHashMap<String, IntArray>(series.size)
+    series.forEach { s ->
+        val slots = IntArray(axis.size) { -1 }
+        s.points.forEachIndexed { index, point ->
+            if (!point.x.isFinite()) return@forEachIndexed
+            val at = axis.positionOf(point.x, tolerance)
+            // First wins, so a repeated x resolves the way selection reports it.
+            if (at >= 0 && slots[at] < 0) slots[at] = index
+        }
+        perSeries[s.id] = slots
+    }
+    return AxisIndex(axis, perSeries)
+}
+
+/** Index of the axis position [x] falls on, or -1. Positions are ascending. */
+private fun FloatArray.positionOf(x: Float, tolerance: Float): Int {
+    var low = 0
+    var high = size - 1
+    while (low <= high) {
+        val mid = (low + high) ushr 1
+        val at = this[mid]
+        when {
+            abs(at - x) <= tolerance -> return mid
+            at < x -> low = mid + 1
+            else -> high = mid - 1
+        }
+    }
+    return -1
+}
+
+/**
+ * How close two x values must be to be one position.
+ *
+ * A quarter of the smallest real gap, so two readings never merge, capped at a
+ * hundred-thousandth of the span, so two spellings of one reading do. Gaps under
+ * that cap are read as drift rather than as spacing — the same span-relative
+ * reasoning [isWithinAxis] uses, and the reason a fixed count of ulps cannot
+ * serve both a month index and an epoch millisecond.
+ */
+private fun axisTolerance(sorted: List<Float>): Float {
+    if (sorted.size < 2) return 0f
+    val span = sorted.last() - sorted.first()
+    if (span <= 0f) return 0f
+    val drift = span * 1e-5f
+    var smallestReal = Float.MAX_VALUE
+    for (i in 1 until sorted.size) {
+        val gap = sorted[i] - sorted[i - 1]
+        if (gap > drift && gap < smallestReal) smallestReal = gap
+    }
+    return if (smallestReal == Float.MAX_VALUE) drift else min(drift, smallestReal / 4f)
+}
 
 /**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly
