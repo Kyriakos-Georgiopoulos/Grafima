@@ -119,12 +119,11 @@ val LineDataPoint.spokenLabel: String
  * @param id Stable identifier for animation tracking. Changing the id is treated
  *   as a removal + insertion, not a morph. Must be unique within the dataset.
  * @param label Human-readable name shown in crosshair tooltips and accessibility.
- * @param points Must be sorted by [LineDataPoint.x], ascending or descending; the
- *   crosshair bisects them and finds nothing in a series that is neither. Series need
- *   not cover the same x positions: each is read at the x the crosshair stopped on,
- *   and one with no point there contributes no dot and no tooltip line rather than
- *   being read at the wrong x. Selection steps through the first series' positions
- *   in order, then any position only a later series reaches, so every drawn point is
+ * @param points Order is yours; the chart places each point by its
+ *   [LineDataPoint.x]. Series need not cover the same x positions: each is read at
+ *   the x the crosshair stopped on, and one with no point there contributes no dot
+ *   and no tooltip line rather than being read at the wrong x. Selection steps
+ *   through every x any series reaches, in ascending order, so every drawn point is
  *   selectable and announced.
  * @param color Primary color used for the line stroke, data dots, and the
  *   auto-generated area fill gradient. Ignored for stroke when
@@ -539,10 +538,10 @@ data class LineA11yConfig(
     },
     val selectedPointDescriptionBuilder: (Int, List<LineSeries>) -> String = { idx, series ->
         buildString {
-            val anchorX = axisPositions(series).getOrNull(idx)
-            if (anchorX != null) {
+            val axis = buildAxisIndex(series)
+            if (idx in axis.positions.indices) {
                 series.forEach { s ->
-                    val at = s.points.indexAtX(anchorX)
+                    val at = axis.pointIndex(s.id, idx)
                     if (at >= 0) {
                         val p = s.points[at]
                         append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")

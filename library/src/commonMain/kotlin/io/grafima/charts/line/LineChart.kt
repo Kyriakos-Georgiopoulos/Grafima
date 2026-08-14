@@ -114,9 +114,9 @@ import kotlin.math.min
  * @param animationConfig Timing for entry wave, morph spring, and stagger delays.
  * @param a11yConfig Accessibility description builders for TalkBack.
  * @param selectedPointIndex Currently highlighted x-axis position, or null. Indexes
- *   the first series' points, then any x only a later series reaches, appended in the
- *   order those series are given. Hoist this in the parent to control the crosshair
- *   externally.
+ *   every x any series reaches, ascending — the same as indexing the first series'
+ *   points whenever the series share x positions and that series is sorted. Hoist
+ *   this in the parent to control the crosshair externally.
  * @param selectionHaptic Haptic effect performed each time the crosshair snaps to a new
  *   data point during a drag. Pass null to disable.
  * @param onPointSelected Called during touch/drag (with the nearest point index)
@@ -441,11 +441,8 @@ fun LineChart(
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
 
-    val axisX = remember(series) { axisPositions(series) }
-    val currentAxisX by rememberUpdatedState(axisX)
-
-    // Shared so the dots and the tooltip cost one lookup per series, not two.
-    val crosshairHits = remember(series.size) { IntArray(series.size) }
+    val axis = remember(series) { buildAxisIndex(series) }
+    val currentAxisX by rememberUpdatedState(axis.positions)
 
     val widestDotPx = remember(renderSeries, style.showDots, style.dotRadius, density) {
         if (!style.showDots) {
@@ -480,13 +477,13 @@ fun LineChart(
                 contentDescription = baseDescription
                 stateDescription = selectedDescription
                 customActions = buildList {
-                    if (axisX.isNotEmpty()) {
+                    if (axis.positions.isNotEmpty()) {
                         // Named, not next/previous: stepping leaves the listener
                         // counting along the axis to work out where they landed.
-                        axisX.forEachIndexed { index, x ->
+                        axis.positions.forEachIndexed { index, x ->
                             if (xIsPinned && !isWithinAxis(x, xMin, xMax)) return@forEachIndexed
                             val point = series.firstNotNullOfOrNull { s ->
-                                s.points.getOrNull(s.points.indexAtX(x))
+                                s.points.getOrNull(axis.pointIndex(s.id, index))
                             } ?: return@forEachIndexed
                             add(
                                 CustomAccessibilityAction(label = a11yConfig.selectActionLabel(point)) {
@@ -1018,7 +1015,7 @@ fun LineChart(
 
         // ── 6. Crosshair + tooltip ──
         selectedPointIndex?.let { idx ->
-            val anchorX = axisX.getOrNull(idx) ?: return@let
+            val anchorX = axis.positions.getOrNull(idx) ?: return@let
             if (xIsPinned && !isWithinAxis(anchorX, xMin, xMax)) return@let
             val crossX = mapX(anchorX)
 
@@ -1031,10 +1028,8 @@ fun LineChart(
 
             val dotR = crosshairConfig.dotRadius.toPx()
             val borderW = crosshairConfig.dotBorderWidth.toPx()
-            series.forEachIndexed { i, s -> crosshairHits[i] = s.points.indexAtX(anchorX) }
-
             series.forEachIndexed { i, s ->
-                val at = crosshairHits[i]
+                val at = axis.pointIndex(s.id, idx)
                 if (at >= 0) {
                     if (yIsPinned && !isWithinAxis(s.points[at].y, yMin, yMax)) return@forEachIndexed
                     val key = keyMatrix[s.id]?.getOrNull(at) ?: return@forEachIndexed
@@ -1051,8 +1046,8 @@ fun LineChart(
 
             if (crosshairConfig.showTooltip) {
                 val tooltipText = buildString {
-                    series.forEachIndexed { i, s ->
-                        val at = crosshairHits[i]
+                    series.forEach { s ->
+                        val at = axis.pointIndex(s.id, idx)
                         if (at >= 0) {
                             if (isNotEmpty()) append("\n")
                             append(crosshairConfig.tooltipFormatter(s, s.points[at]))

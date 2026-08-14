@@ -55,8 +55,8 @@ behaviour do not.
   that much room on every side.
 - **Behaviour breaking.** The line chart's crosshair reads each series at the x it
   stopped on rather than at the selected point's position in the list, and
-  `selectedPointIndex` steps through every x any series reaches rather than the first
-  series' alone. A one-point "you are here" marker used to be drawn at every x the
+  `selectedPointIndex` steps through every x any series reaches, ascending, rather
+  than the first series' points alone. A one-point "you are here" marker used to be drawn at every x the
   first series had a point at; it is now named at its own x and nowhere else, and an x
   only it reaches is selectable and announced. Series index-aligned on *differing* x
   values lose the second series' crosshair dot, tooltip line and spoken value: give

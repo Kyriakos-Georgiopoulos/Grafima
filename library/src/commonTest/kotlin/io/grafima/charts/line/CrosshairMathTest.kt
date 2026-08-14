@@ -21,7 +21,7 @@ import kotlin.test.assertEquals
 
 class CrosshairMathTest {
 
-    private val points = listOf(0f, 1f, 2f)
+    private val points = floatArrayOf(0f, 1f, 2f)
 
     @Test
     fun `endpoints and midpoint map correctly in LTR`() {
@@ -74,12 +74,12 @@ class CrosshairMathTest {
 
     @Test
     fun `an empty list has no nearest point`() {
-        assertEquals(-1, nearestAxisIndex(emptyList(), 150f, 0f, 2f, 100f, 300f, isRtl = false))
+        assertEquals(-1, nearestAxisIndex(FloatArray(0), 150f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     @Test
     fun `a point outside the axis is never the nearest one`() {
-        val straddling = listOf(
+        val straddling = floatArrayOf(
             -5f,
             1f,
             2f
@@ -89,12 +89,12 @@ class CrosshairMathTest {
 
     @Test
     fun `an axis with no point inside it has no nearest point`() {
-        val offAxis = listOf(40f, 50f)
+        val offAxis = floatArrayOf(40f, 50f)
         assertEquals(-1, nearestAxisIndex(offAxis, 200f, 0f, 2f, 100f, 300f, isRtl = false))
     }
 
     /** A pre-abstinence baseline at day -1: the axis has to start below zero. */
-    private val baseline = listOf(
+    private val baseline = floatArrayOf(
         -1f,
         0f,
         1f

@@ -38,6 +38,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -71,7 +72,7 @@ internal fun mapDataXToCanvas(
  * somewhere the reader can see nothing.
  */
 internal fun nearestAxisIndex(
-    positions: List<Float>,
+    positions: FloatArray,
     touchX: Float,
     xMin: Float,
     xMax: Float,
@@ -94,28 +95,71 @@ internal fun nearestAxisIndex(
     return nearest
 }
 
+/** [Dp.Unspecified] defers to the chart-wide value, as it does on the other charts. */
+internal fun Dp.orElse(fallback: Dp): Dp = if (isSpecified) this else fallback
+
 /**
- * Index of the point standing at [x], or -1 when this series has none there.
+ * Where every series stands on a shared x axis, resolved once for a dataset.
  *
- * Points are sorted by x, so this bisects. Newest-first is the shape most feeds
- * arrive in, so descending is read as readily as ascending.
+ * Built instead of matching floats at lookup time: a tolerance that works for one
+ * dataset is wrong for the next, since drift between two spellings of the same
+ * reading and the real gap between two readings are the same size at some
+ * magnitudes. Here the bound comes from the data itself, and every lookup after
+ * that is an array read.
  */
-internal fun List<LineDataPoint>.indexAtX(x: Float): Int {
-    if (isEmpty()) return -1
-    val ascending = first().x <= last().x
+internal class AxisIndex(
+    /** Every x any series reaches, ascending, near-equal values merged. */
+    val positions: FloatArray,
+    private val perSeries: Map<String, IntArray>
+) {
+    /** This series' point at [position], or -1 where it has no reading. */
+    fun pointIndex(seriesId: String, position: Int): Int {
+        val slots = perSeries[seriesId] ?: return -1
+        return if (position in slots.indices) slots[position] else -1
+    }
+
+    companion object {
+        val Empty = AxisIndex(FloatArray(0), emptyMap())
+    }
+}
+
+internal fun buildAxisIndex(series: List<LineSeries>): AxisIndex {
+    val all = ArrayList<Float>()
+    series.forEach { s -> s.points.forEach { if (it.x.isFinite()) all.add(it.x) } }
+    if (all.isEmpty()) return AxisIndex.Empty
+    all.sort()
+
+    val tolerance = axisTolerance(all)
+    val positions = ArrayList<Float>()
+    all.forEach { x ->
+        if (positions.isEmpty() || x - positions.last() > tolerance) positions.add(x)
+    }
+    val axis = positions.toFloatArray()
+
+    val perSeries = LinkedHashMap<String, IntArray>(series.size)
+    series.forEach { s ->
+        val slots = IntArray(axis.size) { -1 }
+        s.points.forEachIndexed { index, point ->
+            if (!point.x.isFinite()) return@forEachIndexed
+            val at = axis.positionOf(point.x, tolerance)
+            // First wins, so a repeated x resolves the way selection reports it.
+            if (at >= 0 && slots[at] < 0) slots[at] = index
+        }
+        perSeries[s.id] = slots
+    }
+    return AxisIndex(axis, perSeries)
+}
+
+/** Index of the axis position [x] falls on, or -1. Positions are ascending. */
+private fun FloatArray.positionOf(x: Float, tolerance: Float): Int {
     var low = 0
     var high = size - 1
     while (low <= high) {
         val mid = (low + high) ushr 1
-        val at = this[mid].x
+        val at = this[mid]
         when {
-            // Back to the first of a repeated x, which is the one selection reports.
-            sameAxisX(at, x) -> {
-                var first = mid
-                while (first > 0 && sameAxisX(this[first - 1].x, x)) first--
-                return first
-            }
-            (at < x) == ascending -> low = mid + 1
+            abs(at - x) <= tolerance -> return mid
+            at < x -> low = mid + 1
             else -> high = mid - 1
         }
     }
@@ -123,38 +167,26 @@ internal fun List<LineDataPoint>.indexAtX(x: Float): Int {
 }
 
 /**
- * Shared x positions reach the two series down different arithmetic, so this
- * allows a few ulps.
+ * How close two x values must be to be one position.
+ *
+ * A quarter of the smallest real gap, so two readings never merge, capped at a
+ * hundred-thousandth of the span, so two spellings of one reading do. Gaps under
+ * that cap are read as drift rather than as spacing — the same span-relative
+ * reasoning [isWithinAxis] uses, and the reason a fixed count of ulps cannot
+ * serve both a month index and an epoch millisecond.
  */
-internal fun sameAxisX(a: Float, b: Float): Boolean {
-    if (a == b) return true
-    return abs(a - b) <= 4f * ulpOf(max(abs(a), abs(b)))
-}
-
-/** `Float.ulp` is JVM-only; common has it for Double alone. [value] must not be negative. */
-private fun ulpOf(value: Float): Float {
-    if (!value.isFinite()) return Float.NaN
-    return Float.fromBits(value.toRawBits() + 1) - value
-}
-
-/**
- * The x positions selection steps through: the first series' own, in its own order,
- * then any position only a later series reaches, appended.
- */
-internal fun axisPositions(series: List<LineSeries>): List<Float> {
-    val first = series.firstOrNull()?.points ?: return emptyList()
-    val positions = ArrayList<Float>(first.size)
-    first.forEach { positions.add(it.x) }
-    for (s in 1 until series.size) {
-        for (point in series[s].points) {
-            if (positions.none { sameAxisX(it, point.x) }) positions.add(point.x)
-        }
+private fun axisTolerance(sorted: List<Float>): Float {
+    if (sorted.size < 2) return 0f
+    val span = sorted.last() - sorted.first()
+    if (span <= 0f) return 0f
+    val drift = span * 1e-5f
+    var smallestReal = Float.MAX_VALUE
+    for (i in 1 until sorted.size) {
+        val gap = sorted[i] - sorted[i - 1]
+        if (gap > drift && gap < smallestReal) smallestReal = gap
     }
-    return positions
+    return if (smallestReal == Float.MAX_VALUE) drift else min(drift, smallestReal / 4f)
 }
-
-/** [Dp.Unspecified] defers to the chart-wide value, as it does on the other charts. */
-internal fun Dp.orElse(fallback: Dp): Dp = if (isSpecified) this else fallback
 
 /**
  * Rounds axis step to a "nice" number (1, 2, 5 * 10^n) and generates evenly
