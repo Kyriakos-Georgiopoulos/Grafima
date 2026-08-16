@@ -56,7 +56,7 @@ above, beside or below and the plot keeps its full width.
 ```kotlin
 LineLegend(
     dataSet = data,
-    orientation = LineLegendOrientation.Vertical,
+    orientation = LegendOrientation.Vertical,
     textStyle = MaterialTheme.typography.labelMedium
 )
 ```

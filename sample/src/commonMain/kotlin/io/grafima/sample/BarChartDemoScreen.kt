@@ -54,6 +54,7 @@ import io.grafima.charts.bar.BarChart
 import io.grafima.charts.bar.BarDataSet
 import io.grafima.charts.bar.BarEntry
 import io.grafima.charts.bar.BarGroupMode
+import io.grafima.charts.bar.BarLegend
 import io.grafima.charts.bar.BarOrientation
 import io.grafima.charts.bar.TooltipSelectionRenderer
 import io.grafima.charts.bar.spokenSeriesLabel
@@ -342,6 +343,14 @@ internal fun BarChartDemoScreen(
                         )
                     }
                 }
+
+                // Draws nothing at all in Single mode, where the axis already names
+                // every bar and a key would only repeat it.
+                BarLegend(
+                    dataSet = dataSet,
+                    textStyle = TextStyle(fontSize = 12.sp, color = colors.onSurfaceMuted),
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
 
                 BarChart(
                     dataSet = dataSet,

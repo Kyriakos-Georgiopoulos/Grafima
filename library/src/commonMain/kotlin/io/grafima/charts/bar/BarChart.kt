@@ -212,7 +212,17 @@ fun BarChart(
 
     val colorStopArrays = remember(renderEntries) {
         renderEntries.associate { entry ->
-            entry.id to entry.colorStops?.map { stop -> stop.position to stop.color }?.toTypedArray()
+            entry.id to barColorStops(entry)
+        }
+    }
+
+    // Resolved once rather than per bar per frame, and ordered by the dataset first so
+    // a series animating out keeps the palette slot it was drawn with.
+    val barGradients = remember(renderEntries, dataSet) {
+        val ordered = seriesOrder(dataSet.entries)
+        val order = ordered + seriesOrder(renderEntries).filterNot { it in ordered }
+        renderEntries.associate { entry ->
+            entry.id to barGradientColors(entry, dataSet, order)
         }
     }
 
@@ -523,6 +533,7 @@ fun BarChart(
                 style = style,
                 animationEngine = animationEngine,
                 colorStopArrays = colorStopArrays,
+                barGradients = barGradients,
                 xLabelLayouts = xLabelLayouts,
                 valueTextCache = valueTextCache,
                 textMeasurer = textMeasurer,
@@ -579,6 +590,7 @@ fun BarChart(
             style = style,
             animationEngine = animationEngine,
             colorStopArrays = colorStopArrays,
+            barGradients = barGradients,
             xLabelLayouts = xLabelLayouts,
             valueTextCache = valueTextCache,
             textMeasurer = textMeasurer,

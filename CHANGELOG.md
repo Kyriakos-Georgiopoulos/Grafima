@@ -35,6 +35,15 @@ behaviour do not.
   selects — `LineDataPoint`, `PieEntry`, `RadarSeries` — as the bar chart's takes a
   `BarEntry`, so an override can reach the raw value rather than a pre-formatted label.
 
+- `BarLegend`, a key mapping each series' colours to its `seriesLabel`. A grouped or
+  stacked chart tells its series apart by colour alone, and the chart names them only
+  once a bar is selected — at rest, or in a screenshot, a sighted reader had nothing
+  to read the colours against. Placed by the caller, so the plot keeps its full
+  height. A dataset with no `seriesId` draws no key at all, since the axis already
+  names those bars, so one call can sit above a chart that switches between single,
+  grouped and stacked.
+- `LegendOrientation`, shared by `BarLegend` and `LineLegend`.
+
 ### Changed
 
 - The default `A11yConfig.selectedStateDescription` names the series when a bar has
@@ -65,6 +74,23 @@ behaviour do not.
   default `LineA11yConfig.selectedPointDescriptionBuilder` follows the same rule, so a
   series with no point at the selected x is no longer announced; an override that
   indexes `points` by hand keeps its old behaviour and will disagree with what is drawn.
+- **Binary incompatible.** `LineLegendOrientation` is now a deprecated typealias of
+  `LegendOrientation`, so the two legends name one concept. Kotlin source compiles
+  unchanged, but the enum class itself leaves the artifact and `LineLegend`'s
+  descriptor changes, so a module compiled against 1.1.x fails with
+  `NoClassDefFoundError` rather than the `NoSuchMethodError` the entry above predicts.
+  Java callers cannot see a Kotlin typealias at all and must move to
+  `LegendOrientation`. Typealiases are absent from both api dumps, so this shim is not
+  guarded by `checkKotlinAbi` and its eventual removal will produce no api diff.
+- Bar series that set no colours of their own are given one gradient each from the new
+  `BarDataSet.seriesPalette` rather than all sharing `defaultGradientColors`. A grouped
+  or stacked chart tells its series apart by colour alone, so the old default drew bars
+  and a key that nothing could distinguish. Set the palette to an empty list for the
+  previous behaviour. A dataset with no series is unaffected.
+- Bar gradients with fewer than two colours no longer reach `Brush`. A single colour is
+  widened into a flat gradient and an empty list falls through to the next source; both
+  previously threw, and a single `ColorStop` rendered on iOS and desktop while throwing
+  on Android.
 - **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig`,
   `LineSeries`, `LineA11yConfig`, `PieA11yConfig` and `RadarA11yConfig` each gained
   defaulted constructor parameters, appended so existing positional calls and

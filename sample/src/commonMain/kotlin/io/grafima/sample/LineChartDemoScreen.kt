@@ -46,13 +46,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.grafima.charts.DashPattern
+import io.grafima.charts.LegendOrientation
 import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineChartStyle
 import io.grafima.charts.line.LineCurveType
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
 import io.grafima.charts.line.LineLegend
-import io.grafima.charts.line.LineLegendOrientation
 import io.grafima.charts.line.LineSeries
 import io.grafima.charts.line.LineValueLabelConfig
 import io.grafima.charts.line.ReferenceLine
@@ -418,7 +418,7 @@ internal fun LineChartDemoScreen(
                     }
                     LineLegend(
                         dataSet = visibleDataSet,
-                        orientation = LineLegendOrientation.Vertical,
+                        orientation = LegendOrientation.Vertical,
                         textStyle = TextStyle(fontSize = 11.sp, color = colors.onSurfaceMuted),
                         spacing = 4.dp,
                         entryAlignment = Alignment.End

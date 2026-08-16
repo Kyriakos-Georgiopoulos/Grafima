@@ -19,6 +19,7 @@ package io.grafima.charts.bar
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.graphics.Color
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
 import io.grafima.charts.needsAnimatingTo
@@ -38,6 +39,48 @@ internal fun joinsCategory(previous: BarEntry?, entry: BarEntry): Boolean =
     entry.seriesId != null &&
         previous?.seriesId != null &&
         previous.xLabel == entry.xLabel
+
+/**
+ * The colours a bar is painted with, as a gradient Compose will accept.
+ *
+ * One colour is a reasonable way to ask for a flat bar, and an empty list is what a
+ * DTO with no colours deserializes to, but `Brush` needs two stops and throws below
+ * that — on Android a single [ColorStop] throws where skiko renders it, so the same
+ * dataset would crash on one platform only.
+ */
+internal fun barGradientColors(
+    entry: BarEntry,
+    dataSet: BarDataSet,
+    seriesOrder: List<String> = seriesOrder(dataSet.entries)
+): List<Color> {
+    val own = entry.gradientColors?.takeIf { it.isNotEmpty() }
+    val colors = own
+        ?: paletteFor(entry, dataSet, seriesOrder)
+        ?: dataSet.defaultGradientColors.takeIf { it.isNotEmpty() }
+        ?: FallbackBar
+    return if (colors.size == 1) listOf(colors[0], colors[0]) else colors
+}
+
+/** The palette gradient this bar's series is due, or null when it has no series. */
+private fun paletteFor(
+    entry: BarEntry,
+    dataSet: BarDataSet,
+    seriesOrder: List<String>
+): List<Color>? {
+    val palette = dataSet.seriesPalette.filter { it.isNotEmpty() }
+    if (palette.isEmpty()) return null
+    val index = entry.seriesId?.let { seriesOrder.indexOf(it) }?.takeIf { it >= 0 } ?: return null
+    return palette[index % palette.size]
+}
+
+/** Stops a bar is painted with, or null to fall back to [barGradientColors]. */
+internal fun barColorStops(entry: BarEntry): Array<Pair<Float, Color>>? {
+    val stops = entry.colorStops?.takeIf { it.size >= 2 } ?: return null
+    return stops.map { it.position to it.color }.toTypedArray()
+}
+
+/** Last resort when a caller empties both their own colours and the dataset's. */
+private val FallbackBar = listOf(Color(0xFF818CF8), Color(0xFF4F46E5))
 
 /** Distinct series in list order. Empty when nothing carries one. */
 internal fun seriesOrder(entries: List<BarEntry>): List<String> =

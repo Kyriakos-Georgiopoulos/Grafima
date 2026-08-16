@@ -9,7 +9,7 @@ A chart is a single merged node — a screen reader announces it once rather tha
 walking its internals. Each one declares `Role.Image`, matching the convention
 for data visualizations on the web.
 
-`LineLegend` is also a single merged node, so it costs one stop rather than one
+`LineLegend` and `BarLegend` is also a single merged node, so it costs one stop rather than one
 per series. It carries no role or description of its own: what it adds is the
 colour beside each name, which a screen reader cannot use, and the chart's
 description already names every series.
