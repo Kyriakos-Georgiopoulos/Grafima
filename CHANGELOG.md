@@ -101,6 +101,14 @@ behaviour do not.
   Anything compiled against 1.1.1 and run against this release without recompiling
   fails with `NoSuchMethodError`. Recompile dependents; publish no mixed set.
 
+- **Source breaking.** `LineA11yConfig.selectedPointDescriptionBuilder` takes
+  `(Int, List<SelectedPoint>)` rather than `(Int, List<LineSeries>)`. The chart now
+  resolves each series' reading at the selected x before calling it, so an override
+  gets the points already matched — it cannot disagree with the dots and the tooltip,
+  and it no longer has to rebuild the shared axis on every crosshair move, which the
+  default was doing for each snap of a drag. A series with no reading at that x is
+  absent from the list rather than needing to be filtered out.
+
 ### Fixed
 
 - A dataset replaced outright no longer draws the old items alongside the new ones.
