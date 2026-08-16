@@ -111,6 +111,13 @@ behaviour do not.
 
 ### Fixed
 
+- `BarLegend` keeps a removed series' row until its bars have finished shrinking,
+  rather than dropping it the moment the dataset changes. The chart holds a departing
+  series for the length of its exit animation, so for about a second the key named
+  fewer colours than were on screen — and on the way in, a row appeared before any bar
+  it named. The row fades on the chart's own `AnimationConfig`, and a departing series
+  is no longer announced, since it is on its way out of the data.
+
 - A dataset replaced outright no longer draws the old items alongside the new ones.
   Departing items were threaded back into an axis they shared no ids with, so
   swapping a bar chart's months for quarters drew both sets on one axis and split

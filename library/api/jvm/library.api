@@ -168,7 +168,7 @@ public final class io/grafima/charts/bar/BarGroupMode : java/lang/Enum {
 }
 
 public final class io/grafima/charts/bar/BarLegendKt {
-	public static final fun BarLegend-tOXsyB8 (Lio/grafima/charts/bar/BarDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/LegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
+	public static final fun BarLegend-oKE7A98 (Lio/grafima/charts/bar/BarDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/LegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Lio/grafima/charts/bar/AnimationConfig;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
 }
 
 public final class io/grafima/charts/bar/BarOrientation : java/lang/Enum {

@@ -19,6 +19,9 @@ package io.grafima.charts.bar
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -86,6 +89,49 @@ class BarLegendUiTest {
         val image = onRoot().captureToImage()
         assertTrue(image.countColor(Color.Blue) > 0, "the revenue swatch never painted")
         assertTrue(image.countColor(Color.Red) > 0, "the cost swatch never painted")
+    }
+
+    @Test
+    fun a_removed_series_keeps_its_row_while_its_bars_are_still_shrinking() =
+        runComposeUiTest {
+            var data by mutableStateOf(grouped)
+            // Hand-pumped, or the fade runs to completion before the assertion.
+            mainClock.autoAdvance = false
+            setContent { BarLegend(dataSet = data) }
+            mainClock.advanceTimeByFrame()
+            onAllNodesWithText("Cost", useUnmergedTree = true).assertCountEquals(1)
+
+            // The chart holds a removed series' bars for the exit animation; dropping
+            // the row at once would name fewer colours than are on screen.
+            data = BarDataSet(entries = grouped.entries.filter { it.seriesId == "rev" })
+            repeat(3) { mainClock.advanceTimeByFrame() }
+            onAllNodesWithText("Cost", useUnmergedTree = true).assertCountEquals(1)
+        }
+
+    @Test
+    fun a_removed_series_does_leave_the_key_once_its_bars_have_gone() = runComposeUiTest {
+        var data by mutableStateOf(grouped)
+        setContent { BarLegend(dataSet = data) }
+        waitForIdle()
+
+        data = BarDataSet(entries = grouped.entries.filter { it.seriesId == "rev" })
+        waitForIdle()
+        onAllNodesWithText("Cost", useUnmergedTree = true).assertCountEquals(0)
+        onAllNodesWithText("Revenue", useUnmergedTree = true).assertCountEquals(1)
+    }
+
+    @Test
+    fun a_departing_series_is_not_announced_to_a_screen_reader() = runComposeUiTest {
+        var data by mutableStateOf(grouped)
+        mainClock.autoAdvance = false
+        setContent { BarLegend(dataSet = data) }
+        mainClock.advanceTimeByFrame()
+
+        data = BarDataSet(entries = grouped.entries.filter { it.seriesId == "rev" })
+        repeat(3) { mainClock.advanceTimeByFrame() }
+        // Still drawn, so the colours match the bars — but no longer spoken, since it
+        // is on its way out of the dataset.
+        onNodeWithContentDescription("Key: Revenue").assertExists()
     }
 
     @Test

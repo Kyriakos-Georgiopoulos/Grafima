@@ -146,6 +146,10 @@ named by the axis already, and a key repeating those names says nothing new. Tha
 means the same `BarLegend` call can sit above a chart that switches between single,
 grouped and stacked without needing to be conditional.
 
+A series removed from the dataset keeps its row until its bars have finished
+shrinking, so the key never names fewer colours than the chart is drawing. Pass the
+same `animationConfig` you gave the chart if you changed its timing.
+
 `Horizontal` wraps onto further lines when the entries do not fit. `Vertical` takes
 an `entryAlignment` for the edge the entries line up on.
 

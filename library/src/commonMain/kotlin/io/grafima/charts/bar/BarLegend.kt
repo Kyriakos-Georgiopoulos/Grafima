@@ -16,6 +16,8 @@
 
 package io.grafima.charts.bar
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,12 +27,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -41,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.LegendOrientation
+import kotlinx.coroutines.launch
 
 /** [BarLegend]'s default label style. Guarded by `ColorContrastTest`. */
 internal val BarLegendLabelTextStyle = TextStyle(fontSize = 12.sp, color = Color(0xFF6B7280))
@@ -80,6 +87,49 @@ internal fun barLegendEntries(dataSet: BarDataSet): List<BarLegendEntry> {
 }
 
 /**
+ * The rows to draw, each with the opacity it should carry.
+ *
+ * A series removed from the dataset is kept until its bars have finished shrinking,
+ * so the key and the chart agree on what is on screen for the whole animation.
+ */
+@Composable
+private fun rememberLegendWithDepartures(
+    current: List<BarLegendEntry>,
+    animationConfig: AnimationConfig
+): List<Pair<BarLegendEntry, Animatable<Float, AnimationVector1D>>> {
+    val shown = remember { mutableStateMapOf<String, BarLegendEntry>() }
+    val alphas = remember { mutableStateMapOf<String, Animatable<Float, AnimationVector1D>>() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(current) {
+        current.forEach { entry ->
+            shown[entry.seriesId] = entry
+            val alpha = alphas.getOrPut(entry.seriesId) { Animatable(0f) }
+            if (alpha.targetValue != 1f) scope.launch { alpha.animateTo(1f, animationConfig.morphSpec) }
+        }
+        val present = current.map { it.seriesId }.toSet()
+        shown.keys.filterNot { it in present }.forEach { gone ->
+            val alpha = alphas[gone] ?: return@forEach
+            if (alpha.targetValue == 0f) return@forEach
+            scope.launch {
+                alpha.animateTo(0f, animationConfig.initialEntrySpec)
+                shown.remove(gone)
+                alphas.remove(gone)
+            }
+        }
+    }
+
+    // Dataset order first so a departing row keeps its place rather than jumping to
+    // the end while it fades.
+    val order = current.map { it.seriesId }
+    return (order + shown.keys.filterNot { it in order }).mapNotNull { id ->
+        val entry = shown[id] ?: return@mapNotNull null
+        val alpha = alphas[id] ?: return@mapNotNull null
+        entry to alpha
+    }
+}
+
+/**
  * A key mapping each series' colours to its [BarEntry.seriesLabel].
  *
  * A grouped or stacked chart draws two or more bars per category and tells them
@@ -114,6 +164,9 @@ internal fun barLegendEntries(dataSet: BarDataSet): List<BarLegendEntry> {
  * @param swatchSize Side of the square colour sample beside each label.
  *   [Dp.Unspecified], the default, scales it with [textStyle]'s font size so the one
  *   thing carrying the mapping grows with the reader's font setting.
+ * @param animationConfig Timing a departing series' row fades on. The chart holds a
+ *   removed series' bars for [AnimationConfig.initialEntrySpec] while they shrink, so
+ *   a key that dropped the row at once would name fewer colours than are on screen.
  * @param describe Names the key for a screen reader, given the series in order.
  * @param spacing Gap between entries, and half that between wrapped lines.
  * @param entryAlignment Which edge the entries line up on when
@@ -128,9 +181,11 @@ fun BarLegend(
     swatchSize: Dp = Dp.Unspecified,
     spacing: Dp = 12.dp,
     entryAlignment: Alignment.Horizontal = Alignment.Start,
+    animationConfig: AnimationConfig = AnimationConfig(),
     describe: (List<String>) -> String = { names -> "Key: ${names.joinToString(", ")}" }
 ) {
-    val series = remember(dataSet) { barLegendEntries(dataSet) }
+    val current = remember(dataSet) { barLegendEntries(dataSet) }
+    val series = rememberLegendWithDepartures(current, animationConfig)
 
     if (series.isEmpty()) return
 
@@ -146,14 +201,19 @@ fun BarLegend(
     } else {
         with(LocalDensity.current) { labelStyle.fontSize.toDp() }
     }
-    val spoken = remember(series, describe) { describe(series.map { it.label }) }
+    // Named from what the dataset holds, not from what is still fading: a listener
+    // should not be told about a series that has just been taken away.
+    val spoken = remember(current, describe) { describe(current.map { it.label }) }
     val grouped = modifier.semantics(mergeDescendants = true) {
         contentDescription = spoken
     }
 
     val entries: @Composable () -> Unit = {
-        series.forEach { legend ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        series.forEach { (legend, alpha) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.graphicsLayer { this.alpha = alpha.value }
+            ) {
                 Canvas(modifier = Modifier.size(swatch)) {
                     // A miniature bar: the gradient runs top to bottom as a vertical
                     // chart's does. It names the series' colours, not their direction,
