@@ -181,7 +181,12 @@ dropped rather than drawn over something.
 
 Set `contentDescription` as well when the spoken form should say more than the plot
 has room for; it defaults to `label`. Either way the chart announces "Reference
-line: Now." Override `LineA11yConfig.referenceLineDescriptionBuilder` to reword or
+line: Now." `LineA11yConfig.selectedPointDescriptionBuilder` is given the selected axis position
+and every series that has a reading there, already resolved — so an override reads
+`selected.forEach { (series, point) -> … }` and cannot fall out of step with what the
+crosshair draws.
+
+Override `LineA11yConfig.referenceLineDescriptionBuilder` to reword or
 translate that, or return an empty string to leave them unspoken. A line with
 neither is drawn but not announced.
 

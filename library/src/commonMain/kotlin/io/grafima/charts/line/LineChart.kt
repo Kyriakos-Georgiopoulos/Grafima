@@ -423,8 +423,18 @@ fun LineChart(
             appendSentence(a11yConfig.referenceLineDescriptionBuilder(announcedReferenceLines))
         }
     }
+    val axis = remember(series) { buildAxisIndex(series) }
+    val currentAxisX by rememberUpdatedState(axis.positions)
+
     val selectedDescription = remember(selectedPointIndex, series, a11yConfig) {
-        selectedPointIndex?.let { idx -> a11yConfig.selectedPointDescriptionBuilder(idx, series) }
+        selectedPointIndex?.let { idx ->
+            // Resolved off the axis the chart already built, rather than rebuilt per
+            // announcement: TalkBack asks for this on every snap of a drag.
+            val selected = series.mapNotNull { s ->
+                s.points.getOrNull(axis.pointIndex(s.id, idx))?.let { SelectedPoint(s, it) }
+            }
+            a11yConfig.selectedPointDescriptionBuilder(idx, selected)
+        }
             ?: ""
     }
 
@@ -440,9 +450,6 @@ fun LineChart(
     val areaPath = remember { Path() }
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
-
-    val axis = remember(series) { buildAxisIndex(series) }
-    val currentAxisX by rememberUpdatedState(axis.positions)
 
     val widestDotPx = remember(renderSeries, style.showDots, style.dotRadius, density) {
         if (!style.showDots) {

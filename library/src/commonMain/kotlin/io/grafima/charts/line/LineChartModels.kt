@@ -100,6 +100,15 @@ val LineDataPoint.spokenLabel: String
         .ifEmpty { x.toInt().toString() }
 
 /**
+ * A series and the reading it has where the crosshair stopped.
+ *
+ * Resolved by the chart, so an override cannot drift from what is drawn and does not
+ * have to redo the work of finding each series' point on a shared axis.
+ */
+@Immutable
+data class SelectedPoint(val series: LineSeries, val point: LineDataPoint)
+
+/**
  * A data series rendered as a single line on the chart.
  *
  * Each series produces a stroke path and optionally an area fill beneath it.
@@ -507,12 +516,11 @@ data class LineAnimationConfig(
  * @param chartDescriptionBuilder Builds the base screen reader description from the
  *   full dataset. Called once per data change. Default announces series names,
  *   value ranges, and point counts.
- * @param selectedPointDescriptionBuilder Appended to the base description when
- *   the crosshair is active. TalkBack reads this on each crosshair move. The default
- *   announces every series that has a point at the selected x, resolved the same way
- *   the dots and the tooltip are; one that does not is left unspoken. An override
- *   indexing `points` by the given index instead will disagree with what is drawn
- *   whenever the series do not share x positions.
+ * @param selectedPointDescriptionBuilder Appended to the base description when the
+ *   crosshair is active. TalkBack reads this on each crosshair move. Given the axis
+ *   position selected and every series that has a reading there, already resolved the
+ *   same way the dots and the tooltip are — a series with no point at that x is absent
+ *   from the list rather than needing to be filtered out.
  * @param axisTitleDescriptionBuilder Announces [LineAxisConfig.xAxisTitle] and
  *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
  *   null when unset. Override to translate the wording; return an empty string to
@@ -536,17 +544,10 @@ data class LineA11yConfig(
             }
         }
     },
-    val selectedPointDescriptionBuilder: (Int, List<LineSeries>) -> String = { idx, series ->
+    val selectedPointDescriptionBuilder: (Int, List<SelectedPoint>) -> String = { _, selected ->
         buildString {
-            val axis = buildAxisIndex(series)
-            if (idx in axis.positions.indices) {
-                series.forEach { s ->
-                    val at = axis.pointIndex(s.id, idx)
-                    if (at >= 0) {
-                        val p = s.points[at]
-                        append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")
-                    }
-                }
+            selected.forEach { (series, point) ->
+                append("${series.label} at ${point.spokenLabel}: ${point.y.toInt()}. ")
             }
         }
     },

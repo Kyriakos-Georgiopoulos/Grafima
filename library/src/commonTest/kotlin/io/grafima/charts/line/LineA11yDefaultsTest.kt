@@ -43,11 +43,16 @@ class LineA11yDefaultsTest {
         )
     }
 
+    /** What the chart hands the builder: each series' reading at that axis position. */
+    private fun selectionAt(index: Int, series: List<LineSeries>) = series.mapNotNull { s ->
+        s.points.getOrNull(index)?.let { SelectedPoint(s, it) }
+    }
+
     @Test
     fun `a selected point uses its label when present`() {
         assertEquals(
             "Revenue at Jan: 10. ",
-            config.selectedPointDescriptionBuilder(0, listOf(series))
+            config.selectedPointDescriptionBuilder(0, selectionAt(0, listOf(series)))
         )
     }
 
@@ -65,7 +70,7 @@ class LineA11yDefaultsTest {
         )
         assertEquals(
             "Revenue at April: 10. ",
-            config.selectedPointDescriptionBuilder(0, series)
+            config.selectedPointDescriptionBuilder(0, selectionAt(0, series))
         )
     }
 
@@ -73,13 +78,15 @@ class LineA11yDefaultsTest {
     fun `an unlabelled point falls back to its x value`() {
         assertEquals(
             "Revenue at 1: 25. ",
-            config.selectedPointDescriptionBuilder(1, listOf(series))
+            config.selectedPointDescriptionBuilder(1, selectionAt(1, listOf(series)))
         )
     }
 
     @Test
-    fun `an out-of-range index produces nothing`() {
-        assertEquals("", config.selectedPointDescriptionBuilder(99, listOf(series)))
+    fun `a position no series has a reading at produces nothing`() {
+        // The chart resolves before calling, so "nothing there" arrives as an empty
+        // list rather than as an index the builder has to range-check.
+        assertEquals("", config.selectedPointDescriptionBuilder(99, emptyList()))
     }
 
     private fun reference(description: String?) =

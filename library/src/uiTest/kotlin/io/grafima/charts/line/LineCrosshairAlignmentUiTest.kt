@@ -182,6 +182,53 @@ class LineCrosshairAlignmentUiTest {
     }
 
     @Test
+    fun the_builder_is_handed_only_the_series_with_a_reading_there() = runComposeUiTest {
+        // The whole point of resolving for the builder: an override should not have to
+        // redo the axis lookup, nor be able to disagree with what is drawn.
+        var handed: List<String> = emptyList()
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                a11yConfig = LineA11yConfig(
+                    selectedPointDescriptionBuilder = { _, selected ->
+                        handed = selected.map { it.series.label }
+                        "spoken"
+                    }
+                ),
+                selectedPointIndex = 0
+            )
+        }
+        waitForIdle()
+
+        // x=0 is the curve's alone; the marker only reaches x=3.
+        assertEquals(listOf("Curve"), handed)
+    }
+
+    @Test
+    fun the_builder_is_handed_every_series_that_does_have_one() = runComposeUiTest {
+        var handed: List<String> = emptyList()
+        setContent {
+            LineChart(
+                dataSet = dataSet,
+                modifier = Modifier.size(300.dp),
+                animationConfig = snapAnimations,
+                a11yConfig = LineA11yConfig(
+                    selectedPointDescriptionBuilder = { _, selected ->
+                        handed = selected.map { it.series.label }
+                        "spoken"
+                    }
+                ),
+                selectedPointIndex = 3
+            )
+        }
+        waitForIdle()
+
+        assertEquals(listOf("Curve", "You are here"), handed)
+    }
+
+    @Test
     fun the_anchor_series_is_still_read_at_the_selected_index() = runComposeUiTest {
         var selected by mutableStateOf<Int?>(0)
         setContent {
