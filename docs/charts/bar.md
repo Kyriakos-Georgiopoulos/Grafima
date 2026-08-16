@@ -136,9 +136,10 @@ BarLegend(
 ```
 
 Each series is listed once, in the order it first appears, with a swatch taking that
-series' colours from its first bar. A series that sets no colours of its own takes
-`BarDataSet.defaultGradientColors`, so give your series their own or the key cannot
-tell them apart.
+series' colours from its first bar. A series that sets none of its own is given a
+gradient from `BarDataSet.seriesPalette`, so grouped and stacked bars are tellable
+apart without the caller choosing colours at all; set that palette to an empty list
+to go back to one `defaultGradientColors` for every series.
 
 A dataset whose entries carry no `seriesId` draws nothing at all — those bars are
 named by the axis already, and a key repeating those names says nothing new. That
@@ -149,8 +150,9 @@ grouped and stacked without needing to be conditional.
 an `entryAlignment` for the edge the entries line up on.
 
 A screen reader reaches the legend as one item naming every series, rather than a
-stop each. The colour mapping is visual only — the chart's own description is what
-carries the series to a listener.
+stop each. Unlike the line chart, the bar chart's own description carries counts
+rather than series names, so this key is the only place a listener meets them before
+selecting a bar — pass `describe` to reword or translate what the item is called.
 
 ## Orientation
 
@@ -241,7 +243,6 @@ selectionRenderer = TooltipSelectionRenderer(
 | `orientation` | `Vertical` (default) or `Horizontal` |
 | `style` | Bar shape, spacing, text styles, floating values |
 | `axisConfig` | Y-axis labels, grid lines, step count |
-| `BarLegend` | A key mapping each series' colours to its label |
 | `animationConfig` | Entry, morph, and selection timing |
 | `a11yConfig` | Screen-reader text builders |
 | `selectionRenderer` | Draws the selection indicator |

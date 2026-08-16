@@ -31,10 +31,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import io.grafima.charts.LegendOrientation
 
@@ -52,25 +56,27 @@ internal data class BarLegendEntry(
 /**
  * The series a key should list, in the order they first appear.
  *
- * A series' colours are taken from its first bar, since that is the one a reader
- * meets first; a series whose bars disagree on colour cannot be keyed by a single
- * swatch anyway. A dataset with no series at all yields nothing — its bars are
- * named by the axis, and a key repeating those names says nothing new.
+ * A series is whatever the chart groups by — any non-null [BarEntry.seriesId], blank
+ * included — so the key can never omit a colour the chart is drawing. One with no
+ * name to show is skipped instead, since a blank row keys nothing.
+ *
+ * Colours come from the same resolver the bars use, so a series that sets none is
+ * keyed with the palette gradient it is actually painted with rather than a guess.
  */
 internal fun barLegendEntries(dataSet: BarDataSet): List<BarLegendEntry> {
-    val seen = LinkedHashMap<String, BarLegendEntry>()
-    dataSet.entries.forEach { entry ->
-        val id = entry.seriesId?.takeIf { it.isNotBlank() } ?: return@forEach
-
-        if (seen.containsKey(id)) return@forEach
-        seen[id] = BarLegendEntry(
-            seriesId = id,
-            label = entry.spokenSeriesLabel ?: id,
-            colorStops = entry.colorStops,
-            gradientColors = entry.gradientColors ?: dataSet.defaultGradientColors
-        )
-    }
-    return seen.values.toList()
+    val order = seriesOrder(dataSet.entries)
+    return dataSet.entries
+        .filter { it.seriesId != null }
+        .distinctBy { it.seriesId }
+        .mapNotNull { entry ->
+            val label = entry.spokenSeriesLabel ?: return@mapNotNull null
+            BarLegendEntry(
+                seriesId = entry.seriesId!!,
+                label = label,
+                colorStops = entry.colorStops?.takeIf { it.size >= 2 },
+                gradientColors = barGradientColors(entry, dataSet, order)
+            )
+        }
 }
 
 /**
@@ -97,13 +103,18 @@ internal fun barLegendEntries(dataSet: BarDataSet): List<BarLegendEntry> {
  * tell them apart.
  *
  * A screen reader reaches it as one item naming every series, rather than one stop
- * each. The colour mapping is visual only — the chart's own description is what
- * carries the series to a listener.
+ * each. Unlike the line chart, the bar chart's own description carries counts rather
+ * than series names, so this key is the only place a listener meets them before
+ * selecting a bar — [describe] names the item so it arrives as something placeable
+ * rather than two loose nouns.
  *
  * @param dataSet The same dataset the chart is drawing.
  * @param orientation Row or column layout.
  * @param textStyle Label text. Defaults to the bar chart's own label tone.
  * @param swatchSize Side of the square colour sample beside each label.
+ *   [Dp.Unspecified], the default, scales it with [textStyle]'s font size so the one
+ *   thing carrying the mapping grows with the reader's font setting.
+ * @param describe Names the key for a screen reader, given the series in order.
  * @param spacing Gap between entries, and half that between wrapped lines.
  * @param entryAlignment Which edge the entries line up on when
  *   [Vertical][LegendOrientation.Vertical]. Ignored when horizontal.
@@ -114,20 +125,36 @@ fun BarLegend(
     modifier: Modifier = Modifier,
     orientation: LegendOrientation = LegendOrientation.Horizontal,
     textStyle: TextStyle = BarLegendLabelTextStyle,
-    swatchSize: Dp = 12.dp,
+    swatchSize: Dp = Dp.Unspecified,
     spacing: Dp = 12.dp,
-    entryAlignment: Alignment.Horizontal = Alignment.Start
+    entryAlignment: Alignment.Horizontal = Alignment.Start,
+    describe: (List<String>) -> String = { names -> "Key: ${names.joinToString(", ")}" }
 ) {
     val series = remember(dataSet) { barLegendEntries(dataSet) }
 
     if (series.isEmpty()) return
 
-    val grouped = modifier.semantics(mergeDescendants = true) { }
+    // A style with no colour of its own resolves to black, which is invisible on the
+    // dark surfaces these charts are usually put on.
+    val labelStyle = if (textStyle.color.isSpecified) {
+        textStyle
+    } else {
+        textStyle.copy(color = BarLegendLabelTextStyle.color)
+    }
+    val swatch = if (swatchSize.isSpecified) {
+        swatchSize
+    } else {
+        with(LocalDensity.current) { labelStyle.fontSize.toDp() }
+    }
+    val spoken = remember(series, describe) { describe(series.map { it.label }) }
+    val grouped = modifier.semantics(mergeDescendants = true) {
+        contentDescription = spoken
+    }
 
     val entries: @Composable () -> Unit = {
         series.forEach { legend ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Canvas(modifier = Modifier.size(swatchSize)) {
+                Canvas(modifier = Modifier.size(swatch)) {
                     // A miniature bar: the gradient runs top to bottom as a vertical
                     // chart's does. It names the series' colours, not their direction,
                     // so a horizontal chart keys off the same swatch.
@@ -149,7 +176,7 @@ fun BarLegend(
                 }
                 BasicText(
                     text = legend.label,
-                    style = textStyle,
+                    style = labelStyle,
                     modifier = Modifier.padding(start = 6.dp)
                 )
             }

@@ -102,6 +102,13 @@ enum class BarGroupMode { Grouped, Stacked }
  *
  * @property entries The bars to display, in order.
  * @property defaultGradientColors Gradient applied to bars that don't specify their own.
+ *   On a dataset carrying series, [seriesPalette] takes precedence, since one gradient
+ *   for every series draws a grouped chart nobody can read.
+ * @property seriesPalette Gradients handed out to series that set no colours of their
+ *   own, one per series in the order they appear, cycling if there are more series than
+ *   gradients. Colour is the only thing telling grouped and stacked bars apart, so the
+ *   default gives each series its own rather than repeating one. Set it to an empty list
+ *   to fall back to [defaultGradientColors] for every series.
  * @property contentDescription Accessibility label describing the chart's purpose.
  * @property mode Arrangement of bars within a category. A dataset whose entries carry
  *   no [BarEntry.seriesId] draws identically either way, since every bar is then its
@@ -112,7 +119,21 @@ data class BarDataSet(
     val entries: List<BarEntry>,
     val defaultGradientColors: List<Color> = listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
     val contentDescription: String = "Bar Chart",
-    val mode: BarGroupMode = BarGroupMode.Grouped
+    val mode: BarGroupMode = BarGroupMode.Grouped,
+    val seriesPalette: List<List<Color>> = DefaultSeriesPalette
+)
+
+/**
+ * One gradient per series, distinct enough to be told apart at a glance and in the
+ * common forms of colour blindness. Guarded by `ColorContrastTest`.
+ */
+val DefaultSeriesPalette: List<List<Color>> = listOf(
+    listOf(Color(0xFF818CF8), Color(0xFF4F46E5)),
+    listOf(Color(0xFFFBBF24), Color(0xFFD97706)),
+    listOf(Color(0xFF34D399), Color(0xFF059669)),
+    listOf(Color(0xFFF472B6), Color(0xFFBE185D)),
+    listOf(Color(0xFF38BDF8), Color(0xFF0369A1)),
+    listOf(Color(0xFFA78BFA), Color(0xFF6D28D9))
 )
 
 /**

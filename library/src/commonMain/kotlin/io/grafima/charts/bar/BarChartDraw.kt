@@ -185,6 +185,7 @@ internal fun DrawScope.drawVerticalBars(
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
+    barGradients: Map<String, List<Color>>,
     xLabelLayouts: Map<String, TextLayoutResult>,
     valueTextCache: MutableMap<Int, TextLayoutResult>,
     textMeasurer: TextMeasurer,
@@ -285,7 +286,7 @@ internal fun DrawScope.drawVerticalBars(
                     Brush.verticalGradient(*stops, startY = yOffset, endY = yOffset + targetHeight)
                 } else {
                     Brush.verticalGradient(
-                        colors = entry.gradientColors ?: dataSet.defaultGradientColors,
+                        colors = barGradients[entry.id] ?: dataSet.defaultGradientColors,
                         startY = yOffset,
                         endY = yOffset + targetHeight
                     )
@@ -347,6 +348,7 @@ internal fun DrawScope.drawHorizontalBars(
     style: ChartStyle,
     animationEngine: ChartAnimationEngine,
     colorStopArrays: Map<String, Array<Pair<Float, Color>>?>,
+    barGradients: Map<String, List<Color>>,
     xLabelLayouts: Map<String, TextLayoutResult>,
     valueTextCache: MutableMap<Int, TextLayoutResult>,
     textMeasurer: TextMeasurer,
@@ -444,7 +446,7 @@ internal fun DrawScope.drawHorizontalBars(
                     Brush.horizontalGradient(*stops, startX = brushStart, endX = brushEnd)
                 } else {
                     Brush.horizontalGradient(
-                        colors = entry.gradientColors ?: dataSet.defaultGradientColors,
+                        colors = barGradients[entry.id] ?: dataSet.defaultGradientColors,
                         startX = brushStart,
                         endX = brushEnd
                     )

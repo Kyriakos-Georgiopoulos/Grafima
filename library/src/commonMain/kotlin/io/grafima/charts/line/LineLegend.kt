@@ -32,6 +32,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -99,6 +100,13 @@ fun LineLegend(
     entryAlignment: Alignment.Horizontal = Alignment.Start
 ) {
     val grouped = modifier.semantics(mergeDescendants = true) { }
+    // A style with no colour of its own resolves to black, which is invisible on the
+    // dark surfaces these charts are usually put on.
+    val labelStyle = if (textStyle.color.isSpecified) {
+        textStyle
+    } else {
+        textStyle.copy(color = LegendLabelTextStyle.color)
+    }
     val density = LocalDensity.current
     // The swatch is a symbol, not a scale model. A 10dp dash laid on an 18dp key
     // draws one dash and runs its gap off the end, which reads as a short solid
@@ -154,7 +162,7 @@ fun LineLegend(
                 }
                 BasicText(
                     text = series.label,
-                    style = textStyle,
+                    style = labelStyle,
                     modifier = Modifier.padding(start = 6.dp)
                 )
             }

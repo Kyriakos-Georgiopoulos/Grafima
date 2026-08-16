@@ -16,14 +16,26 @@
 
 package io.grafima.charts.bar
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.LegendOrientation
 import io.grafima.charts.assumePixelCapture
@@ -58,9 +70,11 @@ class BarLegendUiTest {
     fun every_series_is_named_once_however_many_bars_it_has() = runComposeUiTest {
         setContent { BarLegend(dataSet = grouped) }
 
-        onNode(hasText("Revenue")).assertExists()
-        onNode(hasText("Cost")).assertExists()
-        assertEquals(1, onAllNodes(hasText("Revenue")).fetchSemanticsNodes().size)
+        // Unmerged, or every query resolves to the one merged legend node and this
+        // passes for any number of entries — including an entry collapsed to nothing.
+        onAllNodesWithText("Revenue", useUnmergedTree = true).assertCountEquals(1)
+        onAllNodesWithText("Cost", useUnmergedTree = true).assertCountEquals(1)
+        onNodeWithText("Revenue", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -98,13 +112,92 @@ class BarLegendUiTest {
     }
 
     @Test
-    fun the_key_is_one_stop_for_a_screen_reader_rather_than_one_per_series() = runComposeUiTest {
+    fun the_key_is_one_named_stop_rather_than_two_loose_nouns() = runComposeUiTest {
         setContent { BarLegend(dataSet = grouped) }
 
-        // Merged, so stepping through a chart screen does not spend two stops on the
-        // key before reaching the chart itself.
-        val root = onRoot().fetchSemanticsNode()
-        assertEquals(1, root.children.size, "the key was not merged into one node")
+        // The bar chart's own description carries counts, not series names, so this
+        // is where a listener meets them — it has to say what it is.
+        onNodeWithContentDescription("Key: Revenue, Cost").assertExists()
+    }
+
+    @Test
+    fun the_spoken_name_of_the_key_can_be_translated() = runComposeUiTest {
+        setContent {
+            BarLegend(dataSet = grouped, describe = { names -> "Υπόμνημα: ${names.size}" })
+        }
+
+        onNodeWithContentDescription("Υπόμνημα: 2").assertExists()
+    }
+
+    @Test
+    fun colour_stops_key_the_series_rather_than_its_flat_gradient() = runComposeUiTest {
+        assumePixelCapture()
+        // The chart prefers stops over gradientColors; the key has to agree or it
+        // paints one thing while the bars paint another.
+        val stopped = BarDataSet(
+            entries = listOf(
+                BarEntry(
+                    id = "a",
+                    xLabel = "Q1",
+                    y = 1f,
+                    gradientColors = listOf(Color.Blue, Color.Blue),
+                    colorStops = listOf(ColorStop(0f, Color.Green), ColorStop(1f, Color.Green)),
+                    seriesId = "rev",
+                    seriesLabel = "Revenue"
+                )
+            )
+        )
+        setContent { BarLegend(dataSet = stopped, modifier = Modifier.size(200.dp)) }
+        waitForIdle()
+
+        val image = onRoot().captureToImage()
+        assertTrue(image.countColor(Color.Green) > 0, "the key ignored the series' stops")
+        assertEquals(0, image.countColor(Color.Blue), "the key used the colours the stops replace")
+    }
+
+    @Test
+    fun a_vertical_key_stacks_its_entries_rather_than_laying_them_in_a_row() =
+        runComposeUiTest {
+            setContent {
+                Column {
+                    BarLegend(dataSet = grouped, orientation = LegendOrientation.Horizontal)
+                    BarLegend(dataSet = grouped, orientation = LegendOrientation.Vertical)
+                }
+            }
+
+            val row = onAllNodesWithContentDescription("Key: Revenue, Cost")[0]
+                .fetchSemanticsNode().size
+            val column = onAllNodesWithContentDescription("Key: Revenue, Cost")[1]
+                .fetchSemanticsNode().size
+            assertTrue(column.height > row.height, "the vertical key was no taller")
+            assertTrue(column.width < row.width, "the vertical key was no narrower")
+        }
+
+    @Test
+    fun the_key_reads_right_to_left_in_rtl() = runComposeUiTest {
+        assumePixelCapture()
+        setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                BarLegend(dataSet = grouped, modifier = Modifier.size(200.dp))
+            }
+        }
+        waitForIdle()
+
+        // The first series' swatch belongs on the right-hand end in RTL.
+        val image = onRoot().captureToImage()
+        val blue = image.meanColumn(Color.Blue)
+        val red = image.meanColumn(Color.Red)
+        assertTrue(blue > red, "the key did not mirror: blue at $blue, red at $red")
+    }
+
+    private fun ImageBitmap.meanColumn(color: Color): Int {
+        val pixels = IntArray(width * height)
+        readPixels(pixels)
+        val target = color.toArgb()
+        var sum = 0L
+        var count = 0
+        pixels.forEachIndexed { i, p -> if (p == target) { sum += i % width; count++ } }
+        return if (count == 0) -1 else (sum / count).toInt()
     }
 
     @Test
