@@ -9,14 +9,16 @@ A chart is a single merged node — a screen reader announces it once rather tha
 walking its internals. Each one declares `Role.Image`, matching the convention
 for data visualizations on the web.
 
-`LineLegend` is also a single merged node, so it costs one stop rather than one
+`LineLegend` and `BarLegend` is also a single merged node, so it costs one stop rather than one
 per series. It carries no role or description of its own: what it adds is the
 colour beside each name, which a screen reader cannot use, and the chart's
 description already names every series.
 
 The description is built from your data:
 
-> "Bar Chart representing Monthly revenue. Jan value is 45. Feb value is 80."
+> "Bar Chart representing Monthly revenue. 2 bars. Use the actions menu to select one."
+
+A grouped chart counts its groups instead: *"4 bars in 2 groups of 2."*
 
 Selection is exposed separately as a state description, so selecting a bar
 announces only *"Currently selected: Feb, 80."* instead of re-reading the whole
@@ -36,8 +38,10 @@ The one exception is a line chart with a pinned x range: points outside it are n
 drawn and get no action, because selecting one would move the crosshair somewhere
 nothing is visible. See [the line chart guide](charts/line.md).
 
-Give your entries distinct labels. Two bars both labelled "Q1" produce two
-identical actions and one of them becomes unreachable.
+Give your entries distinct labels. Two bars both labelled "Q1" and carrying no
+`seriesId` produce two identical actions and one of them becomes unreachable.
+Grouped bars are the exception: they share an `xLabel` by design, and the default
+`A11yConfig.selectActionLabel` adds the series so the actions stay distinct.
 
 A line chart's `xAxisTitle` and `yAxisTitle` are appended to its description, so
 the numbers reach a screen reader with the unit they are in. Set neither and the

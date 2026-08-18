@@ -113,8 +113,10 @@ import kotlin.math.min
  * @param crosshairConfig Crosshair interaction and tooltip appearance.
  * @param animationConfig Timing for entry wave, morph spring, and stagger delays.
  * @param a11yConfig Accessibility description builders for TalkBack.
- * @param selectedPointIndex Currently highlighted x-axis data point index, or null.
- *   Hoist this in the parent to control crosshair externally.
+ * @param selectedPointIndex Currently highlighted x-axis position, or null. Indexes
+ *   every x any series reaches, ascending — the same as indexing the first series'
+ *   points whenever the series share x positions and that series is sorted. Hoist
+ *   this in the parent to control the crosshair externally.
  * @param selectionHaptic Haptic effect performed each time the crosshair snaps to a new
  *   data point during a drag. Pass null to disable.
  * @param onPointSelected Called during touch/drag (with the nearest point index)
@@ -421,8 +423,18 @@ fun LineChart(
             appendSentence(a11yConfig.referenceLineDescriptionBuilder(announcedReferenceLines))
         }
     }
+    val axis = remember(series) { buildAxisIndex(series) }
+    val currentAxisX by rememberUpdatedState(axis.positions)
+
     val selectedDescription = remember(selectedPointIndex, series, a11yConfig) {
-        selectedPointIndex?.let { idx -> a11yConfig.selectedPointDescriptionBuilder(idx, series) }
+        selectedPointIndex?.let { idx ->
+            // Resolved off the axis the chart already built, rather than rebuilt per
+            // announcement: TalkBack asks for this on every snap of a drag.
+            val selected = series.mapNotNull { s ->
+                s.points.getOrNull(axis.pointIndex(s.id, idx))?.let { SelectedPoint(s, it) }
+            }
+            a11yConfig.selectedPointDescriptionBuilder(idx, selected)
+        }
             ?: ""
     }
 
@@ -438,6 +450,22 @@ fun LineChart(
     val areaPath = remember { Path() }
     val plotInsets = remember { PlotInsets() }
     val gestureInsets = remember { PlotInsets() }
+
+    val widestDotPx = remember(renderSeries, style.showDots, style.dotRadius, density) {
+        if (!style.showDots) {
+            0f
+        } else {
+            // Sanitise each series before comparing: Dp compares as IEEE floats, so an
+            // unspecified radius left in the max survives it and hides the real widest.
+            with(density) {
+                renderSeries.maxOfOrNull { s ->
+                    val px = s.dotRadius.orElse(style.dotRadius).toPx()
+                    if (px.isFinite()) px.coerceAtLeast(0f) else 0f
+                } ?: 0f
+            }
+        }
+    }
+    val currentWidestDotPx by rememberUpdatedState(widestDotPx)
 
     // ── Animation lifecycle ──
     SideEffect { animationEngine.syncAnimatables(series) }
@@ -456,14 +484,16 @@ fun LineChart(
                 contentDescription = baseDescription
                 stateDescription = selectedDescription
                 customActions = buildList {
-                    val points = series.firstOrNull()?.points.orEmpty()
-                    if (points.isNotEmpty()) {
+                    if (axis.positions.isNotEmpty()) {
                         // Named, not next/previous: stepping leaves the listener
                         // counting along the axis to work out where they landed.
-                        points.forEachIndexed { index, point ->
-                            if (xIsPinned && !isWithinAxis(point.x, xMin, xMax)) return@forEachIndexed
+                        axis.positions.forEachIndexed { index, x ->
+                            if (xIsPinned && !isWithinAxis(x, xMin, xMax)) return@forEachIndexed
+                            val point = series.firstNotNullOfOrNull { s ->
+                                s.points.getOrNull(axis.pointIndex(s.id, index))
+                            } ?: return@forEachIndexed
                             add(
-                                CustomAccessibilityAction(label = "Select ${point.spokenLabel}") {
+                                CustomAccessibilityAction(label = a11yConfig.selectActionLabel(point)) {
                                     onPointSelected(index)
                                     true
                                 }
@@ -471,7 +501,7 @@ fun LineChart(
                         }
                         if (selectedPointIndex != null) {
                             add(
-                                CustomAccessibilityAction(label = "Clear selection") {
+                                CustomAccessibilityAction(label = a11yConfig.clearSelectionLabel) {
                                     onPointSelected(null)
                                     true
                                 }
@@ -484,9 +514,8 @@ fun LineChart(
             .pointerInput(Unit) {
                 if (!crosshairConfig.enabled) return@pointerInput
                 awaitEachGesture {
-                    val activeSeries = currentSeries
-                    val fp = activeSeries.firstOrNull()?.points ?: return@awaitEachGesture
-                    if (fp.isEmpty()) return@awaitEachGesture
+                    val positions = currentAxisX
+                    if (positions.isEmpty()) return@awaitEachGesture
 
                     val den = currentDensity
                     val gap = with(den) { style.labelGap.toPx() }
@@ -502,7 +531,8 @@ fun LineChart(
                         xLabelHeight = 0f,
                         yTitleHeight = currentYTitleHeight,
                         xTitleHeight = 0f,
-                        isRtl = rtl
+                        isRtl = rtl,
+                        dotClearance = currentWidestDotPx
                     )
                     val cLeft = rect.left
                     val cRight = rect.right
@@ -511,7 +541,7 @@ fun LineChart(
 
                     val restrict = currentXIsPinned
                     fun nearest(touchX: Float): Int =
-                        nearestPointIndex(fp, touchX, axMin, axMax, cLeft, cRight, rtl, restrict)
+                        nearestAxisIndex(positions, touchX, axMin, axMax, cLeft, cRight, rtl, restrict)
 
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var lastHapticIndex = nearest(down.position.x)
@@ -553,8 +583,13 @@ fun LineChart(
             xLabelHeight = if (axisConfig.showXLabels) maxXLabelHeight else 0f,
             yTitleHeight = yTitleLayout?.size?.height?.toFloat() ?: 0f,
             xTitleHeight = xTitleLayout?.size?.height?.toFloat() ?: 0f,
-            isRtl = isRtl
+            isRtl = isRtl,
+            dotClearance = widestDotPx
         )
+        // Labels stand off by the clearance the plot was actually given, or they walk
+        // inward past it once the clamp engages and leave the composable entirely.
+        val yLabelGapPx = labelGapPx + insets.sideClearance
+        val xLabelGapPx = labelGapPx + insets.stackClearance
         val chartLeft = insets.left
         val chartRight = insets.right
         val chartBottom = insets.bottom
@@ -625,7 +660,11 @@ fun LineChart(
                     val layout = yLabelLayouts[i]
                     val y = mapY(v)
                     val lx =
-                        if (isRtl) chartRight + labelGapPx else chartLeft - labelGapPx - layout.size.width
+                        if (isRtl) {
+                            chartRight + yLabelGapPx
+                        } else {
+                            chartLeft - yLabelGapPx - layout.size.width
+                        }
                     drawText(
                         textLayoutResult = layout,
                         topLeft = Offset(x = lx, y = y - layout.size.height / 2f)
@@ -643,9 +682,16 @@ fun LineChart(
         val rightSlack = if (rightCuts) 0f else noClip
         val topSlack = if (topCuts) 0f else noClip
         val bottomSlack = if (bottomCuts) 0f else noClip
-        val dotRadiusPx = style.dotRadius.toPx()
+
         // Only a drawn dot needs clearing; an unused radius must not push labels off.
-        val markRadiusPx = if (style.showDots) dotRadiusPx else 0f
+        // A radius that is not a finite length is no radius at all: left as NaN it
+        // makes every inset, every mapped coordinate and every label position NaN.
+        fun markRadiusPx(s: LineSeries): Float {
+            if (!style.showDots) return 0f
+            val resolved = s.dotRadius.orElse(style.dotRadius).toPx()
+            return if (resolved.isFinite()) resolved.coerceAtLeast(0f) else 0f
+        }
+
         renderSeries.forEach { s ->
             val n = s.points.size
             if (n == 0) return@forEach
@@ -728,19 +774,27 @@ fun LineChart(
                     drawPath(path = linePath, color = s.color, style = strokeStyle)
                 }
             }
+        }
 
-            // Dots sit outside the clip so one on a bound keeps all of itself.
-            if (style.showDots) {
-                for (i in 0 until n) {
-                    val p = s.points[i]
-                    if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
-                    if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
-                    drawCircle(
-                        color = s.color,
-                        radius = dotRadiusPx,
-                        center = Offset(x = xs[i], y = ys[i])
-                    )
-                }
+        // Every dot after every fill, or a later series' wash sinks an earlier
+        // series' marker. Outside the clip too, so one on a bound keeps all of itself.
+        renderSeries.forEach { s ->
+            val seriesDotRadiusPx = markRadiusPx(s)
+            if (seriesDotRadiusPx <= 0f) return@forEach
+            val xs = xBuffers[s.id] ?: return@forEach
+            val ys = yBuffers[s.id] ?: return@forEach
+            // Buffers are sized to the series they were filled for; two series sharing
+            // an id leave only the last, so walk what the buffer actually holds.
+            val n = minOf(s.points.size, xs.size, ys.size)
+            for (i in 0 until n) {
+                val p = s.points[i]
+                if (yIsPinned && !isWithinAxis(p.y, yMin, yMax)) continue
+                if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) continue
+                drawCircle(
+                    color = s.color,
+                    radius = seriesDotRadiusPx,
+                    center = Offset(x = xs[i], y = ys[i])
+                )
             }
         }
 
@@ -843,6 +897,7 @@ fun LineChart(
                     valueLabelStyle.color.isSpecified -> valueLabelStyle.color
                     else -> ValueLabelTextStyle.color
                 }
+                val labelOffset = markRadiusPx(s) + valueGap + s.strokeWidth.toPx() / 2f
                 val n = min(s.points.size, layouts.size)
                 // Walked left to right on screen rather than through the data, so
                 // the label kept out of a colliding pair is the leftmost one
@@ -863,7 +918,7 @@ fun LineChart(
                     val ly = valueLabelTop(
                         pointY = ys[i],
                         labelHeight = layout.size.height.toFloat(),
-                        offset = markRadiusPx + valueGap + s.strokeWidth.toPx() / 2f,
+                        offset = labelOffset,
                         chartTop = chartTop,
                         chartBottom = chartBottom,
                         // From the data: animated positions are all flat at rest, so
@@ -903,7 +958,7 @@ fun LineChart(
                         textLayoutResult = layout,
                         topLeft = Offset(
                             x = mapX(p.x) - layout.size.width / 2f,
-                            y = chartBottom + labelGapPx
+                            y = chartBottom + xLabelGapPx
                         )
                     )
                 }
@@ -967,10 +1022,9 @@ fun LineChart(
 
         // ── 6. Crosshair + tooltip ──
         selectedPointIndex?.let { idx ->
-            val fp = series.firstOrNull() ?: return@let
-            if (idx !in fp.points.indices) return@let
-            if (xIsPinned && !isWithinAxis(fp.points[idx].x, xMin, xMax)) return@let
-            val crossX = mapX(fp.points[idx].x)
+            val anchorX = axis.positions.getOrNull(idx) ?: return@let
+            if (xIsPinned && !isWithinAxis(anchorX, xMin, xMax)) return@let
+            val crossX = mapX(anchorX)
 
             drawLine(
                 color = crosshairConfig.lineColor,
@@ -981,11 +1035,12 @@ fun LineChart(
 
             val dotR = crosshairConfig.dotRadius.toPx()
             val borderW = crosshairConfig.dotBorderWidth.toPx()
-            series.forEach { s ->
-                if (idx < s.points.size) {
-                    if (yIsPinned && !isWithinAxis(s.points[idx].y, yMin, yMax)) return@forEach
-                    val key = keyMatrix[s.id]?.getOrNull(idx) ?: return@forEach
-                    val animY = animationEngine.yAnimatables[key]?.value ?: s.points[idx].y
+            series.forEachIndexed { i, s ->
+                val at = axis.pointIndex(s.id, idx)
+                if (at >= 0) {
+                    if (yIsPinned && !isWithinAxis(s.points[at].y, yMin, yMax)) return@forEachIndexed
+                    val key = keyMatrix[s.id]?.getOrNull(at) ?: return@forEachIndexed
+                    val animY = animationEngine.yAnimatables[key]?.value ?: s.points[at].y
                     val cy = mapY(animY)
                     drawCircle(
                         color = crosshairConfig.dotBorderColor,
@@ -998,10 +1053,11 @@ fun LineChart(
 
             if (crosshairConfig.showTooltip) {
                 val tooltipText = buildString {
-                    series.forEachIndexed { i, s ->
-                        if (idx < s.points.size) {
-                            if (i > 0) append("\n")
-                            append(crosshairConfig.tooltipFormatter(s, s.points[idx]))
+                    series.forEach { s ->
+                        val at = axis.pointIndex(s.id, idx)
+                        if (at >= 0) {
+                            if (isNotEmpty()) append("\n")
+                            append(crosshairConfig.tooltipFormatter(s, s.points[at]))
                         }
                     }
                 }

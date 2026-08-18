@@ -22,6 +22,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Dp
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
+import io.grafima.charts.needsAnimatingTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -164,7 +165,7 @@ internal class RadarChartAnimationEngine {
                             (axisIndex * config.vertexStaggerMs)
                         delay(totalDelay)
                         anim.animateTo(target, config.initialEntrySpec)
-                    } else if (anim.targetValue != target) {
+                    } else if (anim.needsAnimatingTo(target)) {
                         anim.animateTo(target, config.morphSpec)
                     }
                 }
@@ -189,7 +190,7 @@ internal class RadarChartAnimationEngine {
                 style.unselectedAlpha
             } else 1f
 
-            if (alphaAnim.targetValue != targetAlpha) {
+            if (alphaAnim.needsAnimatingTo(targetAlpha)) {
                 scope.launch { alphaAnim.animateTo(targetAlpha, config.selectionSpec) }
             }
         }

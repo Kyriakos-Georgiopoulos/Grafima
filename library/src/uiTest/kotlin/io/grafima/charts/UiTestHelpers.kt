@@ -24,6 +24,9 @@
 
 package io.grafima.charts
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
@@ -51,6 +54,10 @@ internal fun SemanticsNodeInteraction.customActionLabels(): List<String> =
 internal fun SemanticsNodeInteraction.contentDescription(): String =
     fetchSemanticsNode().config[SemanticsProperties.ContentDescription].joinToString(" ")
 
+/** What a screen reader adds for the node's current selection, or "" when unset. */
+internal fun SemanticsNodeInteraction.stateDescription(): String =
+    fetchSemanticsNode().config.getOrElse(SemanticsProperties.StateDescription) { "" }
+
 /**
  * Invokes a chart's custom accessibility action by its visible label via the
  * official test API, failing with the list of available labels when absent.
@@ -62,4 +69,25 @@ internal fun SemanticsNodeInteraction.performCustomAction(label: String) {
         "no custom action \"$label\" in ${customActionLabels()}"
     )
     performCustomAccessibilityActionWithLabel(label)
+}
+
+/** Reads the whole bitmap once so callers do not each allocate their own copy. */
+internal fun <T> ImageBitmap.withPixels(read: (IntArray) -> T): T {
+    val pixels = IntArray(width * height)
+    readPixels(pixels)
+    return read(pixels)
+}
+
+/** Pixels matching [color] exactly. */
+internal fun ImageBitmap.countColor(color: Color): Int = withPixels { pixels ->
+    val target = color.toArgb()
+    pixels.count { it == target }
+}
+
+/** Text is resampled, so its glyphs rarely hold the exact colour asked for. */
+internal fun Int.isReddish(): Boolean {
+    val r = (this shr 16) and 0xFF
+    val g = (this shr 8) and 0xFF
+    val b = this and 0xFF
+    return r > 120 && g < 90 && b < 90
 }

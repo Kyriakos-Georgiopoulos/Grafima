@@ -44,6 +44,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.DashPattern
+import io.grafima.charts.LegendOrientation
 import io.grafima.charts.assumePixelCapture
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -93,7 +94,7 @@ class LineLegendUiTest {
         // the swatches swapped, which is the only failure that matters here.
         setContent {
             // Sized to content, so half the node really is the first entry.
-            LineLegend(dataSet = dataSet(), orientation = LineLegendOrientation.Vertical)
+            LineLegend(dataSet = dataSet(), orientation = LegendOrientation.Vertical)
         }
         waitForIdle()
 
@@ -299,12 +300,12 @@ class LineLegendUiTest {
 
     @Test
     fun a_vertical_legend_is_taller_and_narrower_than_a_horizontal_one() = runComposeUiTest {
-        var orientation by mutableStateOf(LineLegendOrientation.Horizontal)
+        var orientation by mutableStateOf(LegendOrientation.Horizontal)
         setContent { LineLegend(dataSet = dataSet(), orientation = orientation) }
         waitForIdle()
         val row = onRoot().fetchSemanticsNode().size
 
-        orientation = LineLegendOrientation.Vertical
+        orientation = LegendOrientation.Vertical
         waitForIdle()
         val column = onRoot().fetchSemanticsNode().size
 

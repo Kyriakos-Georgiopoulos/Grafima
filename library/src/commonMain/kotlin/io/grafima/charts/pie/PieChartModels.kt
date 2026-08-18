@@ -200,5 +200,14 @@ data class PieA11yConfig(
     },
     val sliceCountDescriptionBuilder: (Int) -> String = { count ->
         "$count slices. Use the actions menu to select one."
-    }
+    },
+
+    /**
+     * Names each slice's action in the actions menu. Given the entry itself, so an
+     * override can reach its value and share as well as its label.
+     */
+    val selectActionLabel: (PieEntry) -> String = { entry -> "Select ${entry.label}" },
+
+    /** Names the action that clears the selection. */
+    val clearSelectionLabel: String = "Clear selection"
 )

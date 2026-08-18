@@ -56,7 +56,7 @@ above, beside or below and the plot keeps its full width.
 ```kotlin
 LineLegend(
     dataSet = data,
-    orientation = LineLegendOrientation.Vertical,
+    orientation = LegendOrientation.Vertical,
     textStyle = MaterialTheme.typography.labelMedium
 )
 ```
@@ -70,6 +70,47 @@ takes an `entryAlignment` for the edge the entries line up on.
 
 A screen reader reaches the legend as one item naming every series, rather than a
 stop each. `spacing` also sets half that gap between wrapped lines.
+
+## Dot size per series
+
+`LineChartStyle.showDots` decides whether dots are drawn; `LineChartStyle.dotRadius`
+sizes them for the whole chart. A series that sets its own `dotRadius` uses that
+instead, which is how a marker outweighs the curve it marks:
+
+```kotlin
+series = listOf(
+    LineSeries(id = "raw", label = "Readings", points = readings, color = Color.Gray),
+    LineSeries(
+        id = "smoothed",
+        label = "Smoothed",
+        points = smoothed,
+        color = Color(0xFFF97316),
+        dotRadius = 7.dp
+    )
+)
+```
+
+A series that leaves `dotRadius` at `Dp.Unspecified` takes the chart-wide value, the
+same way `outerRadius` works on the pie and radar charts. `0.dp` drops one series'
+dots while the rest of the chart keeps theirs — a derived line such as a moving
+average has no readings to mark. `showDots = false` still wins over both: a series
+radius sizes a dot, it does not ask for one.
+
+Series need not cover the same x positions. The chart resolves one shared axis for
+the dataset, so the crosshair reads each series at the x it stopped on: a one-point
+marker is named in the tooltip at its own x and nowhere else, and an x only it reaches
+is still selectable by touch and by TalkBack. `selectedPointIndex` counts every x any
+series reaches, in ascending order.
+
+Two series that compute the same x by different arithmetic still share a position —
+the chart merges values closer together than the data's own smallest gap — while
+readings a real step apart stay separate, whether the axis counts months or epoch
+milliseconds.
+
+Dots are drawn after every series' fill, so a marker keeps its weight wherever it
+sits in the list. The plot and the axis labels both stand off by the widest dot's
+radius, so a point on an axis bound is not clipped and does not paint over the
+labels — a large radius therefore costs the plot some room on every side.
 
 ## Dashed series
 
@@ -140,7 +181,12 @@ dropped rather than drawn over something.
 
 Set `contentDescription` as well when the spoken form should say more than the plot
 has room for; it defaults to `label`. Either way the chart announces "Reference
-line: Now." Override `LineA11yConfig.referenceLineDescriptionBuilder` to reword or
+line: Now." `LineA11yConfig.selectedPointDescriptionBuilder` is given the selected axis position
+and every series that has a reading there, already resolved — so an override reads
+`selected.forEach { (series, point) -> … }` and cannot fall out of step with what the
+crosshair draws.
+
+Override `LineA11yConfig.referenceLineDescriptionBuilder` to reword or
 translate that, or return an empty string to leave them unspoken. A line with
 neither is drawn but not announced.
 

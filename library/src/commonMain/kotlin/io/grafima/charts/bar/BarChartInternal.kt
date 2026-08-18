@@ -19,20 +19,102 @@ package io.grafima.charts.bar
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.graphics.Color
 import io.grafima.charts.ExitTracker
 import io.grafima.charts.Exiting
+import io.grafima.charts.needsAnimatingTo
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
 /**
- * Y-axis maximum: 20% headroom over the tallest bar, rounded up to a tidy
- * step (5, 10, or 50 depending on magnitude) so axis labels stay round numbers.
+ * Whether [entry] continues the category that [previous] belongs to. Both the axis
+ * and the draw pass group by this, and must not diverge.
+ *
+ * Matching only the immediate predecessor keeps two runs that reuse a label apart.
  */
-internal fun computeBarAxisMax(entries: List<BarEntry>): Float {
-    val rawMax = entries.maxOfOrNull { it.y }?.takeIf { it > 0f } ?: 1f
-    val maxWithHeadroom = rawMax * 1.2f
+internal fun joinsCategory(previous: BarEntry?, entry: BarEntry): Boolean =
+    entry.seriesId != null &&
+        previous?.seriesId != null &&
+        previous.xLabel == entry.xLabel
+
+/**
+ * The colours a bar is painted with, as a gradient Compose will accept.
+ *
+ * One colour is a reasonable way to ask for a flat bar, and an empty list is what a
+ * DTO with no colours deserializes to, but `Brush` needs two stops and throws below
+ * that — on Android a single [ColorStop] throws where skiko renders it, so the same
+ * dataset would crash on one platform only.
+ */
+internal fun barGradientColors(
+    entry: BarEntry,
+    dataSet: BarDataSet,
+    seriesOrder: List<String> = seriesOrder(dataSet.entries)
+): List<Color> {
+    val own = entry.gradientColors?.takeIf { it.isNotEmpty() }
+    val colors = own
+        ?: paletteFor(entry, dataSet, seriesOrder)
+        ?: dataSet.defaultGradientColors.takeIf { it.isNotEmpty() }
+        ?: FallbackBar
+    return if (colors.size == 1) listOf(colors[0], colors[0]) else colors
+}
+
+/** The palette gradient this bar's series is due, or null when it has no series. */
+private fun paletteFor(
+    entry: BarEntry,
+    dataSet: BarDataSet,
+    seriesOrder: List<String>
+): List<Color>? {
+    val palette = dataSet.seriesPalette.filter { it.isNotEmpty() }
+    if (palette.isEmpty()) return null
+    val index = entry.seriesId?.let { seriesOrder.indexOf(it) }?.takeIf { it >= 0 } ?: return null
+    return palette[index % palette.size]
+}
+
+/** Stops a bar is painted with, or null to fall back to [barGradientColors]. */
+internal fun barColorStops(entry: BarEntry): Array<Pair<Float, Color>>? {
+    val stops = entry.colorStops?.takeIf { it.size >= 2 } ?: return null
+    return stops.map { it.position to it.color }.toTypedArray()
+}
+
+/** Last resort when a caller empties both their own colours and the dataset's. */
+private val FallbackBar = listOf(Color(0xFF818CF8), Color(0xFF4F46E5))
+
+/** Distinct series in list order. Empty when nothing carries one. */
+internal fun seriesOrder(entries: List<BarEntry>): List<String> =
+    entries.mapNotNull { it.seriesId }.distinct()
+
+/**
+ * Y-axis maximum for a layout the caller already has: 20% headroom over the tallest
+ * bar, rounded up to a tidy step (5, 10 or 50 by magnitude) so the labels stay round.
+ * The chart groups its render list once and both the bars and the axis read it.
+ */
+internal fun axisMaxForLayout(
+    entries: List<BarEntry>,
+    layout: BarGroupLayout,
+    mode: BarGroupMode
+): Float {
+    val stacked = mode == BarGroupMode.Stacked
+    var rawMax = 0f
+    var index = 0
+    while (index < entries.size) {
+        val category = layout.categoryOf[index]
+        var total = 0f
+        var tallest = 0f
+        while (index < entries.size && layout.categoryOf[index] == category) {
+            val y = entries[index].y
+            total += y
+            if (y > tallest) tallest = y
+            index++
+        }
+        // A stack total is a signed sum, so a negative segment can leave it below a
+        // positive sibling that is still drawn full height and clipped off-canvas.
+        val extent = if (stacked) maxOf(total, tallest) else tallest
+        if (extent > rawMax) rawMax = extent
+    }
+    val maxWithHeadroom = (if (rawMax > 0f) rawMax else 1f) * 1.2f
     val step = if (maxWithHeadroom > 100) 50f else if (maxWithHeadroom > 10) 10f else 5f
     return ceil(maxWithHeadroom / step) * step
 }
@@ -41,32 +123,18 @@ internal fun computeBarAxisMax(entries: List<BarEntry>): Float {
  * Bar thickness and gap along the layout axis. Gaps flank every bar, so
  * [count] bars produce count+1 gaps: thickness*count + gap*(count+1) == extent.
  */
-internal fun barThicknessAndGap(
-    extent: Float,
-    count: Int,
-    spacingFactor: Float
-): Pair<Float, Float> = barThicknessAndGap(extent, count.toFloat(), spacingFactor)
-
-/**
- * The same split over a fractional [count], which is what a slot collapsing after
- * a removal produces: the survivors widen across the collapse instead of jumping
- * once it completes.
- */
-internal fun barThicknessAndGap(
-    extent: Float,
-    count: Float,
-    spacingFactor: Float
-): Pair<Float, Float> {
+internal fun barThickness(extent: Float, count: Float, spacingFactor: Float): Float {
     val slots = count.coerceAtLeast(0.01f)
-    val totalSpacing = extent * spacingFactor.coerceIn(0f, 0.9f)
-    return (extent - totalSpacing) / slots to totalSpacing / (slots + 1f)
+    return (extent - extent * spacingFactor.coerceIn(0f, 0.9f)) / slots
 }
 
-/** LTR offset of bar [index] along the layout axis, measured from [leadingInset]. */
-internal fun barSlotOffset(index: Int, leadingInset: Float, thickness: Float, gap: Float): Float =
-    barSlotOffset(index.toFloat(), leadingInset, thickness, gap)
+/** The gap flanking each of those bars. Returned separately to avoid a `Pair` per frame. */
+internal fun barGap(extent: Float, count: Float, spacingFactor: Float): Float {
+    val slots = count.coerceAtLeast(0.01f)
+    return extent * spacingFactor.coerceIn(0f, 0.9f) / (slots + 1f)
+}
 
-/** The same offset for a fractional slot [position] — the slots ahead of this bar. */
+/** LTR offset of a slot, measured from [leadingInset] by the slots ahead of it. */
 internal fun barSlotOffset(
     position: Float,
     leadingInset: Float,
@@ -83,6 +151,100 @@ internal fun mirrorForRtl(
 ): Float = if (isRtl) totalExtent - ltrOffset - thickness else ltrOffset
 
 /**
+ * Thickness of one bar when a category slot is split across [seriesCount] of them.
+ * No gap flanks the group: the slot's own gaps already separate it from its
+ * neighbours, so the whole slot goes to the bars and the spacing between them.
+ *
+ * [seriesCount] is fractional because a group holds one while a bar is leaving; the
+ * survivors widen across the departure rather than doubling when it completes.
+ */
+internal fun groupedBarThickness(
+    slotThickness: Float,
+    seriesCount: Float,
+    innerSpacingFactor: Float
+): Float {
+    val count = seriesCount.coerceAtLeast(1f)
+    return (slotThickness - slotThickness * innerGapFraction(count, innerSpacingFactor)) / count
+}
+
+/**
+ * Share of the slot given over to inner gaps. Tapers to zero as the count falls to
+ * one, without which a group of one would jump by the whole spacing factor.
+ */
+private fun innerGapFraction(count: Float, innerSpacingFactor: Float): Float =
+    innerSpacingFactor.coerceIn(0f, 0.9f) * (count - 1f).coerceIn(0f, 1f)
+
+/** Gap between two side-by-side bars of one category. Zero for a single-bar category. */
+internal fun groupedBarGap(
+    slotThickness: Float,
+    seriesCount: Float,
+    innerSpacingFactor: Float
+): Float {
+    val count = seriesCount.coerceAtLeast(1f)
+    if (count <= 1f) return 0f
+    return slotThickness * innerGapFraction(count, innerSpacingFactor) / (count - 1f)
+}
+
+/** LTR offset within a slot, by the share of the group that precedes this bar. */
+internal fun groupedBarOffset(position: Float, thickness: Float, gap: Float): Float =
+    position * (thickness + gap)
+
+/**
+ * Where each bar sits within its category. Built once per dataset from the drawn
+ * entries, exiting ones included, so the draw pass only does arithmetic. Indexed by
+ * position in the render list.
+ */
+internal class BarGroupLayout(
+    val categoryOf: IntArray,
+    val categoryCount: Int
+)
+
+/** Which category each drawn bar belongs to. */
+internal fun computeBarGroupLayout(renderEntries: List<BarEntry>): BarGroupLayout {
+    val count = renderEntries.size
+    val categoryOf = IntArray(count)
+    var category = -1
+
+    for (i in 0 until count) {
+        val previous = if (i > 0) renderEntries[i - 1] else null
+        if (!joinsCategory(previous, renderEntries[i])) category++
+        categoryOf[i] = category
+    }
+
+    return BarGroupLayout(categoryOf, category + 1)
+}
+
+/**
+ * Walks the render list one category at a time, handing [body] the half-open range
+ * of its bars and the three quantities every pass needs: how many bars share the
+ * slot ([members], summed so a departing bar counts by what it still holds) and how
+ * long the slot itself lasts ([occupancy], the longest-lived bar).
+ *
+ * Inline, because the draw pass runs this every frame.
+ */
+internal inline fun forEachBarCategory(
+    renderEntries: List<BarEntry>,
+    layout: BarGroupLayout,
+    engine: ChartAnimationEngine,
+    body: (first: Int, end: Int, members: Float, occupancy: Float) -> Unit
+) {
+    var index = 0
+    while (index < renderEntries.size) {
+        val category = layout.categoryOf[index]
+        val first = index
+        var occupancy = 0f
+        var members = 0f
+        while (index < renderEntries.size && layout.categoryOf[index] == category) {
+            val held = engine.slotOccupancy(renderEntries[index].id)
+            if (held > occupancy) occupancy = held
+            members += held
+            index++
+        }
+        body(first, index, members, occupancy)
+    }
+}
+
+/**
  * A summary, not a reading of the data: this node is a live region, so anything
  * here is repeated on every selection. Per-bar values live in the select actions
  * and in `stateDescription`.
@@ -92,7 +254,20 @@ internal fun buildBarChartDescription(
     a11yConfig: A11yConfig
 ): String = buildString {
     append(a11yConfig.chartDescriptionBuilder(dataSet)).append(". ")
-    append(a11yConfig.barCountDescriptionBuilder(dataSet.entries.size))
+    append(a11yConfig.countDescriptionBuilder(summarizeBars(dataSet.entries)))
+}
+
+/** Counts the entries hold, without claiming a group size ragged data lacks. */
+internal fun summarizeBars(entries: List<BarEntry>): BarChartSummary {
+    val layout = computeBarGroupLayout(entries)
+    val sizes = IntArray(layout.categoryCount)
+    for (i in entries.indices) sizes[layout.categoryOf[i]]++
+    return BarChartSummary(
+        bars = entries.size,
+        categories = layout.categoryCount,
+        series = seriesOrder(entries).size,
+        uniformGroupSize = sizes.distinct().singleOrNull()
+    )
 }
 
 @Stable
@@ -106,6 +281,9 @@ internal class ChartAnimationEngine {
 
     private val exitTracker = ExitTracker<BarEntry> { it.id }
 
+    /** The coroutine sinking each departing bar, so a bar that comes back can stop it. */
+    private val exitJobs = mutableMapOf<String, Job>()
+
     /** Bars the dataset no longer contains but the chart is still drawing. */
     val exiting: List<Exiting<BarEntry>> get() = exitTracker.exiting
 
@@ -113,7 +291,12 @@ internal class ChartAnimationEngine {
         // An id that returns mid-exit rejoins the dataset and grows from where it got to.
         val (departed, returned) = exitTracker.sync(entries)
         departed.forEach { slotAnimatables[it.item.id] = Animatable(1f) }
-        returned.forEach { slotAnimatables.remove(it.item.id) }
+        // The exit is still running on animatables this id owns again. Left alone it
+        // finishes the collapse and calls forget, deleting a bar that is now live.
+        returned.forEach {
+            slotAnimatables.remove(it.item.id)
+            exitJobs.remove(it.item.id)?.cancel()
+        }
 
         val drawn = entries.mapTo(mutableSetOf()) { it.id } +
             exitTracker.exiting.mapTo(mutableSetOf()) { it.item.id }
@@ -136,7 +319,7 @@ internal class ChartAnimationEngine {
             val id = bar.item.id
             val height = heightAnimatables[id] ?: return@forEach
             val slot = slotAnimatables[id] ?: return@forEach
-            if (height.isRunning || slot.isRunning) return@forEach
+            if (exitJobs[id]?.isActive == true) return@forEach
 
             // A cancelled coroutine can leave it at rest but still listed.
             if (slot.value == 0f) {
@@ -144,7 +327,7 @@ internal class ChartAnimationEngine {
                 return@forEach
             }
 
-            scope.launch {
+            exitJobs[id] = scope.launch {
                 height.animateTo(0f, config.initialEntrySpec)
                 slot.animateTo(0f, config.morphSpec)
                 forget(bar)
@@ -154,6 +337,7 @@ internal class ChartAnimationEngine {
 
     private fun forget(bar: Exiting<BarEntry>) {
         val id = bar.item.id
+        exitJobs.remove(id)
         heightAnimatables.remove(id)
         selectionAlphaAnimatables.remove(id)
         slotAnimatables.remove(id)
@@ -171,10 +355,19 @@ internal class ChartAnimationEngine {
     /** A bar's remaining claim on its slot. Read while drawing: it changes per frame. */
     fun slotOccupancy(id: String): Float = slotAnimatables[id]?.value ?: 1f
 
-    /** Slots currently in use, counting a collapsing one as the fraction it still holds. */
-    fun slotCount(renderEntries: List<BarEntry>): Float =
-        if (exitTracker.exiting.isEmpty()) renderEntries.size.toFloat()
-        else renderEntries.fold(0f) { acc, entry -> acc + slotOccupancy(entry.id) }
+    /**
+     * Slots in use, counted over categories rather than bars. A grouped category holds its
+     * slot until its last bar has gone, so it collapses on the survivor's occupancy
+     * rather than shrinking a step per bar removed.
+     */
+    fun categorySlotCount(renderEntries: List<BarEntry>, layout: BarGroupLayout): Float {
+        if (exitTracker.exiting.isEmpty()) return layout.categoryCount.toFloat()
+        var total = 0f
+        forEachBarCategory(renderEntries, layout, this) { _, _, _, occupancy ->
+            total += occupancy
+        }
+        return total
+    }
 
     fun launchEntryAnimations(entries: List<BarEntry>, config: AnimationConfig, scope: CoroutineScope) {
         // Stagger by position among the bars appearing now, not by dataset index.
@@ -190,26 +383,29 @@ internal class ChartAnimationEngine {
                     delay(config.startDelayMs + (position * config.staggerDelayMs))
                     heightAnim.animateTo(entry.y, config.initialEntrySpec)
                 }
-            } else if (heightAnim.targetValue != entry.y) {
+            } else if (heightAnim.needsAnimatingTo(entry.y)) {
                 scope.launch { heightAnim.animateTo(entry.y, config.morphSpec) }
             }
         }
     }
 
+    /**
+     * Every bar being drawn, departing ones included. A bar that left before the
+     * selection was made would otherwise keep full alpha and, being the brightest
+     * thing in its category, hold that category's axis label lit.
+     */
     fun updateSelectionState(
-        entries: List<BarEntry>,
         selectedEntry: BarEntry?,
         style: ChartStyle,
         config: AnimationConfig,
         scope: CoroutineScope
     ) {
-        entries.forEach { entry ->
-            val animatable = selectionAlphaAnimatables[entry.id] ?: return@forEach
-            val isSelected = (selectedEntry?.id == entry.id)
+        val selectedId = selectedEntry?.id
+        selectionAlphaAnimatables.forEach { (id, animatable) ->
             val targetAlpha =
-                if (selectedEntry != null && !isSelected) style.unselectedAlpha else 1f
+                if (selectedId != null && id != selectedId) style.unselectedAlpha else 1f
 
-            if (animatable.targetValue != targetAlpha) {
+            if (animatable.needsAnimatingTo(targetAlpha)) {
                 scope.launch { animatable.animateTo(targetAlpha, config.selectionSpec) }
             }
         }

@@ -23,6 +23,7 @@ import io.grafima.charts.runEngineTest
 import kotlinx.coroutines.cancel
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -139,7 +140,7 @@ class BarChartAnimationEngineTest {
 
             harness.advanceFrames(100)
             val midExit = engine.heightAnimatables.getValue("b").value
-            assertTrue(midExit > 0f && midExit < 20f, "expected a partial shrink, got ${'$'}midExit")
+            assertTrue(midExit > 0f && midExit < 20f, "expected a partial shrink, got $midExit")
             assertEquals(listOf("a", "b"), engine.renderEntries(entries("a" to 10f)).map { it.id })
 
             // Sunk, but the slot is still collapsing, so the bar is still drawn.
@@ -151,6 +152,35 @@ class BarChartAnimationEngineTest {
             assertEquals(emptyList(), engine.exiting.map { it.item.id })
             assertNull(engine.heightAnimatables["b"])
         }
+
+    @Test
+    fun `a bar re-added while its slot is collapsing survives`() = runEngineTest { harness ->
+        val engine = ChartAnimationEngine()
+        val config = snapConfig.copy(
+            initialEntrySpec = tween(durationMillis = 200, easing = LinearEasing),
+            morphSpec = tween(durationMillis = 400, easing = LinearEasing)
+        )
+        val data = entries("a" to 10f, "b" to 20f)
+        engine.syncAnimatables(data)
+        engine.launchEntryAnimations(data, config, harness.launchScope())
+        harness.advanceFrames(400)
+
+        engine.syncAnimatables(entries("a" to 10f))
+        engine.launchExitAnimations(config, harness.launchScope())
+        // Past the height sink, inside the slot collapse: the window where only the
+        // exit coroutine is still touching this bar.
+        harness.advanceFrames(250)
+
+        engine.syncAnimatables(data)
+        engine.launchEntryAnimations(data, config, harness.launchScope())
+        harness.advanceFrames(1000)
+
+        // Uncancelled, the old exit reaches forget and deletes the animatables of a
+        // bar the dataset holds again, so it draws at zero and never comes back.
+        assertNotNull(engine.heightAnimatables["b"], "b's height animatable was wiped")
+        assertEquals(20f, engine.heightAnimatables.getValue("b").value)
+        assertEquals(emptyList(), engine.exiting.map { it.item.id })
+    }
 
     @Test
     fun `an exit left at rest by a cancelled coroutine is finished on the next pass`() =
@@ -262,14 +292,115 @@ class BarChartAnimationEngineTest {
         val data = entries("a" to 10f, "b" to 20f)
         engine.syncAnimatables(data)
 
-        engine.updateSelectionState(data, data[0], style, snapConfig, harness.launchScope())
+        engine.updateSelectionState(data[0], style, snapConfig, harness.launchScope())
         harness.advanceFrames(100)
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("a").value)
         assertEquals(0.25f, engine.selectionAlphaAnimatables.getValue("b").value)
 
-        engine.updateSelectionState(data, null, style, snapConfig, harness.launchScope())
+        engine.updateSelectionState(null, style, snapConfig, harness.launchScope())
         harness.advanceFrames(100)
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("a").value)
         assertEquals(1f, engine.selectionAlphaAnimatables.getValue("b").value)
+    }
+
+    @Test
+    fun `a grouped category holds its whole slot until its last bar has gone`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoByTwoEntries)
+
+        val remaining = twoByTwoEntries.filterNot { it.id == "Q1-cost" }
+        engine.syncAnimatables(remaining)
+        val rendered = engine.renderEntries(remaining)
+        val layout = computeBarGroupLayout(rendered)
+
+        engine.slotAnimatables.getValue("Q1-cost").snapTo(0f)
+
+        // Counting per bar would shrink Q1 while a bar still stands in it.
+        assertEquals(2f, engine.categorySlotCount(rendered, layout), 0.001f)
+    }
+
+    @Test
+    fun `a category releases its slot once every bar in it has gone`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoByTwoEntries)
+
+        val remaining = twoByTwoEntries.filter { it.xLabel == "Q2" }
+        engine.syncAnimatables(remaining)
+        val rendered = engine.renderEntries(remaining)
+        val layout = computeBarGroupLayout(rendered)
+
+        engine.slotAnimatables.getValue("Q1-rev").snapTo(0f)
+        engine.slotAnimatables.getValue("Q1-cost").snapTo(0f)
+
+        assertEquals(1f, engine.categorySlotCount(rendered, layout), 0.001f)
+    }
+
+    @Test
+    fun `a departing bar dims with the rest when something else is selected`() =
+        runEngineTest { harness ->
+            val engine = ChartAnimationEngine()
+            val style = ChartStyle(unselectedAlpha = 0.25f)
+            engine.syncAnimatables(twoByTwoEntries)
+            val remaining = twoByTwoEntries.filterNot { it.id == "Q1-cost" }
+            engine.syncAnimatables(remaining)
+
+            engine.updateSelectionState(remaining[0], style, snapConfig, harness.launchScope())
+            harness.advanceFrames(100)
+
+            // Left at 1f it stays the brightest bar in Q1 and, being the category's
+            // maximum, holds Q1's axis label lit against a selection elsewhere.
+            assertEquals(0.25f, engine.selectionAlphaAnimatables.getValue("Q1-cost").value)
+        }
+
+    @Test
+    fun `the category walk weights members by what each still holds`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoByTwoEntries)
+        val remaining = twoByTwoEntries.filterNot { it.id == "Q1-cost" }
+        engine.syncAnimatables(remaining)
+        engine.slotAnimatables.getValue("Q1-cost").snapTo(0.5f)
+
+        val rendered = engine.renderEntries(remaining)
+        val layout = computeBarGroupLayout(rendered)
+        var q1Members = -1f
+        var q1Occupancy = -1f
+        forEachBarCategory(rendered, layout, engine) { first, _, members, occupancy ->
+            if (rendered[first].xLabel == "Q1") {
+                q1Members = members
+                q1Occupancy = occupancy
+            }
+        }
+
+        // Members are summed so the survivors widen smoothly; the slot takes the
+        // maximum so it lasts as long as its longest-lived bar.
+        assertEquals(1.5f, q1Members, 0.001f)
+        assertEquals(1f, q1Occupancy, 0.001f)
+    }
+
+    @Test
+    fun `the axis max spans a bar that is still animating out`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        val tall = entries("a" to 10f, "b" to 200f)
+        engine.syncAnimatables(tall)
+        val before = axisMaxForLayout(tall, computeBarGroupLayout(tall), BarGroupMode.Grouped)
+
+        engine.syncAnimatables(entries("a" to 10f))
+        val rendered = engine.renderEntries(entries("a" to 10f))
+
+        // Scaling to the dataset instead would rescale the axis out from under the
+        // departing bar while it is still on screen sinking.
+        assertEquals(
+            before,
+            axisMaxForLayout(rendered, computeBarGroupLayout(rendered), BarGroupMode.Grouped)
+        )
+    }
+
+    @Test
+    fun `slot counting is unaffected by grouping while nothing is leaving`() = runEngineTest {
+        val engine = ChartAnimationEngine()
+        engine.syncAnimatables(twoByTwoEntries)
+        val layout = computeBarGroupLayout(twoByTwoEntries)
+
+        assertEquals(2f, engine.categorySlotCount(twoByTwoEntries, layout), 0.001f)
     }
 }

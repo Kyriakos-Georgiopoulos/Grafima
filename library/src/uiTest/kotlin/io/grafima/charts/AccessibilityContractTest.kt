@@ -40,6 +40,7 @@ import io.grafima.charts.line.LineChart
 import io.grafima.charts.line.LineDataPoint
 import io.grafima.charts.line.LineDataSet
 import io.grafima.charts.line.LineSeries
+import io.grafima.charts.line.SelectedPoint
 import io.grafima.charts.pie.PieChart
 import io.grafima.charts.pie.PieDataSet
 import io.grafima.charts.pie.PieEntry
@@ -146,8 +147,11 @@ class AccessibilityContractTest {
         "RadarChart" to radarData.series.flatMap { s ->
             radarData.axes.map { (s.values[it.id] ?: 0f).toInt().toString() }
         },
-        "LineChart" to lineData.series.first().points.indices.map {
-            LineA11yConfig().selectedPointDescriptionBuilder(it, lineData.series)
+        "LineChart" to lineData.series.first().points.indices.map { index ->
+            val selected = lineData.series.mapNotNull { s ->
+                s.points.getOrNull(index)?.let { SelectedPoint(s, it) }
+            }
+            LineA11yConfig().selectedPointDescriptionBuilder(index, selected)
         }
     )
 

@@ -22,7 +22,7 @@ accessible by default.
 
 ```kotlin
 commonMain.dependencies {
-    implementation("io.grafima:grafima:1.1.1")
+    implementation("io.grafima:grafima:1.2.0")
 }
 ```
 
@@ -30,7 +30,7 @@ On an Android-only project, put it in the usual `dependencies` block instead:
 
 ```kotlin
 dependencies {
-    implementation("io.grafima:grafima:1.1.1")
+    implementation("io.grafima:grafima:1.2.0")
 }
 ```
 
@@ -91,7 +91,7 @@ Behaviour shared by every chart is in [Concepts](docs/CONCEPTS.md).
 
 ## Requirements
 
-- Android minSdk 24
+- Android minSdk 21
 - iOS: `iosArm64` and `iosSimulatorArm64` (Apple silicon simulators; Compose
   Multiplatform publishes no `iosX64`)
 - Desktop: the `jvm` target, for Compose for Desktop hosts

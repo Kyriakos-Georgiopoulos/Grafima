@@ -100,6 +100,15 @@ val LineDataPoint.spokenLabel: String
         .ifEmpty { x.toInt().toString() }
 
 /**
+ * A series and the reading it has where the crosshair stopped.
+ *
+ * Resolved by the chart, so an override cannot drift from what is drawn and does not
+ * have to redo the work of finding each series' point on a shared axis.
+ */
+@Immutable
+data class SelectedPoint(val series: LineSeries, val point: LineDataPoint)
+
+/**
  * A data series rendered as a single line on the chart.
  *
  * Each series produces a stroke path and optionally an area fill beneath it.
@@ -119,8 +128,12 @@ val LineDataPoint.spokenLabel: String
  * @param id Stable identifier for animation tracking. Changing the id is treated
  *   as a removal + insertion, not a morph. Must be unique within the dataset.
  * @param label Human-readable name shown in crosshair tooltips and accessibility.
- * @param points Data sorted by [LineDataPoint.x]. All series in a dataset should
- *   ideally share the same x positions for correct crosshair alignment.
+ * @param points Order is yours; the chart places each point by its
+ *   [LineDataPoint.x]. Series need not cover the same x positions: each is read at
+ *   the x the crosshair stopped on, and one with no point there contributes no dot
+ *   and no tooltip line rather than being read at the wrong x. Selection steps
+ *   through every x any series reaches, in ascending order, so every drawn point is
+ *   selectable and announced.
  * @param color Primary color used for the line stroke, data dots, and the
  *   auto-generated area fill gradient. Ignored for stroke when
  *   [strokeGradientColors] has 2+ entries.
@@ -137,6 +150,10 @@ val LineDataPoint.spokenLabel: String
  * @param dashPattern Dashes the stroke. Dashing marks a series as derived rather
  *   than measured, which is how a moving average is told apart from the readings
  *   it averages. Null draws solid. The area fill is never dashed.
+ * @param dotRadius Sizes this series' dots on their own, so a marker can outweigh
+ *   the curve it marks. [Dp.Unspecified] takes [LineChartStyle.dotRadius]; `0.dp`
+ *   leaves this series without dots while the rest of the chart keeps theirs. Read
+ *   only when [LineChartStyle.showDots] is on.
  */
 @Immutable
 data class LineSeries(
@@ -148,7 +165,8 @@ data class LineSeries(
     val strokeWidth: Dp = 2.5.dp,
     val fillGradientColors: List<Color> = emptyList(),
     val strokeGradientColors: List<Color> = emptyList(),
-    val dashPattern: DashPattern? = null
+    val dashPattern: DashPattern? = null,
+    val dotRadius: Dp = Dp.Unspecified
 )
 
 /** Which axis a [ReferenceLine] is fixed to. */
@@ -399,7 +417,8 @@ data class LineCrosshairConfig(
  * @param curveType Interpolation strategy. [LineCurveType.MonotoneCubic] is recommended
  *   for smooth, accurate curves.
  * @param showDots Render small dots at every data point (independent of crosshair).
- * @param dotRadius Radius of the always-visible data point dots.
+ * @param dotRadius Radius of the always-visible data point dots. A series that sets
+ *   [LineSeries.dotRadius] uses that instead.
  * @param minSize Minimum intrinsic chart size. Applied via [Modifier.defaultMinSize].
  * @param labelGap Gap in dp between axis labels and the chart drawing area.
  * @param valueLabels Prints each point's value beside it. Off by default.
@@ -497,9 +516,11 @@ data class LineAnimationConfig(
  * @param chartDescriptionBuilder Builds the base screen reader description from the
  *   full dataset. Called once per data change. Default announces series names,
  *   value ranges, and point counts.
- * @param selectedPointDescriptionBuilder Appended to the base description when
- *   the crosshair is active. Announces the value at the selected point for each
- *   series. TalkBack reads this on each crosshair move.
+ * @param selectedPointDescriptionBuilder Appended to the base description when the
+ *   crosshair is active. TalkBack reads this on each crosshair move. Given the axis
+ *   position selected and every series that has a reading there, already resolved the
+ *   same way the dots and the tooltip are — a series with no point at that x is absent
+ *   from the list rather than needing to be filtered out.
  * @param axisTitleDescriptionBuilder Announces [LineAxisConfig.xAxisTitle] and
  *   [LineAxisConfig.yAxisTitle], which carry the unit the numbers are in. Each is
  *   null when unset. Override to translate the wording; return an empty string to
@@ -523,13 +544,10 @@ data class LineA11yConfig(
             }
         }
     },
-    val selectedPointDescriptionBuilder: (Int, List<LineSeries>) -> String = { idx, series ->
+    val selectedPointDescriptionBuilder: (Int, List<SelectedPoint>) -> String = { _, selected ->
         buildString {
-            series.forEach { s ->
-                if (idx in s.points.indices) {
-                    val p = s.points[idx]
-                    append("${s.label} at ${p.spokenLabel}: ${p.y.toInt()}. ")
-                }
+            selected.forEach { (series, point) ->
+                append("${series.label} at ${point.spokenLabel}: ${point.y.toInt()}. ")
             }
         }
     },
@@ -550,5 +568,14 @@ data class LineA11yConfig(
             1 -> "Reference line: ${named.first()}."
             else -> "Reference lines: ${named.joinToString(", ")}."
         }
-    }
+    },
+
+    /**
+     * Names each point's action in the actions menu. Given the point itself, so an
+     * override can reach its raw [LineDataPoint.x] for a locale's own numerals.
+     */
+    val selectActionLabel: (LineDataPoint) -> String = { point -> "Select ${point.spokenLabel}" },
+
+    /** Names the action that clears the selection. */
+    val clearSelectionLabel: String = "Clear selection"
 )

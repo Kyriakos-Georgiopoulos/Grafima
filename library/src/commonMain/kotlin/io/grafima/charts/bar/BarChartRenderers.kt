@@ -29,6 +29,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -98,8 +99,13 @@ class TooltipSelectionRenderer(
             }
 
             BarOrientation.Horizontal -> {
-                tooltipLeft = (barTopLeft.x + barSize.width + bottomMargin.toPx())
-                    .coerceAtMost(size.width - tooltipWidth)
+                // Which end the bar grows from flips in RTL.
+                tooltipLeft = if (layoutDirection == LayoutDirection.Rtl) {
+                    (barTopLeft.x - tooltipWidth - bottomMargin.toPx()).coerceAtLeast(0f)
+                } else {
+                    (barTopLeft.x + barSize.width + bottomMargin.toPx())
+                        .coerceAtMost(size.width - tooltipWidth)
+                }
                 tooltipTop = (barTopLeft.y + (barSize.height - tooltipHeight) / 2)
                     .coerceIn(0f, size.height - tooltipHeight)
             }

@@ -9,6 +9,137 @@ Grafima's public API is recorded in `library/api/library.klib.api` and
 alters a signature has a matching diff in those files; entries that only change
 behaviour do not.
 
+## [1.2.0] - 2026-08-18
+
+### Added
+
+- Grouped and stacked bar charts. Give `BarEntry` a `seriesId` and neighbouring
+  entries that share an `xLabel` become one category, drawn side by side or piled
+  into a single bar according to `BarDataSet.mode`. Both orientations and RTL are
+  handled, each bar keeps its own selection and accessibility action, and the
+  y-axis clears the tallest stack rather than the tallest segment.
+- `BarEntry.seriesId` and `BarEntry.seriesLabel`, `BarGroupMode`, `BarDataSet.mode`,
+  `ChartStyle.groupSpacingFactor`, `BarChartSummary`, `A11yConfig.selectActionLabel`,
+  `A11yConfig.clearSelectionLabel` and the `BarEntry.spokenSeriesLabel` extension. Every one is defaulted, so a
+  dataset that sets no series behaves exactly as it did in 1.1.1.
+- `LineSeries.dotRadius` sizes one series' dots on their own, so a marker can outweigh
+  the curve it marks instead of drawing at the same weight as the readings around it.
+  `Dp.Unspecified` keeps `LineChartStyle.dotRadius`, matching how `outerRadius` defers
+  on the pie and radar charts, and `0.dp` drops that series' dots while the rest of the
+  chart keeps theirs. `showDots` still decides whether any dot is drawn at all.
+
+- `selectActionLabel` and `clearSelectionLabel` on `LineA11yConfig`, `PieA11yConfig`
+  and `RadarA11yConfig`, matching the pair the bar chart gained above. These were the
+  last chart strings a caller could not translate, so a localised app no longer reads
+  half its charts in the user's language and half in English. Each takes the object it
+  selects — `LineDataPoint`, `PieEntry`, `RadarSeries` — as the bar chart's takes a
+  `BarEntry`, so an override can reach the raw value rather than a pre-formatted label.
+
+- `BarLegend`, a key mapping each series' colours to its `seriesLabel`. A grouped or
+  stacked chart tells its series apart by colour alone, and the chart names them only
+  once a bar is selected — at rest, or in a screenshot, a sighted reader had nothing
+  to read the colours against. Placed by the caller, so the plot keeps its full
+  height. A dataset with no `seriesId` draws no key at all, since the axis already
+  names those bars, so one call can sit above a chart that switches between single,
+  grouped and stacked.
+- `LegendOrientation`, shared by `BarLegend` and `LineLegend`.
+
+### Changed
+
+- The default `A11yConfig.selectedStateDescription` names the series when a bar has
+  one, so the two bars of a group are told apart. Its signature is unchanged and a
+  bar without a series is described exactly as before.
+- **Source breaking.** `A11yConfig.barCountDescriptionBuilder: (Int) -> String` is
+  removed and replaced by `countDescriptionBuilder: (BarChartSummary) -> String`, so
+  one override covers a dataset whether or not it carries series. A count alone
+  cannot describe grouping, and a second builder beside it would have left a chart
+  that localised only the first reverting to English the day it gained a series. The
+  default wording is unchanged for an ungrouped chart; ragged categories say
+  "3 bars in 2 groups" rather than claiming a group size they do not share.
+- Line chart dots are drawn after every series' area fill rather than inside each
+  series' own pass, so an earlier series' dots are no longer painted over by a later
+  series' fill. The plot rectangle and the axis labels now both stand off by the
+  widest resolved dot radius, so a point on an axis bound is neither clipped by the
+  composable's edge nor drawn across the labels; a large `dotRadius` costs the plot
+  that much room on every side.
+- **Behaviour breaking.** The line chart's crosshair reads each series at the x it
+  stopped on rather than at the selected point's position in the list, and
+  `selectedPointIndex` steps through every x any series reaches, ascending, rather
+  than the first series' points alone. A one-point "you are here" marker used to be drawn at every x the
+  first series had a point at; it is now named at its own x and nowhere else, and an x
+  only it reaches is selectable and announced. Series index-aligned on *differing* x
+  values lose the second series' crosshair dot, tooltip line and spoken value: give
+  both the same x values, or make the second a `ReferenceLine`. This carries no api
+  diff, so it is the one entry here you cannot catch by diffing `library/api/`. The
+  default `LineA11yConfig.selectedPointDescriptionBuilder` follows the same rule, so a
+  series with no point at the selected x is no longer announced; an override that
+  indexes `points` by hand keeps its old behaviour and will disagree with what is drawn.
+- **Binary incompatible.** `LineLegendOrientation` is now a deprecated typealias of
+  `LegendOrientation`, so the two legends name one concept. Kotlin source compiles
+  unchanged, but the enum class itself leaves the artifact and `LineLegend`'s
+  descriptor changes, so a module compiled against 1.1.x fails with
+  `NoClassDefFoundError` rather than the `NoSuchMethodError` the entry above predicts.
+  Java callers cannot see a Kotlin typealias at all and must move to
+  `LegendOrientation`. Typealiases are absent from both api dumps, so this shim is not
+  guarded by `checkKotlinAbi` and its eventual removal will produce no api diff.
+- Bar series that set no colours of their own are given one gradient each from the new
+  `BarDataSet.seriesPalette` rather than all sharing `defaultGradientColors`. A grouped
+  or stacked chart tells its series apart by colour alone, so the old default drew bars
+  and a key that nothing could distinguish. Set the palette to an empty list for the
+  previous behaviour. A dataset with no series is unaffected.
+- Bar gradients with fewer than two colours no longer reach `Brush`. A single colour is
+  widened into a flat gradient and an empty list falls through to the next source; both
+  previously threw, and a single `ColorStop` rendered on iOS and desktop while throwing
+  on Android.
+- **Binary incompatible.** `BarEntry`, `BarDataSet`, `ChartStyle`, `A11yConfig`,
+  `LineSeries`, `LineA11yConfig`, `PieA11yConfig` and `RadarA11yConfig` each gained
+  defaulted constructor parameters, appended so existing positional calls and
+  destructuring keep their meaning. Apart from the builder rename above
+  your code compiles unchanged, but Kotlin regenerates a data class's constructor and
+  `copy` for the new arity rather than keeping the old one — the removed signatures
+  are in the api diff.
+  Anything compiled against 1.1.1 and run against this release without recompiling
+  fails with `NoSuchMethodError`. Recompile dependents; publish no mixed set.
+
+- **Source breaking.** `LineA11yConfig.selectedPointDescriptionBuilder` takes
+  `(Int, List<SelectedPoint>)` rather than `(Int, List<LineSeries>)`. The chart now
+  resolves each series' reading at the selected x before calling it, so an override
+  gets the points already matched — it cannot disagree with the dots and the tooltip,
+  and it no longer has to rebuild the shared axis on every crosshair move, which the
+  default was doing for each snap of a drag. A series with no reading at that x is
+  absent from the list rather than needing to be filtered out.
+
+### Fixed
+
+- `BarLegend` keeps a removed series' row until its bars have finished shrinking,
+  rather than dropping it the moment the dataset changes. The chart holds a departing
+  series for the length of its exit animation, so for about a second the key named
+  fewer colours than were on screen — and on the way in, a row appeared before any bar
+  it named. The row fades on the chart's own `AnimationConfig`, and a departing series
+  is no longer announced, since it is on its way out of the data.
+
+- A dataset replaced outright no longer draws the old items alongside the new ones.
+  Departing items were threaded back into an axis they shared no ids with, so
+  swapping a bar chart's months for quarters drew both sets on one axis and split
+  the groups between them. Emptying a dataset is still an exit animation: everything
+  leaving is all there is to draw. Affects the bar, pie, line and radar charts.
+- Bar chart hit testing follows the bars while one is animating out. It measured
+  against the dataset while the draw pass measured against what was on screen, so
+  every tap landed on the wrong bar for the length of a removal.
+- A removed bar's exit animation is no longer restarted from full duration by an
+  unrelated data change, so a chart updating faster than the animation still lets
+  its departing bars finish and be released.
+- A bar removed while another is selected fades with the rest rather than staying
+  at full opacity while it animates out.
+- Bar chart touch handling followed `ChartStyle.bottomLabelSpace` and `topValueSpace`.
+  Both were read when hit testing but neither restarted the gesture detector, so
+  changing either left taps aimed at where the bars used to be.
+- The horizontal bar chart's selection tooltip is drawn on the end the bar grows
+  towards. In RTL it was placed past the bar's other end, landing on the axis over
+  the category labels. `TooltipSelectionRenderer` reads the layout direction from
+  the draw scope, so a custom `BarChartSelectionRenderer` can do the same without
+  a signature change.
+
 ## [1.1.1] - 2026-08-10
 
 ### Fixed
@@ -149,7 +280,8 @@ First release.
 - Per-chart `a11yConfig`, `style`, `axisConfig` and `animationConfig` for
   overriding text, geometry and timing.
 
-[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/releases/tag/v1.0.0

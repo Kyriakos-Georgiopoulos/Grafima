@@ -18,6 +18,7 @@ package io.grafima.charts.line
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PlotInsetsTest {
 
@@ -26,7 +27,8 @@ class PlotInsetsTest {
         xTitleHeight: Float = 0f,
         isRtl: Boolean = false,
         yLabelWidth: Float = 30f,
-        xLabelHeight: Float = 12f
+        xLabelHeight: Float = 12f,
+        dotClearance: Float = 0f
     ) = computePlotInsets(
         into = PlotInsets(),
         width = 400f,
@@ -36,7 +38,8 @@ class PlotInsetsTest {
         xLabelHeight = xLabelHeight,
         yTitleHeight = yTitleHeight,
         xTitleHeight = xTitleHeight,
-        isRtl = isRtl
+        isRtl = isRtl,
+        dotClearance = dotClearance
     )
 
     @Test
@@ -105,5 +108,63 @@ class PlotInsetsTest {
         val rtl = insets(yLabelWidth = 0f, xLabelHeight = 0f, isRtl = true)
         assertEquals(8f, rtl.left)
         assertEquals(392f, rtl.right)
+    }
+
+    @Test
+    fun `a dot clearance holds the plot off every edge`() {
+        val plain = insets()
+        val cleared = insets(dotClearance = 20f)
+        assertEquals(plain.left + 20f, cleared.left)
+        assertEquals(plain.top + 20f, cleared.top)
+        assertEquals(plain.right - 20f, cleared.right)
+        assertEquals(plain.bottom - 20f, cleared.bottom)
+    }
+
+    @Test
+    fun `a clearance leaves a plot even on a chart barely wider than its labels`() {
+        // The clearance is taken from both sides and the gap from both again, so a
+        // third of what is left is the most that can be given away.
+        val tiny = computePlotInsets(
+            into = PlotInsets(),
+            width = 60f,
+            height = 60f,
+            gap = 8f,
+            yLabelWidth = 30f,
+            xLabelHeight = 12f,
+            yTitleHeight = 0f,
+            xTitleHeight = 0f,
+            isRtl = false,
+            dotClearance = 10_000f
+        )
+        assertTrue(tiny.right > tiny.left, "left ${tiny.left} right ${tiny.right}")
+        assertTrue(tiny.bottom > tiny.top, "top ${tiny.top} bottom ${tiny.bottom}")
+    }
+
+    @Test
+    fun `the applied clearance is reported so labels can stand off by the same amount`() {
+        val roomy = insets(dotClearance = 20f)
+        assertEquals(20f, roomy.sideClearance)
+        assertEquals(20f, roomy.stackClearance)
+
+        val clamped = insets(dotClearance = 10_000f)
+        assertTrue(clamped.sideClearance < 10_000f, "side ${clamped.sideClearance} never clamped")
+        assertEquals(clamped.left, 8f + clamped.sideClearance + 30f)
+    }
+
+    @Test
+    fun `a clearance wider than the chart crowds the plot rather than inverting it`() {
+        // A radius can exceed the chart it is drawn on; unclamped it drove right past
+        // left, which maps the axis backwards and draws the curve mirrored.
+        val huge = insets(dotClearance = 10_000f)
+        assertTrue(huge.right > huge.left, "left ${huge.left} right ${huge.right}")
+        assertTrue(huge.bottom > huge.top, "top ${huge.top} bottom ${huge.bottom}")
+    }
+
+    @Test
+    fun `a clearance mirrors with the label band in RTL`() {
+        val rtl = insets(dotClearance = 20f, isRtl = true)
+        val plain = insets(isRtl = true)
+        assertEquals(plain.left + 20f, rtl.left)
+        assertEquals(plain.right - 20f, rtl.right)
     }
 }

@@ -22,7 +22,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 @Stable
-internal class Exiting<T>(val item: T, val index: Int)
+internal class Exiting<T>(
+    val item: T,
+    val index: Int,
+    /** Id of the item it followed when it left, or null if it led the list. */
+    val predecessorId: String? = null,
+    /** Id of the item it preceded, or null if it ended the list. */
+    val successorId: String? = null
+)
 
 internal data class ExitSync<T>(val departed: List<Exiting<T>>, val returned: List<Exiting<T>>)
 
@@ -39,6 +46,13 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
 
     private var lastItems: List<T> = emptyList()
 
+    /**
+     * Set when a dataset is replaced outright rather than edited. The departing
+     * items then have no slot in the new axis, so they are dropped from the draw
+     * order instead of being threaded through a chart they share nothing with.
+     */
+    private var replaced: Boolean = false
+
     private val unchanged = ExitSync<T>(emptyList(), emptyList())
 
     /** Call once per composition, before touching per-item animatables. */
@@ -50,8 +64,21 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
 
         val departed = lastItems.withIndex()
             .filter { (_, item) -> idOf(item) !in currentIds && idOf(item) !in exitingIds }
-            .map { (index, item) -> Exiting(item, index) }
+            .map { (index, item) ->
+                Exiting(
+                    item = item,
+                    index = index,
+                    predecessorId = lastItems.getOrNull(index - 1)?.let(idOf),
+                    successorId = lastItems.getOrNull(index + 1)?.let(idOf)
+                )
+            }
         val returned = exiting.filter { idOf(it.item) in currentIds }
+        // Everything the old dataset held is leaving and something else took its
+        // place. An empty dataset is not a replacement: the departing items are all
+        // that is left to draw, and they still animate out.
+        replaced = current.isNotEmpty() &&
+            lastItems.isNotEmpty() &&
+            lastItems.none { idOf(it) in currentIds }
 
         if (departed.isNotEmpty() || returned.isNotEmpty()) {
             exiting = exiting - returned.toSet() + departed
@@ -61,7 +88,16 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
     }
 
     fun forget(item: Exiting<T>) {
-        exiting = exiting - item
+        val goneId = idOf(item.item)
+        // Anything anchored on this one has to inherit its anchor, or it falls back
+        // to an index from a dataset that has since changed.
+        exiting = (exiting - item).map {
+            when (goneId) {
+                it.predecessorId -> Exiting(it.item, it.index, item.predecessorId, it.successorId)
+                it.successorId -> Exiting(it.item, it.index, it.predecessorId, item.successorId)
+                else -> it
+            }
+        }
     }
 
     /**
@@ -76,9 +112,38 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
         val leaving = leaving(current)
         if (leaving.isEmpty()) return current
 
+        if (replaced) return current
+
         val merged = current.toMutableList()
-        leaving.sortedBy { it.index }.forEach { merged.add(it.index.coerceIn(0, merged.size), it.item) }
+        leaving.sortedBy { it.index }.forEach { merged.add(insertionPoint(merged, it), it.item) }
         return merged
+    }
+
+    /**
+     * Where the departing item sat among the survivors, rather than the raw index it
+     * held. An update that also adds or reorders items shifts every later index, and
+     * for a bar chart that drops a departing bar inside a different category's run,
+     * splitting a group that is still on screen.
+     */
+    /**
+     * Where the departing item sat among the survivors, rather than the raw index it
+     * held: an update that also adds or reorders shifts every later index, and for a
+     * bar chart that drops a departing bar inside another category's run.
+     *
+     * The successor comes first. Anchoring after the predecessor puts the item at the
+     * end of that neighbour's run, which is the wrong side when the same update
+     * appended to it; going before the successor keeps it out.
+     */
+    private fun insertionPoint(merged: List<T>, exit: Exiting<T>): Int {
+        exit.successorId?.let { successor ->
+            val at = merged.indexOfFirst { idOf(it) == successor }
+            if (at >= 0) return at
+        }
+        exit.predecessorId?.let { predecessor ->
+            val at = merged.indexOfFirst { idOf(it) == predecessor }
+            if (at >= 0) return at + 1
+        }
+        return exit.index.coerceIn(0, merged.size)
     }
 
     private fun leaving(current: List<T>): List<Exiting<T>> {
@@ -87,7 +152,14 @@ internal class ExitTracker<T>(private val idOf: (T) -> String) {
         val currentIds = current.mapTo(mutableSetOf(), idOf)
         val pending = lastItems.withIndex()
             .filter { (_, item) -> idOf(item) !in currentIds }
-            .map { (index, item) -> Exiting(item, index) }
+            .map { (index, item) ->
+                Exiting(
+                    item = item,
+                    index = index,
+                    predecessorId = lastItems.getOrNull(index - 1)?.let(idOf),
+                    successorId = lastItems.getOrNull(index + 1)?.let(idOf)
+                )
+            }
         if (exiting.isEmpty() && pending.isEmpty()) return emptyList()
         return (exiting + pending).distinctBy { idOf(it.item) }
     }

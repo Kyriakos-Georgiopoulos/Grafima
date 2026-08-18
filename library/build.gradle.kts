@@ -13,9 +13,7 @@ kotlin {
     // targets, api/jvm/library.api for the JVM one. Android needs neither —
     // androidMain holds no public API, only an internal `actual`.
     @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
-    abiValidation {
-        enabled.set(true)
-    }
+    abiValidation()
 
     android {
         namespace = "io.grafima.charts"

@@ -8,6 +8,14 @@ public final class io/grafima/charts/DashPattern {
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class io/grafima/charts/LegendOrientation : java/lang/Enum {
+	public static final field Horizontal Lio/grafima/charts/LegendOrientation;
+	public static final field Vertical Lio/grafima/charts/LegendOrientation;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/LegendOrientation;
+	public static fun values ()[Lio/grafima/charts/LegendOrientation;
+}
+
 public final class io/grafima/charts/ReduceMotionKt {
 	public static final fun getLocalReduceMotion ()Landroidx/compose/runtime/ProvidableCompositionLocal;
 }
@@ -15,16 +23,20 @@ public final class io/grafima/charts/ReduceMotionKt {
 public final class io/grafima/charts/bar/A11yConfig {
 	public static final field $stable I
 	public fun <init> ()V
-	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
-	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Lkotlin/jvm/functions/Function1;
 	public final fun component2 ()Lkotlin/jvm/functions/Function1;
 	public final fun component3 ()Lkotlin/jvm/functions/Function1;
-	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)Lio/grafima/charts/bar/A11yConfig;
-	public static synthetic fun copy$default (Lio/grafima/charts/bar/A11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/grafima/charts/bar/A11yConfig;
+	public final fun component4 ()Lkotlin/jvm/functions/Function1;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)Lio/grafima/charts/bar/A11yConfig;
+	public static synthetic fun copy$default (Lio/grafima/charts/bar/A11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/bar/A11yConfig;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getBarCountDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
 	public final fun getChartDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getClearSelectionLabel ()Ljava/lang/String;
+	public final fun getCountDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getSelectActionLabel ()Lkotlin/jvm/functions/Function1;
 	public final fun getSelectedStateDescription ()Lkotlin/jvm/functions/Function1;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -83,46 +95,80 @@ public final class io/grafima/charts/bar/BarChartKt {
 	public static final fun BarChart-v8p7Sac (Lio/grafima/charts/bar/BarDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/bar/BarOrientation;Lio/grafima/charts/bar/ChartStyle;Lio/grafima/charts/bar/AxisConfig;Lio/grafima/charts/bar/AnimationConfig;Lio/grafima/charts/bar/A11yConfig;Lio/grafima/charts/bar/BarChartSelectionRenderer;Lio/grafima/charts/bar/BarEntry;Landroidx/compose/ui/hapticfeedback/HapticFeedbackType;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;III)V
 }
 
+public final class io/grafima/charts/bar/BarChartModelsKt {
+	public static final fun getDefaultSeriesPalette ()Ljava/util/List;
+	public static final fun getSpokenSeriesLabel (Lio/grafima/charts/bar/BarEntry;)Ljava/lang/String;
+}
+
 public abstract interface class io/grafima/charts/bar/BarChartSelectionRenderer {
 	public abstract fun drawSelection-wB6dw9o (Landroidx/compose/ui/graphics/drawscope/DrawScope;Lio/grafima/charts/bar/BarEntry;JJLio/grafima/charts/bar/BarOrientation;Landroidx/compose/ui/text/TextMeasurer;Ljava/util/Map;)V
 }
 
+public final class io/grafima/charts/bar/BarChartSummary {
+	public static final field $stable I
+	public fun <init> (IIILjava/lang/Integer;)V
+	public final fun getBars ()I
+	public final fun getCategories ()I
+	public final fun getSeries ()I
+	public final fun getUniformGroupSize ()Ljava/lang/Integer;
+}
+
 public final class io/grafima/charts/bar/BarDataSet {
 	public static final field $stable I
-	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;)V
-	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/util/List;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/lang/String;
-	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/lang/String;)Lio/grafima/charts/bar/BarDataSet;
-	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarDataSet;Ljava/util/List;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/bar/BarDataSet;
+	public final fun component4 ()Lio/grafima/charts/bar/BarGroupMode;
+	public final fun component5 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;Ljava/util/List;)Lio/grafima/charts/bar/BarDataSet;
+	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarDataSet;Ljava/util/List;Ljava/util/List;Ljava/lang/String;Lio/grafima/charts/bar/BarGroupMode;Ljava/util/List;ILjava/lang/Object;)Lio/grafima/charts/bar/BarDataSet;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getContentDescription ()Ljava/lang/String;
 	public final fun getDefaultGradientColors ()Ljava/util/List;
 	public final fun getEntries ()Ljava/util/List;
+	public final fun getMode ()Lio/grafima/charts/bar/BarGroupMode;
+	public final fun getSeriesPalette ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
 
 public final class io/grafima/charts/bar/BarEntry {
 	public static final field $stable I
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()F
 	public final fun component4 ()Ljava/util/List;
 	public final fun component5 ()Ljava/util/List;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;)Lio/grafima/charts/bar/BarEntry;
-	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarEntry;Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/grafima/charts/bar/BarEntry;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;)Lio/grafima/charts/bar/BarEntry;
+	public static synthetic fun copy$default (Lio/grafima/charts/bar/BarEntry;Ljava/lang/String;Ljava/lang/String;FLjava/util/List;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/bar/BarEntry;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getColorStops ()Ljava/util/List;
 	public final fun getGradientColors ()Ljava/util/List;
 	public final fun getId ()Ljava/lang/String;
+	public final fun getSeriesId ()Ljava/lang/String;
+	public final fun getSeriesLabel ()Ljava/lang/String;
 	public final fun getXLabel ()Ljava/lang/String;
 	public final fun getY ()F
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/grafima/charts/bar/BarGroupMode : java/lang/Enum {
+	public static final field Grouped Lio/grafima/charts/bar/BarGroupMode;
+	public static final field Stacked Lio/grafima/charts/bar/BarGroupMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/bar/BarGroupMode;
+	public static fun values ()[Lio/grafima/charts/bar/BarGroupMode;
+}
+
+public final class io/grafima/charts/bar/BarLegendKt {
+	public static final fun BarLegend-oKE7A98 (Lio/grafima/charts/bar/BarDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/LegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Lio/grafima/charts/bar/AnimationConfig;Lkotlin/jvm/functions/Function1;Landroidx/compose/runtime/Composer;II)V
 }
 
 public final class io/grafima/charts/bar/BarOrientation : java/lang/Enum {
@@ -135,8 +181,8 @@ public final class io/grafima/charts/bar/BarOrientation : java/lang/Enum {
 
 public final class io/grafima/charts/bar/ChartStyle {
 	public static final field $stable I
-	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZFILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZFLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-D9Ej5fM ()F
 	public final fun component2 ()F
 	public final fun component3-D9Ej5fM ()F
@@ -145,12 +191,14 @@ public final class io/grafima/charts/bar/ChartStyle {
 	public final fun component6 ()Landroidx/compose/ui/text/TextStyle;
 	public final fun component7 ()Landroidx/compose/ui/text/TextStyle;
 	public final fun component8 ()Z
-	public final fun copy-JP4gq1U (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;Z)Lio/grafima/charts/bar/ChartStyle;
-	public static synthetic fun copy-JP4gq1U$default (Lio/grafima/charts/bar/ChartStyle;FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZILjava/lang/Object;)Lio/grafima/charts/bar/ChartStyle;
+	public final fun component9 ()F
+	public final fun copy-noJGAy0 (FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZF)Lio/grafima/charts/bar/ChartStyle;
+	public static synthetic fun copy-noJGAy0$default (Lio/grafima/charts/bar/ChartStyle;FFFFFLandroidx/compose/ui/text/TextStyle;Landroidx/compose/ui/text/TextStyle;ZFILjava/lang/Object;)Lio/grafima/charts/bar/ChartStyle;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getBarCornerRadius-D9Ej5fM ()F
 	public final fun getBarSpacingFactor ()F
 	public final fun getBottomLabelSpace-D9Ej5fM ()F
+	public final fun getGroupSpacingFactor ()F
 	public final fun getLabelTextStyle ()Landroidx/compose/ui/text/TextStyle;
 	public final fun getShowFloatingValues ()Z
 	public final fun getTopValueSpace-D9Ej5fM ()F
@@ -350,18 +398,22 @@ public final class io/grafima/charts/gauge/GaugeZone {
 public final class io/grafima/charts/line/LineA11yConfig {
 	public static final field $stable I
 	public fun <init> ()V
-	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
-	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Lkotlin/jvm/functions/Function1;
 	public final fun component2 ()Lkotlin/jvm/functions/Function2;
 	public final fun component3 ()Lkotlin/jvm/functions/Function2;
 	public final fun component4 ()Lkotlin/jvm/functions/Function1;
-	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)Lio/grafima/charts/line/LineA11yConfig;
-	public static synthetic fun copy$default (Lio/grafima/charts/line/LineA11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/grafima/charts/line/LineA11yConfig;
+	public final fun component5 ()Lkotlin/jvm/functions/Function1;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)Lio/grafima/charts/line/LineA11yConfig;
+	public static synthetic fun copy$default (Lio/grafima/charts/line/LineA11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/line/LineA11yConfig;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAxisTitleDescriptionBuilder ()Lkotlin/jvm/functions/Function2;
 	public final fun getChartDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getClearSelectionLabel ()Ljava/lang/String;
 	public final fun getReferenceLineDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getSelectActionLabel ()Lkotlin/jvm/functions/Function1;
 	public final fun getSelectedPointDescriptionBuilder ()Lkotlin/jvm/functions/Function2;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -559,22 +611,15 @@ public final class io/grafima/charts/line/LineDataSet {
 }
 
 public final class io/grafima/charts/line/LineLegendKt {
-	public static final fun LineLegend-3GLzNTs (Lio/grafima/charts/line/LineDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/line/LineLegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Landroidx/compose/runtime/Composer;II)V
-}
-
-public final class io/grafima/charts/line/LineLegendOrientation : java/lang/Enum {
-	public static final field Horizontal Lio/grafima/charts/line/LineLegendOrientation;
-	public static final field Vertical Lio/grafima/charts/line/LineLegendOrientation;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public static fun valueOf (Ljava/lang/String;)Lio/grafima/charts/line/LineLegendOrientation;
-	public static fun values ()[Lio/grafima/charts/line/LineLegendOrientation;
+	public static final fun LineLegend-3GLzNTs (Lio/grafima/charts/line/LineDataSet;Landroidx/compose/ui/Modifier;Lio/grafima/charts/LegendOrientation;Landroidx/compose/ui/text/TextStyle;FFLandroidx/compose/ui/Alignment$Horizontal;Landroidx/compose/runtime/Composer;II)V
 }
 
 public final class io/grafima/charts/line/LineSeries {
 	public static final field $stable I
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;FILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;FLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
+	public final fun component10-D9Ej5fM ()F
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/util/List;
 	public final fun component4-0d7_KjU ()J
@@ -583,11 +628,12 @@ public final class io/grafima/charts/line/LineSeries {
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Ljava/util/List;
 	public final fun component9 ()Lio/grafima/charts/DashPattern;
-	public final fun copy-cbhI11c (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;)Lio/grafima/charts/line/LineSeries;
-	public static synthetic fun copy-cbhI11c$default (Lio/grafima/charts/line/LineSeries;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;ILjava/lang/Object;)Lio/grafima/charts/line/LineSeries;
+	public final fun copy-oQI7FsQ (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;F)Lio/grafima/charts/line/LineSeries;
+	public static synthetic fun copy-oQI7FsQ$default (Lio/grafima/charts/line/LineSeries;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;JFFLjava/util/List;Ljava/util/List;Lio/grafima/charts/DashPattern;FILjava/lang/Object;)Lio/grafima/charts/line/LineSeries;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getColor-0d7_KjU ()J
 	public final fun getDashPattern ()Lio/grafima/charts/DashPattern;
+	public final fun getDotRadius-D9Ej5fM ()F
 	public final fun getFillAlpha ()F
 	public final fun getFillGradientColors ()Ljava/util/List;
 	public final fun getId ()Ljava/lang/String;
@@ -655,6 +701,20 @@ public final class io/grafima/charts/line/ReferenceLineAxis : java/lang/Enum {
 	public static fun values ()[Lio/grafima/charts/line/ReferenceLineAxis;
 }
 
+public final class io/grafima/charts/line/SelectedPoint {
+	public static final field $stable I
+	public fun <init> (Lio/grafima/charts/line/LineSeries;Lio/grafima/charts/line/LineDataPoint;)V
+	public final fun component1 ()Lio/grafima/charts/line/LineSeries;
+	public final fun component2 ()Lio/grafima/charts/line/LineDataPoint;
+	public final fun copy (Lio/grafima/charts/line/LineSeries;Lio/grafima/charts/line/LineDataPoint;)Lio/grafima/charts/line/SelectedPoint;
+	public static synthetic fun copy$default (Lio/grafima/charts/line/SelectedPoint;Lio/grafima/charts/line/LineSeries;Lio/grafima/charts/line/LineDataPoint;ILjava/lang/Object;)Lio/grafima/charts/line/SelectedPoint;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPoint ()Lio/grafima/charts/line/LineDataPoint;
+	public final fun getSeries ()Lio/grafima/charts/line/LineSeries;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class io/grafima/charts/pie/ElbowCalloutPieSelectionRenderer : io/grafima/charts/pie/PieChartSelectionRenderer {
 	public static final field $stable I
 	public synthetic fun <init> (JFFFLandroidx/compose/ui/text/TextStyle;FFFJILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -674,15 +734,19 @@ public final class io/grafima/charts/pie/ElbowCalloutPieSelectionRenderer : io/g
 public final class io/grafima/charts/pie/PieA11yConfig {
 	public static final field $stable I
 	public fun <init> ()V
-	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
-	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Lkotlin/jvm/functions/Function1;
 	public final fun component2 ()Lkotlin/jvm/functions/Function2;
 	public final fun component3 ()Lkotlin/jvm/functions/Function1;
-	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)Lio/grafima/charts/pie/PieA11yConfig;
-	public static synthetic fun copy$default (Lio/grafima/charts/pie/PieA11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/grafima/charts/pie/PieA11yConfig;
+	public final fun component4 ()Lkotlin/jvm/functions/Function1;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)Lio/grafima/charts/pie/PieA11yConfig;
+	public static synthetic fun copy$default (Lio/grafima/charts/pie/PieA11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/pie/PieA11yConfig;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getChartDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getClearSelectionLabel ()Ljava/lang/String;
+	public final fun getSelectActionLabel ()Lkotlin/jvm/functions/Function1;
 	public final fun getSelectedStateDescription ()Lkotlin/jvm/functions/Function2;
 	public final fun getSliceCountDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
 	public fun hashCode ()I
@@ -856,15 +920,19 @@ public final class io/grafima/charts/pie/TooltipPieSelectionRenderer : io/grafim
 public final class io/grafima/charts/radar/RadarA11yConfig {
 	public static final field $stable I
 	public fun <init> ()V
-	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
-	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Lkotlin/jvm/functions/Function1;
 	public final fun component2 ()Lkotlin/jvm/functions/Function2;
 	public final fun component3 ()Lkotlin/jvm/functions/Function1;
-	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)Lio/grafima/charts/radar/RadarA11yConfig;
-	public static synthetic fun copy$default (Lio/grafima/charts/radar/RadarA11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/grafima/charts/radar/RadarA11yConfig;
+	public final fun component4 ()Lkotlin/jvm/functions/Function1;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;)Lio/grafima/charts/radar/RadarA11yConfig;
+	public static synthetic fun copy$default (Lio/grafima/charts/radar/RadarA11yConfig;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Ljava/lang/String;ILjava/lang/Object;)Lio/grafima/charts/radar/RadarA11yConfig;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getChartDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
+	public final fun getClearSelectionLabel ()Ljava/lang/String;
+	public final fun getSelectActionLabel ()Lkotlin/jvm/functions/Function1;
 	public final fun getSelectedStateDescription ()Lkotlin/jvm/functions/Function2;
 	public final fun getSeriesCountDescriptionBuilder ()Lkotlin/jvm/functions/Function1;
 	public fun hashCode ()I
