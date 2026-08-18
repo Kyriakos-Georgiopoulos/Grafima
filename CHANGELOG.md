@@ -9,7 +9,7 @@ Grafima's public API is recorded in `library/api/library.klib.api` and
 alters a signature has a matching diff in those files; entries that only change
 behaviour do not.
 
-## [Unreleased]
+## [1.2.0] - 2026-08-18
 
 ### Added
 
@@ -280,7 +280,8 @@ First release.
 - Per-chart `a11yConfig`, `style`, `axisConfig` and `animationConfig` for
   overriding text, geometry and timing.
 
-[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Kyriakos-Georgiopoulos/Grafima/releases/tag/v1.0.0
