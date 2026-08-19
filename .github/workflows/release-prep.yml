@@ -1,0 +1,95 @@
+name: Prepare release
+
+# Step 1 of docs/RELEASING.md, run from the Actions tab. Creates release/x.y.z
+# off develop with the version bumped and the changelog dated, then opens the PR
+# into main. Everything it does is `scripts/prepare-release.sh`, so the same
+# result is a single command locally when you would rather watch it happen.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, x.y.z'
+        required: true
+        type: string
+
+concurrency:
+  group: release-prep
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    name: Open the release PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # RELEASE_TOKEN rather than the default token on purpose: GitHub does not
+      # start workflows for events raised by GITHUB_TOKEN, so a PR opened with it
+      # would sit forever with no CI and could never satisfy main's required
+      # checks. See docs/RELEASING.md for the scopes the PAT needs.
+      - name: Check the release token is present
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "::error::RELEASE_TOKEN is not set. A PR opened with the default token gets no CI. See docs/RELEASING.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: develop
+          # The script compares against origin/main and reads the tag list.
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      # The release commit is authored by whoever pressed Run workflow, not by
+      # a bot, so the history reads the same as a release cut by hand.
+      - name: Identify as the person who triggered this
+        run: |
+          set -euo pipefail
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+      - name: Prepare the release branch
+        run: scripts/prepare-release.sh "${{ inputs.version }}"
+
+      # The body goes through a file rather than "$(cat <<BODY)": bash 3.2, which
+      # is what macOS ships, mis-parses an apostrophe inside a heredoc nested in a
+      # command substitution, so that form cannot be rehearsed on a Mac.
+      - name: Push it and open the PR
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          git push -u origin "release/$VERSION"
+          cat > "${RUNNER_TEMP:-/tmp}/pr-body.md" <<BODY
+          ## What and why
+
+          Releases $VERSION. Prepared by \`scripts/prepare-release.sh\`, so this is the version bump, the changelog move and the README install snippets, and nothing else.
+
+          The changelog section under the \`[$VERSION]\` heading is what ships as the GitHub release and what consumers read. **Check it before merging**, since it is the one part of a release no script can verify.
+
+          ## How it was verified
+
+          - [ ] The \`[$VERSION]\` changelog section reads correctly and names every breaking change
+          - [ ] The version is right for what changed: a removed or altered public API is a major bump
+          - [ ] CI is green below
+
+          ## What happens on merge
+
+          1. \`release-tag.yml\` tags \`v$VERSION\` on main.
+          2. The tag fires \`release.yml\`, which publishes to Maven Central and cuts the GitHub release.
+          3. \`release.yml\` then opens the merge-back PR into develop.
+          4. You press Publish at https://central.sonatype.com/publishing/deployments.
+          BODY
+          gh pr create \
+            --base main \
+            --head "release/$VERSION" \
+            --title "chore(release): $VERSION" \
+            --body-file "${RUNNER_TEMP:-/tmp}/pr-body.md"

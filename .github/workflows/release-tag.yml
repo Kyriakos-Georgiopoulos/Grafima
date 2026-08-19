@@ -1,0 +1,81 @@
+name: Tag release
+
+# Step 2 of docs/RELEASING.md. Merging a release PR into main is the decision to
+# release; the tag is only the mechanism, and it is the step where a human can
+# tag the wrong commit or mistype the version. Every other push to main lands
+# here too and is skipped, because main's VERSION_NAME is already tagged.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag the released version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Tags are needed to tell "already released" from "release this now".
+          fetch-depth: 0
+          # A tag pushed with the default GITHUB_TOKEN starts no workflow, so
+          # release.yml would never see it and the release would stop here. The
+          # PAT is the whole reason this chain continues. See docs/RELEASING.md.
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+
+      - name: Decide whether this push released anything
+        id: decide
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -nE 's/^VERSION_NAME=(.*)$/\1/p' gradle.properties)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          case "$VERSION" in
+            *-SNAPSHOT)
+              echo "main is at $VERSION, which is not a release. Nothing to tag."
+              echo "tag=no" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "v$VERSION is already tagged. Nothing to do."
+            echo "tag=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "v$VERSION is not tagged yet."
+          echo "tag=yes" >> "$GITHUB_OUTPUT"
+
+      # Failing loudly beats skipping quietly: without the PAT the release has
+      # stalled at exactly this point, and a green check nobody reads would hide
+      # that until someone wondered why Central never received anything.
+      - name: Check the release token is present
+        if: steps.decide.outputs.tag == 'yes'
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "::error::RELEASE_TOKEN is not set, so the tag would not start release.yml. Tag it by hand: git tag -a v$VERSION -m '$VERSION' && git push origin v$VERSION"
+            exit 1
+          fi
+
+      - name: Tag it
+        if: steps.decide.outputs.tag == 'yes'
+        env:
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The tag is annotated and its message is the bare version, matching
+          # v1.0.0 through v1.2.0, which were all created by hand.
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "$VERSION"
+          git push origin "v$VERSION"
+          echo "Tagged v$VERSION. release.yml takes it from here."

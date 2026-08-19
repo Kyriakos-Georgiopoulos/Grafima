@@ -182,10 +182,18 @@ files. CI validates the wrapper jar's checksum on every run.
 
 ## Releasing
 
-1. `release/x.y.z` off `develop`. Bump the version and move `[Unreleased]` to a
-   new `[x.y.z]` section with the date.
-2. PR into `main`. On merge, tag `vx.y.z`.
-3. Merge `main` back into `develop` so the bump isn't lost.
+Run **Prepare release** from the Actions tab with the version you want. It cuts
+`release/x.y.z` off `develop`, bumps the version, dates the changelog and opens
+the PR into `main`. Merging that PR tags it, publishes to Maven Central, cuts
+the GitHub release, and opens the merge-back PR into `develop`.
+
+Two steps stay manual: deciding the version, and pressing Publish at Central.
+Merge the merge-back PR with a merge commit rather than a squash, or `develop`
+stops containing `main` and the next release cannot be prepared.
+
+[docs/RELEASING.md](docs/RELEASING.md) has the whole process, the secret the
+automation needs, how to run either script by hand, and what to do when the
+merge-back conflicts.
 
 The first release also creates `develop`, branched from `main` once `v1.0.0` is
 tagged.
