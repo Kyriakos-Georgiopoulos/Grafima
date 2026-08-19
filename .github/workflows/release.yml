@@ -104,3 +104,83 @@ jobs:
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md --verify-tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Step 3 of docs/RELEASING.md. develop must end up containing main, or the next
+  # release branch cannot satisfy main's up-to-date requirement and the changelog
+  # loses its dated section. Running it here, off the tag that just published,
+  # means the carry-back cannot be forgotten between releases.
+  merge-back:
+    name: Open the merge-back PR
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check the release token is present
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_TOKEN" ]; then
+            echo "::error::RELEASE_TOKEN is not set. A PR opened with the default token gets no CI and can never merge. Run scripts/merge-back.sh locally instead."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Identify as the person who cut the release
+        run: |
+          set -euo pipefail
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+      - name: Build the merge-back branch
+        id: merge
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin main develop
+          scripts/merge-back.sh
+          echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Body via a file, not "$(cat <<BODY)": see the note in release-prep.yml.
+      - name: Push it and open the PR
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          BRANCH: ${{ steps.merge.outputs.branch }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Nothing to do when develop already contained main: the script exits
+          # 0 without branching, leaving HEAD on develop.
+          if [ "$BRANCH" = "develop" ]; then
+            echo "Nothing to carry back."
+            exit 0
+          fi
+          git push -u origin "$BRANCH"
+          cat > "${RUNNER_TEMP:-/tmp}/pr-body.md" <<BODY
+          ## What and why
+
+          Carries the $VERSION release back into develop and reopens the next snapshot, which is step 3 of docs/RELEASING.md. Built by \`scripts/merge-back.sh\`: the merge itself, the empty \`[Unreleased]\` heading restored above the dated section, and \`VERSION_NAME\` moved to the next snapshot.
+
+          ## Merge this with a merge commit, not a squash
+
+          Squashing drops the second parent, so develop stops containing main. Nothing breaks that day; it surfaces at the *next* release, when the release branch cannot satisfy the up-to-date requirement on main. \`scripts/prepare-release.sh\` checks for it and says how to recover, but not squashing is cheaper.
+
+          ## How it was verified
+
+          - [ ] CI is green below
+          - [ ] The changelog keeps both the empty \`[Unreleased]\` heading and the dated section
+          - [ ] \`VERSION_NAME\` is the snapshot you expect
+          BODY
+          gh pr create \
+            --base develop \
+            --head "$BRANCH" \
+            --title "chore: carry $VERSION back into develop" \
+            --body-file "${RUNNER_TEMP:-/tmp}/pr-body.md"
