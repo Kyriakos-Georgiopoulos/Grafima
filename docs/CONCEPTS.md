@@ -7,6 +7,9 @@ five times.
 selection in and receive changes through a callback, which means you can drive
 selection from anywhere: a list, a deep link, a test.
 
+**So is the line chart's viewport.** `LineChart` takes an `xWindow` and reports
+drags through `onXWindowChange`, so a period selector and a finger drive one state.
+
 **Ids drive animation.** `BarEntry.id`, `PieEntry.id`, `RadarSeries.id`,
 `LineSeries.id`. Keep an id stable across a data change and the chart animates
 from the old value to the new one. Change it and the element restarts from zero.

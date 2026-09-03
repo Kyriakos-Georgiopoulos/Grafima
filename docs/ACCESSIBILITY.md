@@ -25,6 +25,10 @@ announces only *"Currently selected: Feb, 80."* instead of re-reading the whole
 chart. Charts are polite live regions, so data changes are announced without the
 user re-focusing.
 
+A windowed line chart adds which stretch of the axis is on screen to that state
+description, after the selection, so panning is announced and a listener can tell
+where they have arrived.
+
 The gauge is the exception: it has nothing to select, so it exposes progress
 semantics instead of a live region.
 
@@ -34,9 +38,13 @@ Every interactive chart publishes one custom action per item — bar, slice, ser
 or point — plus a clear action when something is selected. Screen reader users
 reach these through the actions menu; they don't need to hit a target.
 
-The one exception is a line chart with a pinned x range: points outside it are not
+A line chart whose x range is restricted is the exception, whether it is pinned
+with `xMin`/`xMax` or moving with an `xWindow`: points outside the range are not
 drawn and get no action, because selecting one would move the crosshair somewhere
-nothing is visible. See [the line chart guide](charts/line.md).
+nothing is visible. A windowed chart makes up for it by publishing "Show previous"
+and "Show next", which move it by a whole window so the rest of the data is still
+reachable without a drag. Each is offered only while there is somewhere to go. See
+[the line chart guide](charts/line.md).
 
 Give your entries distinct labels. Two bars both labelled "Q1" and carrying no
 `seriesId` produce two identical actions and one of them becomes unreachable.
@@ -67,6 +75,13 @@ BarChart(
 ```
 
 Worth reading yours out loud. `"45.0"` is fine on screen and awkward spoken.
+
+A windowed line chart names its two pan actions with `LineA11yConfig.panPreviousLabel`
+and `panNextLabel`, and describes the stretch it is showing with
+`visibleRangeDescriptionBuilder`. That builder is given the lowest and highest x on
+screen, which is the data's order rather than the screen's, so it reads the same way
+in RTL. It is called with nothing at all when the window has landed between points,
+which is the moment to say so.
 
 A line chart's reference lines are announced through
 `LineA11yConfig.referenceLineDescriptionBuilder`. It is handed only the lines that
