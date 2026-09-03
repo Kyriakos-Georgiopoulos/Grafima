@@ -318,8 +318,10 @@ enum class LineCurveType {
  *   Ignored when [yMin] is set.
  * @param showXLabels Show labels below the x-axis.
  * @param showYLabels Show labels beside the y-axis.
- * @param maxXLabels Upper bound on visible x-labels. When more data points exist,
- *   labels are thinned by showing every Nth label. Prevents crowding.
+ * @param maxXLabels Upper bound on visible x-labels. When more points are shown than
+ *   that, labels are thinned by keeping every Nth. N is counted over the points the
+ *   axis actually shows, so a pinned or windowed range labels what is on screen at
+ *   this density rather than inheriting the stride of the data behind it.
  * @param dashedGrid Superseded by [gridDashPattern], which says how long a dash is
  *   rather than only whether there is one, and says it in dp so it is the same size
  *   on every screen. Set, it still wins.
@@ -328,9 +330,11 @@ enum class LineCurveType {
  * @param yMin Pins the bottom of the y-axis. Null auto-computes it from the data.
  * @param yMax Pins the top of the y-axis. Null auto-computes it from the data.
  * @param xMin Pins the left of the x-axis (the right in RTL). Null uses the
- *   smallest x in the data.
+ *   smallest x in the data. With an `xWindow` set this is the far end of what the
+ *   window pans over rather than an edge that is drawn.
  * @param xMax Pins the right of the x-axis (the left in RTL). Null uses the
- *   largest x in the data.
+ *   largest x in the data. With an `xWindow` set this is the far end of what the
+ *   window pans over rather than an edge that is drawn.
  * @param xAxisTitle Names the x-axis below its labels, for the unit the numbers
  *   are in. Null or blank draws nothing. Screen readers announce it too.
  * @param yAxisTitle Names the y-axis, drawn rotated beside its labels — on the
@@ -577,5 +581,38 @@ data class LineA11yConfig(
     val selectActionLabel: (LineDataPoint) -> String = { point -> "Select ${point.spokenLabel}" },
 
     /** Names the action that clears the selection. */
-    val clearSelectionLabel: String = "Clear selection"
+    val clearSelectionLabel: String = "Clear selection",
+
+    /**
+     * Names the action that moves a windowed chart towards the start of its data.
+     * Offered only while there is somewhere to go, so a listener is never given an
+     * action that does nothing.
+     *
+     * Direction is the data's, not the screen's, so the wording holds in RTL where
+     * the earlier points are drawn on the right.
+     */
+    val panPreviousLabel: String = "Show previous",
+
+    /** Names the action that moves a windowed chart towards the end of its data. */
+    val panNextLabel: String = "Show next",
+
+    /**
+     * Says which stretch of the axis a windowed chart is showing, so a listener
+     * panning with the actions above knows where they have arrived. Called only
+     * while `xWindow` shows less than the whole axis.
+     *
+     * [first] and [last] are the lowest and highest x showing, which is the data's
+     * order rather than the screen's: in RTL [first] is the point on the right.
+     * [last] is null when a single position is showing, and both are null when the
+     * window has landed between points and shows none. Return an empty string to
+     * leave the window unspoken.
+     */
+    val visibleRangeDescriptionBuilder: (first: LineDataPoint?, last: LineDataPoint?) -> String =
+        { first, last ->
+            when {
+                first == null -> ""
+                last == null -> "Showing ${first.spokenLabel}."
+                else -> "Showing ${first.spokenLabel} to ${last.spokenLabel}."
+            }
+        }
 )

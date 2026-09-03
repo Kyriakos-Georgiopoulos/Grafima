@@ -38,6 +38,7 @@ import io.grafima.charts.radar.RadarChart
 import io.grafima.charts.radar.RadarDataSet
 import io.grafima.charts.radar.RadarSeries
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -50,6 +51,40 @@ class ActionLabelLocalisationTest {
     private fun assertLocalised(labels: List<String>) {
         assertTrue(labels.any { it == "Επιλογή A" }, "select action not localised: $labels")
         assertTrue(labels.any { it == "Καθαρισμός" }, "clear action not localised: $labels")
+    }
+
+    @Test
+    fun a_windowed_line_chart_takes_its_pan_labels_and_range_wording_too() = runComposeUiTest {
+        setContent {
+            LineChart(
+                dataSet = LineDataSet(
+                    series = listOf(
+                        LineSeries(
+                            id = "s",
+                            label = "S",
+                            points = List(10) { LineDataPoint(x = it.toFloat(), y = 1f, label = "A$it") }
+                        )
+                    ),
+                    contentDescription = "Localised window"
+                ),
+                modifier = Modifier.size(200.dp),
+                animationConfig = LineAnimationConfig(entrySpec = snap(), morphSpec = snap()),
+                a11yConfig = LineA11yConfig(
+                    panPreviousLabel = "Πιο πριν",
+                    panNextLabel = "Πιο μετά",
+                    visibleRangeDescriptionBuilder = { first, last ->
+                        "Δείχνει ${first?.label} ως ${last?.label}."
+                    }
+                ),
+                xWindow = 4f..6f
+            )
+        }
+        waitForIdle()
+
+        val labels = onChartNode().customActionLabels()
+        assertTrue(labels.any { it == "Πιο πριν" }, "pan-back action not localised: $labels")
+        assertTrue(labels.any { it == "Πιο μετά" }, "pan-on action not localised: $labels")
+        assertEquals("Δείχνει A4 ως A6.", onChartNode().stateDescription())
     }
 
     @Test

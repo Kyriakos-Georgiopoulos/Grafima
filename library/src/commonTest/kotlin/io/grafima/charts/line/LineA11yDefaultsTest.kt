@@ -201,4 +201,45 @@ class LineA11yDefaultsTest {
     fun `a first sentence is appended without a leading separator`() {
         assertEquals("X axis: Days.", buildString { appendSentence("X axis: Days.") })
     }
+
+    @Test
+    fun `a window names the points at both of its ends`() {
+        assertEquals(
+            "Showing Jan to Mar.",
+            config.visibleRangeDescriptionBuilder(
+                LineDataPoint(x = 0f, y = 10f, label = "Jan"),
+                LineDataPoint(x = 2f, y = 18f, label = "Mar")
+            )
+        )
+    }
+
+    @Test
+    fun `a window on a single point names it once`() {
+        assertEquals(
+            "Showing Jan.",
+            config.visibleRangeDescriptionBuilder(LineDataPoint(x = 0f, y = 10f, label = "Jan"), null)
+        )
+    }
+
+    @Test
+    fun `a window with no point in it says nothing`() {
+        assertEquals("", config.visibleRangeDescriptionBuilder(null, null))
+    }
+
+    @Test
+    fun `the window's own labels are pinned`() {
+        assertEquals("Show previous", config.panPreviousLabel)
+        assertEquals("Show next", config.panNextLabel)
+    }
+
+    @Test
+    fun `a window speaks the point's spoken label over its drawn one`() {
+        assertEquals(
+            "Showing April to June.",
+            config.visibleRangeDescriptionBuilder(
+                LineDataPoint(x = 0f, y = 1f, label = "Apr", contentDescription = "April"),
+                LineDataPoint(x = 2f, y = 1f, label = "Jun", contentDescription = "June")
+            )
+        )
+    }
 }
