@@ -16,6 +16,9 @@
 
 package io.grafima.charts.line
 
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -41,6 +44,8 @@ import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -62,11 +67,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.grafima.charts.DashStroke
 import io.grafima.charts.drawDashableLine
 import io.grafima.charts.rememberEffectiveReduceMotion
 import io.grafima.charts.toDashStroke
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -119,6 +129,22 @@ import kotlin.math.min
  *   this in the parent to control the crosshair externally.
  * @param selectionHaptic Haptic effect performed each time the crosshair snaps to a new
  *   data point during a drag. Pass null to disable.
+ * @param xWindow The stretch of the x axis to show, in data units. Null draws the
+ *   whole axis, which is what every chart did before this existed. A window narrower
+ *   than the data turns the chart into a viewport onto it: a horizontal drag walks
+ *   the window along, a flick carries on and settles, and both stop at the ends of
+ *   the axis. The width is kept and the position clamped, so a window that runs off
+ *   the end slides back on rather than shrinking, and one as wide as the data is the
+ *   same as no window at all. Where a range is pinned with [LineAxisConfig.xMin] or
+ *   `xMax`, that pinned range is what the window pans over.
+ *
+ *   Panning and the crosshair are both horizontal drags, so a chart with a window
+ *   asks for a long press before it starts selecting. A plain drag pans.
+ * @param onXWindowChange Called with the new window as it is dragged and as the
+ *   flick settles, already clamped to the axis. Hold it and pass it back through
+ *   [xWindow], the way [selectedPointIndex] and [onPointSelected] pair up: the
+ *   chart owns no scroll position of its own, so the same window can be set from a
+ *   period selector or a "jump to the start" button.
  * @param onPointSelected Called during touch/drag (with the nearest point index)
  *   and on finger release (with null). The crosshair renders at this index.
  */
@@ -133,6 +159,8 @@ fun LineChart(
     a11yConfig: LineA11yConfig = LineA11yConfig(),
     selectedPointIndex: Int? = null,
     selectionHaptic: HapticFeedbackType? = HapticFeedbackType.SegmentTick,
+    xWindow: ClosedFloatingPointRange<Float>? = null,
+    onXWindowChange: (ClosedFloatingPointRange<Float>) -> Unit = {},
     onPointSelected: (Int?) -> Unit = {}
 ) {
     val textMeasurer = rememberTextMeasurer()
@@ -166,9 +194,13 @@ fun LineChart(
 
     val currentSeries by rememberUpdatedState(series)
     val currentOnPointSelected by rememberUpdatedState(onPointSelected)
+    val currentOnXWindowChange by rememberUpdatedState(onXWindowChange)
     val currentDensity by rememberUpdatedState(density)
     val currentIsRtl by rememberUpdatedState(isRtl)
     val currentSelectionHaptic by rememberUpdatedState(selectionHaptic)
+    val currentCrosshairEnabled by rememberUpdatedState(crosshairConfig.enabled)
+    val currentLabelGap by rememberUpdatedState(style.labelGap)
+    val currentReduceMotion by rememberUpdatedState(reduceMotion)
 
     // ── Data ranges (recomputed only on data change) ──
     val allPoints = remember(renderSeries) { renderSeries.flatMap { it.points } }
@@ -188,7 +220,7 @@ fun LineChart(
     val xDataMax = remember(xPointMax, xReferences) {
         maxOf(xPointMax, xReferences.maxOrNull() ?: -Float.MAX_VALUE)
     }
-    val xBounds = remember(xDataMin, xDataMax, axisConfig.xMin, axisConfig.xMax) {
+    val xExtent = remember(xDataMin, xDataMax, axisConfig.xMin, axisConfig.xMax) {
         resolveAxisBounds(
             dataMin = xDataMin,
             dataMax = xDataMax,
@@ -196,10 +228,17 @@ fun LineChart(
             pinnedMax = axisConfig.xMax
         )
     }
-    val xMin = xBounds.start
-    val xMax = xBounds.endInclusive
+    val window = remember(xExtent, xWindow) { resolveXWindow(xExtent, xWindow) }
+    val xMin = window?.start ?: xExtent.start
+    val xMax = window?.endInclusive ?: xExtent.endInclusive
     val currentXMin by rememberUpdatedState(xMin)
     val currentXMax by rememberUpdatedState(xMax)
+    val currentXExtent by rememberUpdatedState(xExtent)
+    val currentWindow by rememberUpdatedState(window)
+    // A window is a pin on both edges that moves, so everything a pinned x axis
+    // suppresses is suppressed inside one too.
+    val xIsPinned = axisConfig.xMin != null || axisConfig.xMax != null || window != null
+    val currentXIsPinned by rememberUpdatedState(xIsPinned)
 
     val yPointMax = remember(allPoints) { allPoints.maxOfOrNull { it.y } ?: 1f }
     val yPointMin = remember(allPoints) { allPoints.minOfOrNull { it.y } ?: 0f }
@@ -254,24 +293,40 @@ fun LineChart(
     val currentShowYLabels by rememberUpdatedState(axisConfig.showYLabels)
 
     val firstPoints = series.firstOrNull()?.points ?: emptyList()
-    val xLabelInterval = remember(firstPoints, axisConfig.maxXLabels) {
-        max(1, (firstPoints.size + axisConfig.maxXLabels - 1) / axisConfig.maxXLabels)
-    }
-    val xLabelLayouts = remember(
+    val xLabelStyle = remember(labelStyle) { labelStyle.copy(textAlign = TextAlign.Center) }
+    val labelledPoints = remember(
         firstPoints,
-        labelStyle,
-        textMeasurer,
-        xLabelInterval,
-        axisConfig.xLabelFormatter,
-        axisConfig.showXLabels
+        axisConfig.maxXLabels,
+        axisConfig.showXLabels,
+        xIsPinned,
+        xMin,
+        xMax
     ) {
-        if (!axisConfig.showXLabels) emptyList()
-        else firstPoints.filterIndexed { i, _ -> i % xLabelInterval == 0 }.map { p ->
-            textMeasurer.measure(
-                text = p.label.ifEmpty { axisConfig.xLabelFormatter(p.x) },
-                style = labelStyle.copy(textAlign = TextAlign.Center),
-                maxLines = 1
+        if (!axisConfig.showXLabels) {
+            IntArray(0)
+        } else {
+            xLabelIndices(
+                points = firstPoints,
+                maxLabels = axisConfig.maxXLabels,
+                xMin = xMin,
+                xMax = xMax,
+                restrictToAxis = xIsPinned
             )
+        }
+    }
+    // Kept across windows, so panning measures only the labels it has just revealed.
+    // Keyed by the text, as the value labels are: a window that crosses a stride
+    // boundary picks a different set of points and finds them already measured.
+    val xLabelCache = remember(xLabelStyle, textMeasurer) {
+        mutableMapOf<String, TextLayoutResult>()
+    }
+    val xLabelLayouts = remember(labelledPoints, xLabelCache, axisConfig.xLabelFormatter) {
+        labelledPoints.map { i ->
+            val p = firstPoints[i]
+            val text = p.label.ifEmpty { axisConfig.xLabelFormatter(p.x) }
+            xLabelCache.getOrPut(text) {
+                textMeasurer.measure(text = text, style = xLabelStyle, maxLines = 1)
+            }
         }
     }
     val maxXLabelHeight = remember(xLabelLayouts) {
@@ -328,9 +383,7 @@ fun LineChart(
     // Clipping a range with nothing outside it would only shave a cap on the bound.
     // Guards apply only to a pinned axis. An automatic one already contains its
     // data, so testing it can only misfire on a float rounding of its own ticks.
-    val xIsPinned = axisConfig.xMin != null || axisConfig.xMax != null
     val yIsPinned = axisConfig.yMin != null || axisConfig.yMax != null
-    val currentXIsPinned by rememberUpdatedState(xIsPinned)
 
     // Per edge, not per axis: an axis that cuts at one end must not clip the other,
     // where a mark sitting on the bound would lose its outer half.
@@ -426,8 +479,14 @@ fun LineChart(
     val axis = remember(series) { buildAxisIndex(series) }
     val currentAxisX by rememberUpdatedState(axis.positions)
 
-    val selectedDescription = remember(selectedPointIndex, series, a11yConfig) {
-        selectedPointIndex?.let { idx ->
+    val onAxis = remember(axis, xIsPinned, xMin, xMax) {
+        if (xIsPinned) visiblePositions(axis.positions, xMin, xMax) else axis.positions.indices
+    }
+
+    val selectedDescription = remember(selectedPointIndex, series, a11yConfig, onAxis) {
+        // Off the axis it has no crosshair, no dot and no tooltip. Announcing it
+        // would tell a listener about a reading nobody else can see.
+        selectedPointIndex?.takeIf { it in onAxis }?.let { idx ->
             // Resolved off the axis the chart already built, rather than rebuilt per
             // announcement: TalkBack asks for this on every snap of a drag.
             val selected = series.mapNotNull { s ->
@@ -436,6 +495,33 @@ fun LineChart(
             a11yConfig.selectedPointDescriptionBuilder(idx, selected)
         }
             ?: ""
+    }
+
+    // Keyed on the run of positions rather than on the window, so a drag that has not
+    // yet brought a new point into view announces nothing.
+    val windowDescription = remember(window != null, onAxis, series, axis, a11yConfig) {
+        if (window == null) {
+            ""
+        } else if (onAxis.isEmpty()) {
+            a11yConfig.visibleRangeDescriptionBuilder(null, null)
+        } else {
+            a11yConfig.visibleRangeDescriptionBuilder(
+                pointAtPosition(series, axis, onAxis.first),
+                if (onAxis.first == onAxis.last) null else pointAtPosition(series, axis, onAxis.last)
+            )
+        }
+    }
+    // Selection first: it is what a listener asked for, and the window behind it is
+    // unchanged context they can stop listening to once they have the value.
+    val spokenState = remember(windowDescription, selectedDescription) {
+        if (windowDescription.isEmpty()) {
+            selectedDescription
+        } else {
+            buildString {
+                append(selectedDescription)
+                appendSentence(windowDescription)
+            }
+        }
     }
 
     val tooltipCache = remember(textMeasurer, tooltipStyle) {
@@ -482,16 +568,36 @@ fun LineChart(
                 liveRegion = LiveRegionMode.Polite
                 role = Role.Image
                 contentDescription = baseDescription
-                stateDescription = selectedDescription
+                stateDescription = spokenState
                 customActions = buildList {
+                    // A drag is the sighted way through a window. Without these the
+                    // rest of the data would be unreachable to a screen reader.
+                    if (window != null) {
+                        val page = window.endInclusive - window.start
+                        val previous = shiftXWindow(window, xExtent, -page)
+                        if (previous !== window) {
+                            add(
+                                CustomAccessibilityAction(label = a11yConfig.panPreviousLabel) {
+                                    onXWindowChange(previous)
+                                    true
+                                }
+                            )
+                        }
+                        val next = shiftXWindow(window, xExtent, page)
+                        if (next !== window) {
+                            add(
+                                CustomAccessibilityAction(label = a11yConfig.panNextLabel) {
+                                    onXWindowChange(next)
+                                    true
+                                }
+                            )
+                        }
+                    }
                     if (axis.positions.isNotEmpty()) {
                         // Named, not next/previous: stepping leaves the listener
                         // counting along the axis to work out where they landed.
-                        axis.positions.forEachIndexed { index, x ->
-                            if (xIsPinned && !isWithinAxis(x, xMin, xMax)) return@forEachIndexed
-                            val point = series.firstNotNullOfOrNull { s ->
-                                s.points.getOrNull(axis.pointIndex(s.id, index))
-                            } ?: return@forEachIndexed
+                        for (index in onAxis) {
+                            val point = pointAtPosition(series, axis, index) ?: continue
                             add(
                                 CustomAccessibilityAction(label = a11yConfig.selectActionLabel(point)) {
                                     onPointSelected(index)
@@ -512,60 +618,145 @@ fun LineChart(
             }
             // pointerInput(Unit): never restarts, reads all values via rememberUpdatedState
             .pointerInput(Unit) {
-                if (!crosshairConfig.enabled) return@pointerInput
-                awaitEachGesture {
-                    val positions = currentAxisX
-                    if (positions.isEmpty()) return@awaitEachGesture
+                // Well short of the decay's own 0.1 px/s, which spends over a second
+                // travelling distances no one can see, recomposing for each of them.
+                val flingDecay = exponentialDecay<Float>(absVelocityThreshold = FlingStopVelocity)
+                coroutineScope {
+                    val gestures = this
+                    var fling: Job? = null
+                    awaitEachGesture {
+                        // First, before any decision: leaving this block without having
+                        // suspended spins awaitEachGesture on the ui thread. Waiting here
+                        // also means everything below is read as the touch lands rather
+                        // than as the previous gesture ended, which a settling fling or a
+                        // window set from elsewhere would have left stale.
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        fling?.cancel()
 
-                    val den = currentDensity
-                    val gap = with(den) { style.labelGap.toPx() }
-                    val rtl = currentIsRtl
-                    // Must match the draw pass, or touch selects a point other than
-                    // the one under the finger. Own scratch: not the draw coroutine.
-                    val rect = computePlotInsets(
-                        into = gestureInsets,
-                        width = size.width.toFloat(),
-                        height = size.height.toFloat(),
-                        gap = gap,
-                        yLabelWidth = if (currentShowYLabels) currentMaxYLabelWidth else 0f,
-                        xLabelHeight = 0f,
-                        yTitleHeight = currentYTitleHeight,
-                        xTitleHeight = 0f,
-                        isRtl = rtl,
-                        dotClearance = currentWidestDotPx
-                    )
-                    val cLeft = rect.left
-                    val cRight = rect.right
-                    val axMin = currentXMin
-                    val axMax = currentXMax
+                        val positions = currentAxisX
+                        val panWindow = currentWindow
+                        val canSelect = currentCrosshairEnabled && positions.isNotEmpty()
+                        if (!canSelect && panWindow == null) return@awaitEachGesture
 
-                    val restrict = currentXIsPinned
-                    fun nearest(touchX: Float): Int =
-                        nearestAxisIndex(positions, touchX, axMin, axMax, cLeft, cRight, rtl, restrict)
+                        val den = currentDensity
+                        val gap = with(den) { currentLabelGap.toPx() }
+                        val rtl = currentIsRtl
+                        // Must match the draw pass, or touch selects a point other than
+                        // the one under the finger. Own scratch: not the draw coroutine.
+                        val rect = computePlotInsets(
+                            into = gestureInsets,
+                            width = size.width.toFloat(),
+                            height = size.height.toFloat(),
+                            gap = gap,
+                            yLabelWidth = if (currentShowYLabels) currentMaxYLabelWidth else 0f,
+                            xLabelHeight = 0f,
+                            yTitleHeight = currentYTitleHeight,
+                            xTitleHeight = 0f,
+                            isRtl = rtl,
+                            dotClearance = currentWidestDotPx
+                        )
+                        val cLeft = rect.left
+                        val cRight = rect.right
+                        val axMin = currentXMin
+                        val axMax = currentXMax
 
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    var lastHapticIndex = nearest(down.position.x)
-                    if (lastHapticIndex >= 0) {
-                        currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
-                        currentOnPointSelected(lastHapticIndex)
-                    }
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Main)
-                        val change = event.changes.firstOrNull() ?: break
-                        if (!change.pressed) break
-                        val index = nearest(change.position.x)
-                        if (index < 0) {
-                            change.consume()
-                            continue
+                        val restrict = currentXIsPinned
+                        fun nearest(touchX: Float): Int =
+                            nearestAxisIndex(positions, touchX, axMin, axMax, cLeft, cRight, rtl, restrict)
+
+                        var settleX = down.position.x
+                        if (panWindow != null) {
+                            val tracker = VelocityTracker()
+                            tracker.addPosition(down.uptimeMillis, down.position)
+                            val decided = awaitPanOrSelect(
+                                down = down,
+                                slop = viewConfiguration.touchSlop,
+                                longPressTimeoutMillis = viewConfiguration.longPressTimeoutMillis,
+                                canSelect = canSelect,
+                                tracker = tracker
+                            )
+                            if (decided.touch == LineTouch.Cancelled) return@awaitEachGesture
+                            settleX = down.position.x + decided.drift
+                            if (decided.touch == LineTouch.Pan) {
+                                var shown: ClosedFloatingPointRange<Float> = panWindow
+                                var emitted: ClosedFloatingPointRange<Float> = panWindow
+                                val width = panWindow.endInclusive - panWindow.start
+                                val plotWidth = cRight - cLeft
+                                fun panBy(dragPx: Float): Boolean {
+                                    val moved = shiftXWindow(
+                                        window = shown,
+                                        extent = currentXExtent,
+                                        delta = panDataDelta(dragPx, plotWidth, width, rtl),
+                                        width = width
+                                    )
+                                    if (moved === shown) return false
+                                    shown = moved
+                                    emitted = moved
+                                    currentOnXWindowChange(moved)
+                                    return true
+                                }
+
+                                panBy(decided.overSlop)
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Main)
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    tracker.addPosition(change.uptimeMillis, change.position)
+                                    // Only what the chart acted on: a window already at the
+                                    // end of its data hands the drag back, or a pager
+                                    // holding the chart could never turn its page.
+                                    if (panBy(change.positionChange().x)) change.consume()
+                                    if (!change.pressed) break
+                                }
+
+                                val ceiling = viewConfiguration.maximumFlingVelocity
+                                val velocity = tracker
+                                    .calculateVelocity(Velocity(ceiling, ceiling)).x
+                                if (!currentReduceMotion && abs(velocity) > FlingStopVelocity) {
+                                    fling = gestures.launch {
+                                        var settled = 0f
+                                        AnimationState(0f, velocity).animateDecay(flingDecay) {
+                                            val step = value - settled
+                                            settled = value
+                                            // The first frame is still at rest, so it has
+                                            // neither moved anything nor read a window the
+                                            // composition has had a chance to catch up with.
+                                            if (step == 0f) return@animateDecay
+                                            val live = currentWindow
+                                            val ours = live != null &&
+                                                abs(live.start - emitted.start) <= width * 1e-4f
+                                            // Either the end of the data, or a window the
+                                            // caller has since taken somewhere of its own.
+                                            if (!ours || !panBy(step)) cancelAnimation()
+                                        }
+                                    }
+                                }
+                                return@awaitEachGesture
+                            }
                         }
-                        if (index != lastHapticIndex) {
-                            lastHapticIndex = index
+
+                        var lastHapticIndex = nearest(settleX)
+                        if (lastHapticIndex >= 0) {
                             currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                            currentOnPointSelected(lastHapticIndex)
                         }
-                        currentOnPointSelected(index)
-                        change.consume()
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            val index = nearest(change.position.x)
+                            if (index < 0) {
+                                change.consume()
+                                continue
+                            }
+                            if (index != lastHapticIndex) {
+                                lastHapticIndex = index
+                                currentSelectionHaptic?.let { haptic.performHapticFeedback(it) }
+                            }
+                            currentOnPointSelected(index)
+                            change.consume()
+                        }
+                        currentOnPointSelected(null)
                     }
-                    currentOnPointSelected(null)
                 }
             }
     ) {
@@ -946,23 +1137,16 @@ fun LineChart(
         }
 
         // ── 5. X labels ──
-        if (axisConfig.showXLabels && xLabelLayouts.isNotEmpty()) {
-            var layoutIdx = 0
-            firstPoints.forEachIndexed { i, p ->
-                if (i % xLabelInterval == 0 && layoutIdx < xLabelLayouts.size) {
-                    // After the increment: a skipped label still consumes its
-                    // layout, or every later label lands on the wrong point.
-                    val layout = xLabelLayouts[layoutIdx++]
-                    if (xIsPinned && !isWithinAxis(p.x, xMin, xMax)) return@forEachIndexed
-                    drawText(
-                        textLayoutResult = layout,
-                        topLeft = Offset(
-                            x = mapX(p.x) - layout.size.width / 2f,
-                            y = chartBottom + xLabelGapPx
-                        )
-                    )
-                }
-            }
+        for (slot in xLabelLayouts.indices) {
+            val layout = xLabelLayouts[slot]
+            val p = firstPoints[labelledPoints[slot]]
+            drawText(
+                textLayoutResult = layout,
+                topLeft = Offset(
+                    x = mapX(p.x) - layout.size.width / 2f,
+                    y = chartBottom + xLabelGapPx
+                )
+            )
         }
 
         // ── 5b. Axis titles ──

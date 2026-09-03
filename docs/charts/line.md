@@ -287,6 +287,9 @@ LineChart(
 `onPointSelected` gives you the index while dragging and `null` on release.
 Disable it with `crosshairConfig = LineCrosshairConfig(enabled = false)`.
 
+On a chart with an `xWindow` a plain drag pans instead, so the crosshair waits for a
+long press. See [Windowing the x axis](#windowing-the-x-axis).
+
 The index is yours to hold, so it can outlive the data it pointed at. The chart
 skips a stale index rather than crashing, but the crosshair disappears — clear
 it yourself when the data changes if that matters to you.
@@ -409,6 +412,83 @@ and measured it in raw pixels. It is the same type the bar chart's grid takes.
 `dashedGrid` is deprecated and removed in 2.0; while it is still there, setting it
 to true wins over `gridDashPattern`.
 
+## Windowing the x axis
+
+A series that only grows outruns the width you have for it. Seven hundred days at
+three pixels each is a smear, not a chart. `xWindow` shows a stretch of the axis and
+lets the reader drag through the rest:
+
+```kotlin
+val lastDay = (readings.size - 1).toFloat()
+var window by remember { mutableStateOf((lastDay - 6f)..lastDay) }
+
+LineChart(
+    dataSet = data,
+    modifier = Modifier.fillMaxWidth().height(300.dp),
+    xWindow = window,
+    onXWindowChange = { window = it }
+)
+```
+
+That opens on the last week and walks back a day at a time. The window is hoisted
+exactly as `selectedPointIndex` is: the chart holds no scroll position of its own, so
+the same state drives a period selector or a "jump to the first reading" button.
+
+```kotlin
+Button(onClick = { window = 0f..6f }) { Text("Start") }
+```
+
+The window is yours to hold, as `selectedPointIndex` is. The chart clamps what it
+draws without reporting the clamp back, so after a data change that shrinks the
+series your state and the plot can disagree until you set it again. And a chart
+given an `xWindow` with no `onXWindowChange` consumes the drag and moves nothing,
+which reads as a chart that has stopped responding: pass both, or neither.
+
+Hold the window in the smallest composable you can. Every drag frame emits a new
+one, and whatever reads it recomposes at that rate.
+
+The width you give is the width you keep. A window that runs off either end slides
+back on rather than shrinking, and one as wide as the data is the same as no window
+at all: no clipping, no pan, and the chart behaves exactly as it did without one. An
+inverted, empty or `NaN` window is ignored, the way an unusable pin is.
+
+`xMin` and `xMax` still say what the whole axis holds, so a window pans over the
+pinned range rather than over the data:
+
+```kotlin
+axisConfig = LineAxisConfig(xMin = 0f, xMax = 364f),
+xWindow = window   // pans across the whole year, however much of it has data
+```
+
+**Gestures.** A horizontal drag pans, and lets go with a flick that settles under
+its own momentum. A drag the window cannot act on, because it is already at the end
+of the data, is handed back, so a chart inside a scrolling container is not a dead
+zone at its edges. Panning and the crosshair are both horizontal drags, so a windowed
+chart waits for a long press before it starts selecting. A chart with no window keeps
+the old behaviour, where a touch selects straight away. The pan claims the gesture the moment the
+drag crosses the touch slop, so a chart inside a `HorizontalPager` pans without turning
+the page. A tap does nothing on a windowed chart: it is neither a pan nor a hold.
+Reduced motion drops the flick and leaves the drag.
+
+Everything a pinned axis suppresses is suppressed outside the window too: no dot, no
+value label, no x-label, no vertical grid line and no crosshair, and touch snaps only
+to points that are on screen. A `selectedPointIndex` that has scrolled out of the
+window is neither drawn nor announced until it comes back.
+
+X labels are thinned to `maxXLabels` over the points the window shows rather than
+over the whole series, or a six-day window of seven hundred days would inherit a
+stride wide enough to label none of them. The stride is anchored to each point's own
+index, so a label stays with its point as the window moves.
+
+**Screen readers.** A windowed chart offers "Show previous" and "Show next" actions
+that move it by a full window, and each is withheld at the end it cannot go. The
+window itself is announced as "Showing Day 84 to Day 90.", each end named by its
+`spokenLabel`, which is the point's `contentDescription`, or its `label`, or its x.
+Reword all three through
+`LineA11yConfig.panPreviousLabel`, `panNextLabel` and `visibleRangeDescriptionBuilder`.
+Only the points inside the window publish a "Select …" action, so the menu stays as
+short as the plot.
+
 ## Animation
 
 Points animate up from the baseline, staggered along the line and across series:
@@ -433,3 +513,4 @@ animationConfig = LineAnimationConfig(
 | `a11yConfig` | Screen-reader text builders |
 | `selectedPointIndex` / `onPointSelected` | Hoisted crosshair position |
 | `selectionHaptic` | Haptic per snap; `null` to disable |
+| `xWindow` / `onXWindowChange` | Hoisted viewport onto the x axis |

@@ -22,6 +22,11 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.Dp
@@ -40,6 +45,7 @@ import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sign
 import kotlin.math.sqrt
 
 /**
@@ -261,6 +267,219 @@ internal fun resolveAxisBounds(
     val hi = pinnedMax ?: dataMax
     if (!lo.isFinite() || !hi.isFinite() || hi <= lo) return dataMin..dataMax
     return lo..hi
+}
+
+/**
+ * The window actually shown, clamped inside [extent], or null when [window] asks for
+ * nothing the axis does not already show.
+ *
+ * A window as wide as the extent resolves to null rather than to the extent itself,
+ * so a chart that can show everything keeps the un-windowed behaviour exactly: no
+ * clipping at the bounds, no pan gesture, and dots that sit on an edge keep all of
+ * themselves. A width that is inverted, empty or not finite is ignored the way an
+ * unusable pin is, since obeying it would stack every point on one edge.
+ */
+internal fun resolveXWindow(
+    extent: ClosedFloatingPointRange<Float>,
+    window: ClosedFloatingPointRange<Float>?
+): ClosedFloatingPointRange<Float>? {
+    if (window == null) return null
+    val width = window.endInclusive - window.start
+    val span = extent.endInclusive - extent.start
+    if (!width.isFinite() || width <= 0f) return null
+    if (span <= 0f || width >= span) return null
+    val start = window.start.coerceIn(extent.start, extent.endInclusive - width)
+    return start..(start + width)
+}
+
+/**
+ * [window] moved along the axis by [delta] data units, kept inside [extent].
+ *
+ * Returns a window starting where it already did when the edge stops it, which is
+ * how a fling knows it has arrived.
+ *
+ * A drag passes the [width] it started with rather than letting each step re-derive
+ * it: `start + (end - start)` is not always `end`, and over the hundred steps of a
+ * fling that rounding walks the window's width away from the one asked for.
+ */
+internal fun shiftXWindow(
+    window: ClosedFloatingPointRange<Float>,
+    extent: ClosedFloatingPointRange<Float>,
+    delta: Float,
+    width: Float = window.endInclusive - window.start
+): ClosedFloatingPointRange<Float> {
+    if (!delta.isFinite() || delta == 0f) return window
+    val highest = max(extent.start, extent.endInclusive - width)
+    val start = (window.start + delta).coerceIn(extent.start, highest)
+    if (start == window.start) return window
+    // Stopped by the far edge, so end on it exactly. Rebuilding the window from a
+    // width that has been through a start and a subtraction on every pan otherwise
+    // leaves the last one a rounding short of the data it is meant to reach.
+    return if (start == highest) start..extent.endInclusive else start..(start + width)
+}
+
+/**
+ * How far a drag of [dragPx] moves the window, in data units.
+ *
+ * The content follows the finger, so dragging towards the end of the axis walks the
+ * window back towards its start. Which end that is flips in RTL, where a larger x is
+ * drawn further left.
+ */
+internal fun panDataDelta(
+    dragPx: Float,
+    plotWidth: Float,
+    windowWidth: Float,
+    isRtl: Boolean
+): Float {
+    if (!dragPx.isFinite() || plotWidth <= 0f || windowWidth <= 0f) return 0f
+    val delta = dragPx / plotWidth * windowWidth
+    return if (isRtl) delta else -delta
+}
+
+/**
+ * Which points carry an x-axis label, thinned to at most [maxLabels] of them.
+ *
+ * Counted over the points the axis actually shows, or a window of five days out of
+ * seven hundred would inherit a stride wide enough to label none of them. The stride
+ * is applied to a point's own index rather than to its place in the window, so a
+ * label stays with its point while the window moves instead of hopping to the
+ * neighbour as each point scrolls off.
+ */
+internal fun xLabelIndices(
+    points: List<LineDataPoint>,
+    maxLabels: Int,
+    xMin: Float,
+    xMax: Float,
+    restrictToAxis: Boolean
+): IntArray {
+    if (points.isEmpty() || maxLabels <= 0) return IntArray(0)
+    fun shown(index: Int) = !restrictToAxis || isWithinAxis(points[index].x, xMin, xMax)
+
+    var visible = 0
+    for (i in points.indices) if (shown(i)) visible++
+    if (visible == 0) return IntArray(0)
+
+    val stride = max(1, (visible + maxLabels - 1) / maxLabels)
+    var count = 0
+    for (i in points.indices) if (i % stride == 0 && shown(i)) count++
+
+    val labelled = IntArray(count)
+    var at = 0
+    for (i in points.indices) if (i % stride == 0 && shown(i)) labelled[at++] = i
+    return labelled
+}
+
+/** The first series to have a reading at [position], read there. */
+internal fun pointAtPosition(
+    series: List<LineSeries>,
+    axis: AxisIndex,
+    position: Int
+): LineDataPoint? = series.firstNotNullOfOrNull { s ->
+    s.points.getOrNull(axis.pointIndex(s.id, position))
+}
+
+/**
+ * The stretch of [positions] the axis shows, or an empty range when it shows none.
+ *
+ * Positions are ascending, so the answer is always one unbroken run.
+ */
+internal fun visiblePositions(positions: FloatArray, xMin: Float, xMax: Float): IntRange {
+    var first = -1
+    var last = -1
+    for (i in positions.indices) {
+        if (!isWithinAxis(positions[i], xMin, xMax)) continue
+        if (first < 0) first = i
+        last = i
+    }
+    return if (first < 0) IntRange.EMPTY else first..last
+}
+
+/** What a touch on a chart that can both pan and select turned out to be. */
+internal enum class LineTouch {
+    /** Lifted, or handed to a parent, before it became either. */
+    Cancelled,
+    Pan,
+    Select
+}
+
+/**
+ * The gesture a touch became, and how far it had already travelled.
+ *
+ * The chart pans by [overSlop] first, so the content starts moving from where the
+ * finger crossed the slop rather than jumping by the whole distance from the press.
+ * [drift] is the whole of it, which is where a hold actually ends up: a finger may
+ * wander most of a slop while waiting the press out.
+ */
+internal class LineTouchResult {
+    var touch: LineTouch? = null
+    var overSlop: Float = 0f
+    var drift: Float = 0f
+}
+
+/**
+ * Where a fling gives up, in pixels per second.
+ *
+ * The decay's own threshold is 0.1 px/s, which keeps a chart recomposing for well
+ * over a second after the last visible movement. This is about a pixel a frame, and
+ * it doubles as the floor under which a lift is not a fling at all.
+ */
+internal const val FlingStopVelocity = 60f
+
+/**
+ * Waits for a touch to say what it is: a horizontal drag past [slop] pans, a hold
+ * past [longPressTimeoutMillis] selects, and a lift or a vertical drag is neither.
+ *
+ * A vertical drag gives up rather than waiting the hold out, so a chart inside a
+ * scrolling column does not select a point as the reader scrolls past it.
+ *
+ * Nothing is consumed until the touch becomes a pan, and then the very change that
+ * made it one is: a chart inside a horizontal pager sees the same move the pager
+ * does, and leaving that one unclaimed swipes the page out from under the chart.
+ */
+internal suspend fun AwaitPointerEventScope.awaitPanOrSelect(
+    down: PointerInputChange,
+    slop: Float,
+    longPressTimeoutMillis: Long,
+    canSelect: Boolean,
+    tracker: VelocityTracker
+): LineTouchResult {
+    val settled = LineTouchResult()
+    if (canSelect) {
+        withTimeoutOrNull(longPressTimeoutMillis) { settle(down, slop, tracker, settled) }
+        if (settled.touch == null) settled.touch = LineTouch.Select
+    } else {
+        settle(down, slop, tracker, settled)
+    }
+    return settled
+}
+
+private suspend fun AwaitPointerEventScope.settle(
+    down: PointerInputChange,
+    slop: Float,
+    tracker: VelocityTracker,
+    into: LineTouchResult
+) {
+    var dx = 0f
+    var dy = 0f
+    while (into.touch == null) {
+        val event = awaitPointerEvent(PointerEventPass.Main)
+        val change = event.changes.firstOrNull { it.id == down.id }
+        if (change == null || !change.pressed) {
+            into.touch = LineTouch.Cancelled
+            return
+        }
+        tracker.addPosition(change.uptimeMillis, change.position)
+        dx += change.positionChange().x
+        dy += change.positionChange().y
+        into.drift = dx
+        if (abs(dx) > slop) {
+            into.overSlop = dx - sign(dx) * slop
+            into.touch = LineTouch.Pan
+            change.consume()
+        } else if (abs(dy) > slop) {
+            into.touch = LineTouch.Cancelled
+        }
+    }
 }
 
 /**
@@ -614,6 +833,7 @@ internal fun Path.buildArea(
 internal class LineChartAnimationEngine {
     internal val yAnimatables = mutableMapOf<String, Animatable<Float, AnimationVector1D>>()
     private val initializedKeys = mutableSetOf<String>()
+    private var lastSynced: List<LineSeries>? = null
 
     private val exitTracker = ExitTracker<LineSeries> { it.id }
 
@@ -624,8 +844,15 @@ internal class LineChartAnimationEngine {
     fun syncAnimatables(series: List<LineSeries>) {
         exitTracker.sync(series)
 
+        // Panning recomposes every frame, and this runs from a SideEffect. Without
+        // the guard a seven-hundred-point chart builds seven hundred keys per frame
+        // to discover it already has all of them.
+        val rendered = renderSeries(series)
+        if (rendered === lastSynced) return
+        lastSynced = rendered
+
         val activeKeys = mutableSetOf<String>()
-        renderSeries(series).forEach { s ->
+        rendered.forEach { s ->
             s.points.forEachIndexed { i, _ ->
                 val key = "${s.id}::$i"
                 activeKeys.add(key)
@@ -669,6 +896,7 @@ internal class LineChartAnimationEngine {
             yAnimatables.remove(key)
             initializedKeys.remove(key)
         }
+        lastSynced = null
         exitTracker.forget(leaving)
     }
 

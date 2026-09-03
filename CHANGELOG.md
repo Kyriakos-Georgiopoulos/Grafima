@@ -11,6 +11,49 @@ behaviour do not.
 
 ## [Unreleased]
 
+### Added
+
+- `LineChart(xWindow = …, onXWindowChange = …)` shows a stretch of the x axis and
+  lets a drag walk through the rest, which is what a series that only grows needs:
+  seven hundred daily readings drawn at once are a smear, six of them are a chart.
+  The window is hoisted the way `selectedPointIndex` is, so the same state drives a
+  drag, a period selector or a "jump to the start" button. Its width is kept and its
+  position clamped, a flick settles under its own momentum, and `LineAxisConfig.xMin`
+  and `xMax` become the range it pans over. A window as wide as the data behaves
+  exactly as no window does.
+- `LineA11yConfig.panPreviousLabel`, `panNextLabel` and `visibleRangeDescriptionBuilder`.
+  A windowed chart offers an action per direction, withheld at the end it cannot go,
+  and names the stretch it is showing, so the data past the edge is reachable and
+  locatable without a drag.
+
+### Changed
+
+- A windowed chart waits for a long press before the crosshair appears, since a plain
+  drag now pans. A chart without a window still selects on touch, as it always has.
+- X-axis labels are thinned to `maxXLabels` over the points the axis shows rather than
+  over the whole series. A chart with a pinned `xMin`/`xMax` therefore labels its
+  visible points at the density it was asked for instead of inheriting the stride of
+  the data behind them. An unpinned chart is unchanged.
+- **Binary incompatible.** `LineChart` takes two more parameters and `LineA11yConfig`
+  three more properties. The `LineChart` symbol is renamed by the compiler, so every
+  call site compiled against 1.2.0 fails with `NoSuchMethodError` whether or not it
+  touches the new parameters. Recompile dependents; publish no mixed set. Source
+  compatibility holds with one exception: a call that passed `onPointSelected` as a
+  bare tenth positional argument no longer compiles, since `xWindow` now sits there.
+  Named arguments and a trailing lambda are both unaffected, and the three new config
+  properties come after the existing ones so positional construction still works.
+- `LineCrosshairConfig.enabled` and `LineChartStyle.labelGap` are read on every
+  recomposition rather than only on the first, so a chart that changes either at
+  runtime now follows instead of keeping what it was first composed with.
+- A line chart's selected point is no longer announced while it sits outside a pinned
+  or windowed x range. It was already drawn nowhere, so the announcement described a
+  reading nobody could see.
+
+### Fixed
+
+- `LineAxisConfig(maxXLabels = 0)` divided by zero while measuring the x labels. It
+  now draws none, which is what asking for none should do.
+
 ## [1.2.0] - 2026-08-18
 
 ### Added

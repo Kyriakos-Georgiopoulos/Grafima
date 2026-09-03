@@ -44,6 +44,10 @@ For each chart tab:
       meaningful "Select …" action.
 - [ ] Activate a "Select …" action. The new selection is announced.
 - [ ] "Clear selection" appears only while something is selected, and works.
+- [ ] Line chart, **90 Days**: "Show previous" and "Show next" move the window a
+      whole window at a time, and each disappears at the end it cannot go.
+- [ ] The window is announced after the selection, and reads as a range someone
+      would say out loud rather than as two numbers.
 - [ ] Press **Update Data** in the sample. The change is announced without
       having to re-focus the chart.
 - [ ] Gauge: the value is announced as a percentage/progress, not as raw text.
@@ -88,6 +92,9 @@ so this is a spot check rather than a third full pass.
       comfortable.
 - [ ] **Touch targets.** With many entries in a narrow chart, can you reliably
       hit the bar/slice you intend? Note the point at which it becomes fiddly.
+- [ ] **Panning.** Press **90 Days** on the line chart. A drag walks the window and
+      a flick carries on and settles at the ends of the data. A long press still
+      brings up the crosshair, and the chart pager underneath does not turn.
 - [ ] **Rotation.** Rotate mid-animation. No crash, no stuck animation.
 
 ---
@@ -102,6 +109,8 @@ so this is a spot check rather than a third full pass.
       composition, so toggling it takes effect on the next launch rather than
       immediately. A host that needs live control can provide
       `LocalReduceMotion` instead, which applies on the next recomposition.
+- [ ] Reduce motion, line chart, **90 Days**: a drag still pans, and the flick that
+      would carry it on does not happen.
 - [ ] Entry animations feel smooth, not janky, on the oldest device you support.
 - [ ] Rapidly pressing **Update Data** doesn't leave bars stranded at stale
       values or mid-animation.

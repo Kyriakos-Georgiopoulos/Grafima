@@ -134,8 +134,53 @@ private fun LineDataSet.averageSeries(): LineSeries {
     )
 }
 
+/** Ninety readings and the seven-day mean over them, the shape a viewport is for. */
+private fun dailyDataSet(): LineDataSet {
+    var value = 62f
+    val readings = List(DailyPoints) {
+        value = (value + Random.nextFloat() * 26f - 13f).coerceIn(20f, 110f)
+        value
+    }
+    val trailing = readings.mapIndexed { i, _ ->
+        val from = maxOf(0, i - 6)
+        readings.subList(from, i + 1).average().toFloat()
+    }
+    fun points(values: List<Float>) = values.mapIndexed { i, v ->
+        LineDataPoint(
+            x = i.toFloat(),
+            y = v,
+            label = "${i + 1}",
+            contentDescription = "Day ${i + 1}"
+        )
+    }
+    return LineDataSet(
+        series = listOf(
+            LineSeries(
+                id = "daily",
+                label = "Reading",
+                color = Color(0xFF6366F1),
+                fillAlpha = 0.10f,
+                dotRadius = 5.dp,
+                points = points(readings)
+            ),
+            LineSeries(
+                id = "avg7",
+                label = "7-day average",
+                color = Color(0xFF10B981),
+                strokeWidth = 2.dp,
+                dashPattern = DashPattern(dash = 10.dp, gap = 6.dp),
+                dotRadius = 0.dp,
+                points = points(trailing)
+            )
+        ),
+        contentDescription = "Ninety days of readings"
+    )
+}
+
 private const val MinSeries = 1
 private const val MaxSeries = 4
+private const val DailyPoints = 90
+private const val WindowDays = 6f
 
 private fun LineDataSet.plusSeries(): LineDataSet {
     val index = series.size
@@ -201,6 +246,20 @@ internal class LineChartViewModel : ViewModel() {
     var showDots by mutableStateOf(false)
     var dataSet by mutableStateOf(seededDataSet())
     var selectedIdx by mutableStateOf<Int?>(null)
+    var daily by mutableStateOf(dailyDataSet())
+    var xWindow by mutableStateOf<ClosedFloatingPointRange<Float>?>(null)
+
+    val windowed: Boolean get() = xWindow != null
+
+    fun toggleWindow() {
+        selectedIdx = null
+        xWindow = if (windowed) {
+            null
+        } else {
+            daily = dailyDataSet()
+            (DailyPoints - 1 - WindowDays)..(DailyPoints - 1f)
+        }
+    }
 }
 
 @Composable
@@ -209,12 +268,13 @@ internal fun LineChartDemoScreen(
 ) {
     val colors = LocalDemoColors.current
 
-    val dataSet = viewModel.dataSet
+    val windowed = viewModel.windowed
+    val dataSet = if (windowed) viewModel.daily else viewModel.dataSet
     val showFill = viewModel.showFill
     val curveType = viewModel.curveType
     val selectedIdx = viewModel.selectedIdx
     val showValues = viewModel.showValues
-    val showTrend = viewModel.showTrend
+    val showTrend = viewModel.showTrend && !windowed
     val showDots = viewModel.showDots
 
     // Stripping the fill rewrites every series, so derive it once per change:
@@ -264,13 +324,13 @@ internal fun LineChartDemoScreen(
             DemoControls { buttonModifier ->
                 DemoAddButton(
                     text = "Add Series",
-                    enabled = dataSet.series.size < MaxSeries,
+                    enabled = !windowed && dataSet.series.size < MaxSeries,
                     onClick = { viewModel.dataSet = dataSet.plusSeries() },
                     modifier = buttonModifier
                 )
                 DemoRemoveButton(
                     text = "Remove Series",
-                    enabled = dataSet.series.size > MinSeries,
+                    enabled = !windowed && dataSet.series.size > MinSeries,
                     onClick = { viewModel.dataSet = dataSet.minusSeries() },
                     modifier = buttonModifier
                 )
@@ -337,7 +397,7 @@ internal fun LineChartDemoScreen(
                 }
                 Button(
                     onClick = { viewModel.showTrend = !showTrend },
-                    enabled = dataSet.series.size > 1,
+                    enabled = !windowed && dataSet.series.size > 1,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.accentWarm,
                         contentColor = colors.onAccentWarm
@@ -373,10 +433,30 @@ internal fun LineChartDemoScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                Button(
+                    onClick = { viewModel.toggleWindow() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accentWarm,
+                        contentColor = colors.onAccentWarm
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = buttonModifier.height(50.dp)
+                ) {
+                    Text(
+                        if (windowed) "All Months" else "90 Days",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             Button(
-                onClick = { viewModel.dataSet = dataSet.randomized() },
+                onClick = {
+                    if (windowed) viewModel.daily = dailyDataSet()
+                    else viewModel.dataSet = dataSet.randomized()
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.onSurface,
                     contentColor = colors.background
@@ -403,14 +483,18 @@ internal fun LineChartDemoScreen(
                 ) {
                     Column {
                         Text(
-                            "Revenue & Expenses",
+                            if (windowed) "Daily Readings" else "Revenue & Expenses",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = colors.onSurface
                         )
                         Text(
-                            text = selectedIdx?.let { MonthLabels.getOrNull(it) }
-                                ?: "Drag to explore",
+                            text = when {
+                                selectedIdx != null && windowed -> "Day ${selectedIdx + 1}"
+                                selectedIdx != null -> MonthLabels.getOrNull(selectedIdx).orEmpty()
+                                windowed -> "Drag to pan, hold to explore"
+                                else -> "Drag to explore"
+                            },
                             fontSize = 13.sp,
                             color = colors.onSurfaceMuted,
                             modifier = Modifier.padding(top = 2.dp)
@@ -437,12 +521,14 @@ internal fun LineChartDemoScreen(
                             yTickCount = 5,
                             gridDashPattern = DashPattern(dash = 2.dp, gap = 3.dp),
                             xLabels = MonthLabels,
-                            xAxisTitle = "Month",
-                            yAxisTitle = "Thousands of euros",
-                            referenceLines = targetLine
+                            xAxisTitle = if (windowed) "Day" else "Month",
+                            yAxisTitle = if (windowed) "Readings" else "Thousands of euros",
+                            referenceLines = if (windowed) emptyList() else targetLine
                         ),
                         crosshairConfig = themedCrosshair(),
                         selectedPointIndex = selectedIdx,
+                        xWindow = viewModel.xWindow,
+                        onXWindowChange = { viewModel.xWindow = it },
                         onPointSelected = { viewModel.selectedIdx = it }
                     )
                 }
